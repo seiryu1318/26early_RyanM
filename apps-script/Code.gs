@@ -396,7 +396,7 @@ function toRecord_(row) {
     university: text_(row[COL.university]),
     track: text_(row[COL.track]),
     admissionType: normalizeAdmissionType_(row[COL.admissionType]),
-    admissionName: normalizeAdmissionName_(row[COL.admissionName]),
+    admissionName: normalizeAdmissionName_(row[COL.admissionName], row[COL.admissionType]),
     birthdate: normalizeBirthdate_(row[COL.birthdate]),
     examNo: text_(row[COL.examNo]),
     selectionType: text_(row[COL.selectionType]),
@@ -440,108 +440,99 @@ function normalizeAdmissionType_(value) {
   return raw;
 }
 
-function normalizeAdmissionName_(value) {
-  let raw = inlineText_(value);
-  if (!raw) return '';
+function normalizeAdmissionName_(value, admissionType) {
+  const original = inlineText_(value);
+  if (!original) return '';
 
-  const category = '(?:' +
-    '학생부\\s*위주(?:\\s*[\\(（]\\s*(?:교과|종합)\\s*[\\)）])?|' +
-    '학생부\\s*(?:교과|종합)|' +
-    '실기\\s*(?:[/·ㆍ]\\s*)?실적(?:\\s*위주)?|' +
-    '논술\\s*위주|논술' +
-  ')';
-  const leadingCategory = new RegExp(
-    '^\\s*(?:' +
-      '\\(\\s*' + category + '\\s*\\)|' +
-      '\\[\\s*' + category + '\\s*\\]|' +
-      '\\{\\s*' + category + '\\s*\\}|' +
-      '【\\s*' + category + '\\s*】|' +
-      category +
-    ')'
-  );
-  const leadingSeparators = /^\s*(?:[:：\-–—/|·,，;；]+\s*)+/;
+  const type = normalizeAdmissionType_(admissionType);
+  const prefixesByType = {
+    '교과': [
+      /^학생부\s*위주\s*[\(（]\s*교과\s*[\)）]/,
+      /^학생부\s*교과/,
+      /^교과/,
+    ],
+    '종합': [
+      /^학생부\s*위주\s*[\(（]\s*종합\s*[\)）]/,
+      /^학생부\s*종합/,
+      /^종합/,
+    ],
+    '논술': [
+      /^논술\s*위주/,
+      /^논술/,
+    ],
+    '실기·실적': [
+      /^실기\s*(?:[/·ㆍ]\s*)?실적\s*위주/,
+      /^실기\s*(?:[/·ㆍ]\s*)?실적/,
+      /^실기/,
+    ],
+    '학생부': [
+      /^학생부\s*위주/,
+      /^학생부/,
+    ],
+    '면접': [
+      /^면접\s*위주/,
+      /^면접/,
+    ],
+  };
+  const prefixes = (prefixesByType[type] || []).slice();
+  const rawType = inlineText_(admissionType);
+  if (rawType) prefixes.push(new RegExp('^' + escapeRegExp_(rawType)));
 
-  // Some source cells repeat both a broad and a narrow category. Strip only
-  // consecutive leading category labels so meaningful text later in the name
-  // is never removed.
-  let previous = '';
-  while (raw && raw !== previous) {
-    previous = raw;
-    raw = raw.replace(leadingCategory, '').replace(leadingSeparators, '').trim();
+  for (let index = 0; index < prefixes.length; index += 1) {
+    const match = original.match(prefixes[index]);
+    if (!match) continue;
+
+    // A category word is redundant only when it introduces a separately
+    // delimited name. Preserve names such as "논술전형" or
+    // "학생부종합전형" when the category is part of the official name.
+    const rest = original.slice(match[0].length);
+    if (!/^\s*(?:[\(（\[【{]|[:：\-–—/|·,，;；])/.test(rest)) continue;
+
+    const withoutPrefix = rest
+      .replace(/^\s*(?:[:：\-–—/|·,，;；]+\s*)+/, '')
+      .trim();
+    const unwrapped = unwrapSingleAdmissionWrapper_(withoutPrefix);
+    return unwrapped || original;
   }
 
-  raw = normalizeAdmissionWrappers_(raw);
-
-  return raw
-    .replace(/\(\s*\)/g, '')
-    .replace(/（\s*）/g, '')
-    .replace(/\)\s*\(/g, ') (')
-    .replace(/）\s*（/g, '） （')
-    .replace(/\s+/g, ' ')
-    .replace(/\s+전형/g, '전형')
-    .trim();
+  return original;
 }
 
-function normalizeAdmissionWrappers_(value) {
-  const groups = balancedWrapperGroups_(value);
-  if (!groups) return value;
-
-  const meaningful = groups.map(inlineText_).filter(Boolean);
-  if (groups.length === 1) return meaningful[0] || '';
-  return meaningful.join(' · ');
+function escapeRegExp_(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-function balancedWrapperGroups_(value) {
+function unwrapSingleAdmissionWrapper_(value) {
   const source = inlineText_(value);
-  if (!source) return null;
+  if (!source) return '';
 
   const closingFor = {
     '(': ')',
     '（': '）',
     '[': ']',
     '【': '】',
+    '{': '}',
   };
-  const closingCharacters = {
-    ')': true,
-    '）': true,
-    ']': true,
-    '】': true,
-  };
-  const groups = [];
-  let index = 0;
+  const opening = source.charAt(0);
+  const expectedClosing = closingFor[opening];
+  if (!expectedClosing) return source;
 
-  while (index < source.length) {
-    while (index < source.length && /\s/.test(source.charAt(index))) index += 1;
-    if (index >= source.length) break;
-
-    const opening = source.charAt(index);
-    const expectedClosing = closingFor[opening];
-    if (!expectedClosing) return null;
-
-    const contentStart = index + 1;
-    const stack = [expectedClosing];
-    index += 1;
-
-    while (index < source.length && stack.length) {
-      const character = source.charAt(index);
-      if (closingFor[character]) {
-        stack.push(closingFor[character]);
-      } else if (character === stack[stack.length - 1]) {
-        stack.pop();
-      } else if (closingCharacters[character]) {
-        return null;
+  const stack = [expectedClosing];
+  for (let index = 1; index < source.length; index += 1) {
+    const character = source.charAt(index);
+    if (closingFor[character]) {
+      stack.push(closingFor[character]);
+    } else if (character === stack[stack.length - 1]) {
+      stack.pop();
+      if (stack.length === 0) {
+        return index === source.length - 1
+          ? source.slice(1, -1).trim()
+          : source;
       }
-      index += 1;
     }
-
-    if (stack.length) return null;
-    groups.push(source.slice(contentStart, index - 1));
-
-    while (index < source.length && /\s/.test(source.charAt(index))) index += 1;
-    if (index < source.length && !closingFor[source.charAt(index)]) return null;
   }
 
-  return groups.length ? groups : null;
+  return source;
 }
 
 function normalizeBirthdate_(value) {

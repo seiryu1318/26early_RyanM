@@ -136,17 +136,20 @@
       min-height: 38px;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
+      gap: 6px;
       padding: 0 12px;
-      border-radius: 12px;
+      border-radius: 11px;
       color: var(--pink-800);
-      background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,230,241,.76));
-      box-shadow: inset 0 1px 0 #fff, 0 5px 13px rgba(113,27,68,.08);
+      background: rgba(255,244,249,.82);
+      box-shadow: none;
       font-size: 13.5px;
       font-weight: 850;
       text-decoration: none;
       white-space: nowrap;
     }
-    .edition-switch:hover { color: var(--pink-900); background: #fff; }
+    .edition-switch:hover { color: var(--pink-900); background: rgba(255,255,255,.92); }
+    .edition-switch svg { width: 16px; height: 16px; }
     body.pc-edition .mobile-edition-link, body.mobile-edition .pc-edition-link { display: none; }
     .sync-pill {
       width: 10px;
@@ -175,13 +178,24 @@
       display: inline-grid;
       place-items: center;
       border: 0;
-      border-radius: 14px;
-      background: linear-gradient(180deg, #fff, #fff0f7);
-      box-shadow: inset 0 1px 0 #fff, 0 5px 13px rgba(128,24,73,.1);
+      border-radius: 11px;
+      color: var(--pink-800);
+      background: rgba(255,244,249,.82);
+      box-shadow: none;
       cursor: pointer;
     }
-    .icon-button:hover { border-color: rgba(219,46,123,.35); transform: translateY(-1px); }
+    .icon-button:hover { color: var(--pink-900); background: rgba(255,255,255,.94); }
     .icon-button svg { width: 20px; height: 20px; }
+    .button-icon {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 16px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
 
     main {
       position: relative;
@@ -215,44 +229,42 @@
     .glass-panel > * { position: relative; z-index: 1; }
 
     .search-panel {
-      padding: 18px;
+      padding: 13px;
       background:
-        linear-gradient(118deg, rgba(255,255,255,.68) 0%, rgba(255,248,252,.55) 38%, rgba(255,218,235,.54) 76%, rgba(244,174,207,.48) 100%);
-      box-shadow: 0 30px 82px rgba(70,22,45,.25), 0 9px 28px rgba(137,35,82,.16), inset 0 1px 0 rgba(255,255,255,.98);
+        linear-gradient(118deg, rgba(255,255,255,.62) 0%, rgba(255,248,252,.49) 45%, rgba(246,201,222,.44) 100%);
+      box-shadow: 0 18px 46px rgba(70,22,45,.18), inset 0 1px 0 rgba(255,255,255,.9);
       transition: padding .22s ease, border-radius .22s ease, box-shadow .22s ease;
     }
     .primary-search {
       display: grid;
       grid-template-columns: minmax(120px, .58fr) minmax(96px, .42fr) minmax(130px, .62fr) minmax(175px, 1fr) minmax(190px, 1.08fr) auto;
       align-items: end;
-      gap: 8px;
-      padding: 9px;
-      border: 1px solid rgba(255,255,255,.72);
-      border-radius: 24px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.67), rgba(255,239,247,.52)),
-        linear-gradient(110deg, rgba(255,255,255,.48), rgba(245,173,207,.13));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(148,35,86,.07), 0 11px 30px rgba(108,28,66,.11);
+      gap: 7px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
     }
     .field { position: relative; min-width: 0; }
     .field label {
       display: block;
-      margin: 0 0 6px 4px;
+      margin: 0 0 4px 3px;
       color: #795361;
-      font-size: 14.5px;
+      font-size: 13.5px;
       font-weight: 800;
     }
     .field input, .field select {
       width: 100%;
       min-width: 0;
-      height: 48px;
-      padding: 0 14px;
+      height: 44px;
+      padding: 0 12px;
       border: 0;
-      border-radius: 15px;
+      border-radius: 12px;
       color: var(--ink);
-      background: linear-gradient(180deg, rgba(255,255,255,.84), rgba(255,245,249,.72));
-      box-shadow: inset 0 1px 0 #fff, inset 0 -2px 4px rgba(130,29,76,.055), 0 4px 11px rgba(103,29,64,.055);
-      font-size: 16px;
+      background: rgba(255,250,252,.78);
+      box-shadow: none;
+      font-size: 15.5px;
       font-weight: 800;
       text-align: center;
       text-align-last: center;
@@ -262,13 +274,13 @@
       color: #b296a4;
       text-align: center;
     }
-    .field input:hover, .field select:hover { background: #fff; box-shadow: inset 0 1px 0 #fff, 0 5px 13px rgba(103,29,64,.08); }
-    .field input:focus, .field select:focus { background: #fff; box-shadow: 0 0 0 2px rgba(219,46,123,.22), inset 0 1px 0 #fff, 0 7px 16px rgba(143,31,82,.1); }
+    .field input:hover, .field select:hover { background: rgba(255,255,255,.92); }
+    .field input:focus, .field select:focus { background: #fff; box-shadow: 0 0 0 2px rgba(187,27,102,.2); }
     .select-wrap::after {
       content: "";
       position: absolute;
       right: 15px;
-      bottom: 18px;
+      bottom: 16px;
       width: 7px;
       height: 7px;
       border-right: 2px solid #8b4667;
@@ -278,25 +290,22 @@
     }
     .search-button {
       min-width: 112px;
-      height: 52px;
+      height: 44px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       border: 0;
-      border-radius: 17px;
+      border-radius: 12px;
       color: #fff;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.5) 0%, rgba(255,255,255,.08) 34%, transparent 35%),
-        linear-gradient(145deg, #ff87b8 0%, #ee4b93 38%, #d12272 66%, #9d124f 100%);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.76), inset 0 -2px 4px rgba(103,10,51,.2), 0 12px 25px rgba(154,17,77,.3);
-      text-shadow: 0 1px 1px rgba(94,11,48,.3);
+      background: var(--pink-800);
+      box-shadow: none;
       font-weight: 850;
       cursor: pointer;
-      transition: transform .16s ease, filter .16s ease, box-shadow .16s ease;
+      transition: background .16s ease, opacity .16s ease;
     }
-    .search-button:hover { filter: brightness(1.035); transform: translateY(-1px); }
-    .search-button:active { transform: translateY(0); }
+    .search-button:hover { background: var(--pink-900); }
+    .search-button:active { background: #5e1035; }
     .search-button svg { width: 19px; height: 19px; }
     .search-button[disabled] { cursor: wait; opacity: .7; transform: none; }
 
@@ -304,34 +313,39 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      min-height: 42px;
-      margin-top: 7px;
-      padding: 0 7px;
+      min-height: 36px;
+      margin-top: 4px;
+      padding: 0 2px;
     }
     .detail-toggle, .ghost-button, .small-button {
-      min-height: 42px;
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
       border: 0;
-      border-radius: 13px;
-      background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,232,242,.82));
-      box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(151,34,88,.07), 0 5px 13px rgba(109,28,66,.08);
+      border-radius: 10px;
+      color: var(--pink-800);
+      background: rgba(255,244,249,.78);
+      box-shadow: none;
       font-weight: 800;
       cursor: pointer;
     }
-    .detail-toggle { padding: 0 14px; color: var(--pink-800); }
-    .detail-toggle::after { content: "+"; display: inline-block; margin-left: 8px; font-size: 18px; transition: transform .2s ease; }
-    .detail-toggle[aria-expanded="true"]::after { content: "−"; }
+    .detail-toggle:hover, .ghost-button:hover, .small-button:hover { background: rgba(255,255,255,.9); }
+    .detail-toggle { padding: 0 12px; }
+    .detail-toggle::after { content: none; }
     .clear-button { padding: 0 13px; color: var(--muted); background: transparent; border-color: transparent; }
 
     .detail-filters {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 6px;
-      padding: 18px;
-      border: 1px solid rgba(255,255,255,.64);
-      border-radius: 20px;
-      background: linear-gradient(145deg, rgba(255,255,255,.62), rgba(255,228,240,.48));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 8px 20px rgba(111,27,67,.07);
+      gap: 9px;
+      margin-top: 4px;
+      padding: 12px;
+      border: 0;
+      border-radius: 14px;
+      background: rgba(255,240,247,.48);
+      box-shadow: none;
       animation: unfold .18s ease-out;
     }
     @keyframes unfold { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
@@ -390,15 +404,13 @@
       gap: 6px;
       padding: 0 11px !important;
       color: #8f174d !important;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.72) 0%, rgba(255,255,255,.16) 42%, transparent 43%),
-        linear-gradient(145deg, rgba(255,255,255,.98), rgba(255,218,235,.88));
-      box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(142,25,77,.08), 0 6px 14px rgba(113,27,68,.1);
+      background: rgba(250,222,235,.88);
+      box-shadow: none;
       font-size: 13.5px;
       white-space: nowrap;
     }
     .export-button svg { width: 15px; height: 15px; }
-    .export-button:hover:not([disabled]) { filter: brightness(1.025); transform: translateY(-1px); }
+    .export-button:hover:not([disabled]) { background: rgba(248,207,227,.94); }
     .export-button[disabled] { cursor: wait; opacity: .62; transform: none; }
     body.mobile-edition .export-button { display: none !important; }
 
@@ -414,13 +426,13 @@
     .empty-state svg { display: block; width: 40px; height: 40px; margin: 0 auto 11px; color: #d784aa; }
 
     .table-wrap { width: 100%; overflow: visible; }
-    .result-table { width: 100%; min-width: 1390px; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
+    .result-table { width: 100%; min-width: 1390px; table-layout: fixed; border-collapse: separate; border-spacing: 0 4px; }
     .result-table th {
       position: sticky;
       top: calc(var(--topbar-height) + var(--sticky-search-gap) + var(--sticky-search-height) + 10px);
       z-index: 30;
       padding: 0;
-      border-bottom: 1px solid rgba(137,24,76,.18);
+      border-bottom: 0;
       background:
         linear-gradient(180deg, rgba(255,255,255,.86) 0%, rgba(255,247,251,.8) 37%, rgba(250,218,233,.78) 100%);
       box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(142,28,81,.08), 0 5px 13px rgba(88,20,52,.08);
@@ -438,32 +450,38 @@
       border: 0;
       background: transparent;
       color: #713a54;
-      font-size: 12px;
+      font-size: 12.5px;
       font-weight: 850;
       cursor: pointer;
     }
     .sort-button:hover { color: var(--pink-800); background: rgba(255,255,255,.58); }
-    .sort-mark { color: #b98da1; font-size: 11px; }
-    th[aria-sort="ascending"] .sort-mark, th[aria-sort="descending"] .sort-mark { color: var(--pink-700); }
+    .sort-mark-icon { width: 13px; height: 13px; color: #b98da1; }
+    th[aria-sort="ascending"] .sort-mark-icon, th[aria-sort="descending"] .sort-mark-icon { color: var(--pink-700); }
+    th[aria-sort="descending"] .sort-mark-icon { transform: rotate(180deg); }
     .result-table td {
       max-width: none;
-      padding: 9px 4px;
-      border-bottom: 1px solid rgba(132,41,82,.09);
-      background: linear-gradient(180deg, rgba(255,255,255,.59), rgba(255,247,251,.45));
+      padding: 8px 4px;
+      border-bottom: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,.54), rgba(255,247,251,.4));
       text-align: center;
       vertical-align: middle;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-size: 12px;
+      font-size: 12.5px;
       font-weight: 750;
     }
+    .result-table tbody tr:nth-child(even) td:not(.cell-dob):not(.cell-exam) {
+      background: linear-gradient(180deg, rgba(255,235,244,.47), rgba(246,217,232,.34));
+    }
+    .result-table tbody td:first-child { border-radius: 13px 0 0 13px; }
+    .result-table tbody td:last-child { border-radius: 0 13px 13px 0; }
     .result-table tbody tr:hover td { background: linear-gradient(180deg, rgba(255,255,255,.79), rgba(255,231,242,.67)); }
-    .result-table .cell-name { color: var(--pink-900); font-size: 13px; font-weight: 900; }
+    .result-table .cell-name { color: var(--pink-900); font-size: 13.5px; font-weight: 900; }
     .result-table .cell-dob, .result-table .cell-exam {
       color: #4c1d34;
       background: rgba(255,204,229,.62);
-      font-size: 12.5px;
+      font-size: 13px;
       font-weight: 900;
       font-variant-numeric: tabular-nums;
       letter-spacing: .02em;
@@ -487,13 +505,16 @@
       border: 0;
       border-radius: 10px;
       color: var(--pink-800);
-      background: rgba(255,255,255,.58);
-      box-shadow: 0 3px 9px rgba(128,24,73,.08);
+      background: rgba(255,255,255,.7);
+      box-shadow: none;
       font-size: 13px;
       font-weight: 900;
       cursor: pointer;
     }
     .copy-button:hover { color: #fff; background: var(--pink-600); }
+    .copy-button svg { width: 14px; height: 14px; }
+    .sort-direction-icon { transition: transform .16s ease; }
+    #mobileSortDirection.is-desc .sort-direction-icon { transform: rotate(180deg); }
     .inline-result-control {
       width: 100%;
       min-width: 0;
@@ -502,19 +523,33 @@
       border: 0;
       border-radius: 9px;
       color: #641638;
-      background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,217,234,.68));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.88), 0 3px 8px rgba(109,25,63,.09);
-      font-size: 11.5px;
+      background: rgba(255,242,248,.86);
+      box-shadow: none;
+      font-size: 12px;
       font-weight: 850;
       text-align: center;
       white-space: nowrap;
     }
-    select.inline-result-control { appearance: auto; padding-right: 2px; cursor: pointer; }
+    select.inline-result-control {
+      appearance: none;
+      padding-right: 24px;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23981552' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+      background-size: 14px;
+    }
+    select.inline-result-control option {
+      color: #3f1a2c;
+      background: #fff8fb;
+      font-weight: 750;
+    }
     input.inline-result-control { font-variant-numeric: tabular-nums; }
     .inline-result-control:disabled { cursor: wait; opacity: .58; }
     .inline-result-control.is-filled {
-      color: #fff;
-      background: linear-gradient(155deg, rgba(245,100,161,.92), rgba(177,25,91,.92));
+      color: #641638;
+      background-color: #f6c9dc;
+      box-shadow: inset 0 0 0 1px rgba(152,21,82,.08);
     }
     .stage1-locked {
       min-height: 33px;
@@ -525,24 +560,42 @@
       padding: 0 5px;
       border-radius: 9px;
       color: #713c00;
-      background: linear-gradient(180deg, rgba(255,247,211,.9), rgba(249,195,91,.78));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.86), 0 3px 8px rgba(124,82,10,.12);
-      font-size: 11px;
+      background: #f2cf7a;
+      box-shadow: none;
+      font-size: 11.5px;
       font-weight: 950;
       white-space: nowrap;
     }
-    .inline-save-state {
-      min-height: 15px;
-      margin-top: 2px;
-      color: #7e5b6b;
-      font-size: 9.5px;
-      font-weight: 800;
-      line-height: 1;
-      text-align: center;
-      white-space: nowrap;
+    .saving-overlay {
+      position: fixed;
+      left: 50%;
+      bottom: max(18px, env(safe-area-inset-bottom));
+      z-index: 2200;
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 15px;
+      border-radius: 999px;
+      color: #fff;
+      background: rgba(104, 20, 59, .92);
+      box-shadow: 0 8px 24px rgba(58, 13, 35, .22);
+      font-size: 13px;
+      font-weight: 850;
+      pointer-events: none;
+      transform: translateX(-50%);
+      backdrop-filter: blur(10px);
     }
-    .inline-save-state.saved { color: #137554; }
-    .inline-save-state.error { color: #b3224e; }
+    .saving-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,.42);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: saving-spin .7s linear infinite;
+    }
+    @keyframes saving-spin { to { transform: rotate(360deg); } }
     .result-table :is(th, td):nth-child(1) { width: 74px; }
     .result-table :is(th, td):nth-child(2) { width: 72px; }
     .result-table :is(th, td):nth-child(3) { width: 39px; }
@@ -570,7 +623,8 @@
       padding: 17px;
     }
     .list-controls .ghost-button { min-width: 112px; padding: 0 17px; color: var(--pink-800); }
-    .list-controls .more-button { color: #fff; border-color: transparent; background: linear-gradient(145deg, #f66ca8, #c61f6c); }
+    .list-controls .more-button { color: #fff; border-color: transparent; background: var(--pink-800); }
+    .list-controls .more-button:hover { background: var(--pink-900); }
 
     .mobile-sortbar, .card-list, .mobile-actionbar { display: none; }
 
@@ -616,14 +670,19 @@
     }
     .dialog-foot button { min-height: 46px; padding: 0 18px; }
     .save-button {
-      border: 1px solid rgba(255,255,255,.7);
-      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 0;
+      border-radius: 11px;
       color: #fff;
-      background: linear-gradient(145deg, #ff6da7, #ce1f70);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 9px 18px rgba(173,22,88,.2);
+      background: var(--pink-800);
+      box-shadow: none;
       font-weight: 900;
       cursor: pointer;
     }
+    .save-button:hover { background: var(--pink-900); }
     .save-button[disabled] { cursor: wait; opacity: .65; }
 
     .settings-grid { display: grid; gap: 14px; }
@@ -739,7 +798,7 @@
       gap: 10px;
       align-items: start;
       padding-bottom: 11px;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 0;
     }
     .card-primary > * { min-width: 0; }
     .card-name { min-width: 0; margin: 0; overflow: hidden; color: var(--pink-900); font-size: 19px; font-weight: 950; letter-spacing: -.04em; text-overflow: ellipsis; white-space: nowrap; }
@@ -760,8 +819,11 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
       margin-top: 12px;
-      padding-top: 11px;
-      border-top: 1px solid rgba(132,41,82,.12);
+      padding: 10px;
+      border-top: 0;
+      border-radius: 16px;
+      background: linear-gradient(145deg, rgba(255,255,255,.28), rgba(255,211,232,.3));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.52), 0 5px 13px rgba(104,26,63,.05);
     }
     .card-result-field { min-width: 0; }
     .card-result-field:nth-child(5) { grid-column: 1 / -1; }
@@ -777,7 +839,6 @@
     }
     .card-inline-results .inline-result-control,
     .card-inline-results .stage1-locked { height: 38px; min-height: 38px; font-size: 12.5px; }
-    .card-inline-results .inline-save-state { grid-column: 1 / -1; }
     body.mobile-edition .list-controls { padding: 11px; }
     body.mobile-edition .list-controls button { min-width: 0; flex: 1; }
     body.mobile-edition .mobile-actionbar {
@@ -790,9 +851,9 @@
       grid-template-columns: auto 1fr;
       gap: 9px;
       padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-      border-top: 1px solid rgba(255,255,255,.7);
-      background: linear-gradient(180deg, rgba(255,252,254,.95), rgba(250,222,235,.93));
-      box-shadow: 0 -12px 30px rgba(75,18,45,.18), inset 0 1px 0 #fff;
+      border-top: 0;
+      background: rgba(255,240,247,.94);
+      box-shadow: 0 -7px 20px rgba(75,18,45,.12);
       backdrop-filter: blur(20px);
     }
     body.mobile-edition .mobile-actionbar .detail-toggle { min-width: 108px; height: 52px; background: #fff; }
@@ -887,6 +948,281 @@
     }
     body.mobile-edition.has-searched .detail-filters { margin-top: 5px; }
 
+    @media (max-width: 430px) {
+      body.mobile-edition {
+        --topbar-height: 54px;
+        font-size: 15.5px;
+      }
+      body.mobile-edition .topbar-inner { width: calc(100% - 16px); }
+      body.mobile-edition .brand { gap: 7px; }
+      body.mobile-edition .brand-mark {
+        width: 30px;
+        height: 30px;
+        flex-basis: 30px;
+        border-radius: 10px;
+        font-size: 16px;
+      }
+      body.mobile-edition .brand-title { font-size: 15.5px; }
+      body.mobile-edition .topbar-actions { gap: 6px; }
+      body.mobile-edition .edition-switch {
+        min-height: 40px;
+        padding: 0 9px;
+        border-radius: 10px;
+        font-size: 13.5px;
+      }
+      body.mobile-edition .icon-button { border-radius: 12px; }
+      body.mobile-edition main {
+        width: calc(100% - 14px);
+        min-width: 0;
+        max-width: 100%;
+        padding-top: calc(var(--topbar-height) + 12px);
+        padding-bottom: calc(72px + env(safe-area-inset-bottom));
+      }
+      body.mobile-edition .glass-panel { border-radius: 18px; }
+      body.mobile-edition .search-panel {
+        min-width: 0;
+        max-width: 100%;
+        padding: 9px;
+      }
+      body.mobile-edition .primary-search {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+      }
+      body.mobile-edition .primary-search .field:nth-child(5) { grid-column: 1 / -1; }
+      body.mobile-edition .field label {
+        margin: 0 0 4px 3px;
+        font-size: 13.5px;
+      }
+      body.mobile-edition .field input,
+      body.mobile-edition .field select {
+        height: 44px;
+        padding: 0 10px;
+        border-radius: 12px;
+        font-size: 15.5px;
+        text-overflow: ellipsis;
+      }
+      body.mobile-edition .select-wrap::after {
+        right: 12px;
+        bottom: 16px;
+        width: 6px;
+        height: 6px;
+      }
+      body.mobile-edition .search-utility {
+        min-height: 40px;
+        margin-top: 3px;
+        padding-top: 0;
+      }
+      body.mobile-edition .clear-button {
+        min-height: 40px;
+        padding: 0 9px;
+        font-size: 13.5px;
+      }
+      body.mobile-edition .detail-filters {
+        gap: 7px;
+        margin-top: 4px;
+        padding: 9px;
+        border-radius: 14px;
+      }
+      body.mobile-edition .suggestions {
+        max-height: 220px;
+        padding: 5px;
+        border-radius: 12px;
+      }
+      body.mobile-edition .suggestion-item { min-height: 40px; padding: 7px 9px; }
+      body.mobile-edition .results-section {
+        min-width: 0;
+        max-width: 100%;
+        margin-top: 9px;
+        border-radius: 18px;
+      }
+      body.mobile-edition .results-bar {
+        min-height: 46px;
+        padding: 7px 10px;
+      }
+      body.mobile-edition .results-count { font-size: 14.5px; }
+      body.mobile-edition .empty-state { min-height: 150px; padding: 26px 12px; }
+      body.mobile-edition .empty-state svg { width: 34px; height: 34px; margin-bottom: 8px; }
+      body.mobile-edition .mobile-sortbar {
+        top: calc(var(--topbar-height) + var(--sticky-search-gap) + var(--sticky-search-height) + 6px);
+        gap: 6px;
+        padding: 6px 8px;
+      }
+      body.mobile-edition .mobile-sortbar select {
+        height: 40px;
+        padding: 0 10px;
+        border-radius: 10px;
+        font-size: 14.5px;
+      }
+      body.mobile-edition .mobile-sortbar button {
+        width: 40px;
+        min-height: 40px;
+      }
+      body.mobile-edition .card-list {
+        min-width: 0;
+        max-width: 100%;
+        gap: 8px;
+        padding: 7px;
+      }
+      body.mobile-edition .result-card {
+        max-width: 100%;
+        padding: 10px;
+        border-radius: 14px;
+        box-shadow: 0 8px 19px rgba(83,23,51,.11), inset 0 1px 0 #fff;
+      }
+      body.mobile-edition .card-primary {
+        gap: 7px;
+        padding-bottom: 7px;
+      }
+      body.mobile-edition .card-name { font-size: 17.5px; }
+      body.mobile-edition .card-name-row { gap: 4px; }
+      body.mobile-edition .card-university {
+        margin-top: 1px;
+        font-size: 14px;
+      }
+      body.mobile-edition .card-keydata {
+        gap: 6px;
+        margin: 8px 0;
+      }
+      body.mobile-edition .keydata-box {
+        padding: 7px;
+        border-radius: 11px;
+      }
+      body.mobile-edition .keydata-box small { font-size: 11.5px; }
+      body.mobile-edition .keydata-box .copy-value { font-size: 13.5px; }
+      body.mobile-edition .card-meta { gap: 5px 9px; }
+      body.mobile-edition .meta-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: baseline;
+        gap: 4px;
+      }
+      body.mobile-edition .meta-row small { font-size: 11.5px; line-height: 1.35; }
+      body.mobile-edition .meta-row span { font-size: 13.5px; line-height: 1.35; }
+      body.mobile-edition .card-inline-results {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        min-width: 0;
+        max-width: 100%;
+        gap: 6px;
+        margin-top: 8px;
+        padding: 7px;
+        border-radius: 12px;
+      }
+      body.mobile-edition .card-result-field { grid-column: span 2; }
+      body.mobile-edition .card-result-field:nth-child(4),
+      body.mobile-edition .card-result-field:nth-child(5) { grid-column: span 3; }
+      body.mobile-edition .card-result-field label {
+        margin-bottom: 3px;
+        font-size: 11.5px;
+      }
+      body.mobile-edition .card-inline-results .inline-result-control,
+      body.mobile-edition .card-inline-results .stage1-locked {
+        height: 40px;
+        min-height: 40px;
+        border-radius: 10px;
+        font-size: 13px;
+      }
+      body.mobile-edition .copy-button {
+        position: relative;
+        min-width: 32px;
+        min-height: 32px;
+        padding: 0 5px;
+      }
+      body.mobile-edition .copy-button::after {
+        content: "";
+        position: absolute;
+        inset: -4px;
+      }
+      body.mobile-edition .list-controls {
+        gap: 7px;
+        padding: 8px;
+      }
+      body.mobile-edition .list-controls button {
+        min-height: 40px;
+        padding: 0 10px;
+        font-size: 14.5px;
+      }
+      body.mobile-edition .mobile-actionbar {
+        gap: 7px;
+        padding: 7px 9px calc(7px + env(safe-area-inset-bottom));
+      }
+      body.mobile-edition .mobile-actionbar .detail-toggle {
+        min-width: 96px;
+        height: 44px;
+        padding: 0 11px;
+        border-radius: 13px;
+        font-size: 14.5px;
+      }
+      body.mobile-edition .mobile-actionbar .search-button {
+        height: 44px;
+        border-radius: 14px;
+        font-size: 15.5px;
+      }
+      body.mobile-edition .mobile-actionbar .search-button svg { width: 17px; height: 17px; }
+      body.mobile-edition .saving-overlay {
+        bottom: calc(66px + env(safe-area-inset-bottom));
+        min-height: 36px;
+        padding: 0 13px;
+        font-size: 12.5px;
+      }
+      body.mobile-edition dialog { border-radius: 20px 20px 0 0; }
+      body.mobile-edition .dialog-head {
+        min-height: 52px;
+        padding: 8px 12px;
+      }
+      body.mobile-edition .dialog-title { font-size: 17.5px; }
+      body.mobile-edition .dialog-body { padding: 10px; }
+      body.mobile-edition .dialog-foot {
+        gap: 7px;
+        padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+      }
+      body.mobile-edition .dialog-foot button {
+        min-height: 42px;
+        padding: 0 14px;
+      }
+      body.mobile-edition .settings-grid { gap: 10px; }
+      body.mobile-edition .settings-note { font-size: 13px; }
+      body.mobile-edition .toast-region {
+        right: 8px;
+        bottom: calc(68px + env(safe-area-inset-bottom));
+        left: 8px;
+      }
+      body.mobile-edition .toast {
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 14px;
+      }
+      body.mobile-edition.has-searched main {
+        padding-bottom: calc(72px + env(safe-area-inset-bottom));
+      }
+      body.mobile-edition.has-searched .search-panel {
+        padding: 7px;
+        border-radius: 16px;
+      }
+      body.mobile-edition.has-searched .search-panel::before { border-radius: 15px; }
+      body.mobile-edition.has-searched .primary-search { gap: 5px; }
+      body.mobile-edition.has-searched .field label {
+        margin: 0 0 2px 2px;
+        font-size: 12.5px;
+      }
+      body.mobile-edition.has-searched .primary-search .field input,
+      body.mobile-edition.has-searched .primary-search .field select {
+        height: 40px;
+        padding: 0 7px;
+        border-radius: 10px;
+        font-size: 14.5px;
+      }
+      body.mobile-edition.has-searched .select-wrap::after { bottom: 15px; }
+      body.mobile-edition.has-searched .search-utility {
+        min-height: 40px;
+        margin-top: 1px;
+      }
+      body.mobile-edition.has-searched .clear-button {
+        min-height: 40px;
+        padding: 0 8px;
+      }
+      body.mobile-edition.has-searched .detail-filters { margin-top: 4px; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
@@ -902,8 +1238,14 @@
         <span class="brand-title">2027 수시모집 합불 입력</span>
       </div>
       <div class="topbar-actions">
-        <a class="edition-switch pc-edition-link" href="https://seiryu1318.github.io/26early_RyanM/">모바일 버전</a>
-        <a class="edition-switch mobile-edition-link" href="https://seiryu1318.github.io/26early_Ryan/">PC 버전</a>
+        <a class="edition-switch pc-edition-link" href="https://seiryu1318.github.io/26early_RyanM/" aria-label="모바일 버전으로 이동">
+          <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M10 17h4"/></svg>
+          <span>모바일 버전</span>
+        </a>
+        <a class="edition-switch mobile-edition-link" href="https://seiryu1318.github.io/26early_Ryan/" aria-label="PC 버전으로 이동">
+          <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          <span>PC 버전</span>
+        </a>
         <div id="syncPill" class="sync-pill" data-state="idle" aria-live="polite">
           <span class="sync-dot" aria-hidden="true"></span>
           <span id="syncText">연결 필요</span>
@@ -957,8 +1299,14 @@
         </div>
 
         <div class="search-utility">
-          <button id="detailToggle" class="detail-toggle" type="button" aria-expanded="false" aria-controls="detailFilters">세부 필터</button>
-          <button id="clearButton" class="ghost-button clear-button" type="button">초기화</button>
+          <button id="detailToggle" class="detail-toggle" type="button" aria-expanded="false" aria-controls="detailFilters">
+            <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7M15 6h5M4 12h3M11 12h9M4 18h10M18 18h2"/><circle cx="13" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>
+            <span>세부 필터</span>
+          </button>
+          <button id="clearButton" class="ghost-button clear-button" type="button">
+            <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6"/><path d="M5.5 15a7 7 0 1 0 1-7"/></svg>
+            <span>초기화</span>
+          </button>
         </div>
 
         <div id="detailFilters" class="detail-filters" hidden>
@@ -999,8 +1347,12 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
             <span>엑셀 다운로드</span>
           </button>
-          <button id="collapseTopButton" class="small-button" type="button" hidden>접기</button>
-          <button id="moreTopButton" class="small-button" type="button" hidden>더 보기</button>
+          <button id="collapseTopButton" class="small-button" type="button" hidden>
+            <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg><span>접기</span>
+          </button>
+          <button id="moreTopButton" class="small-button" type="button" hidden>
+            <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span>더 보기</span>
+          </button>
         </div>
       </div>
 
@@ -1020,19 +1372,28 @@
 
       <div id="mobileSortbar" class="mobile-sortbar" hidden>
         <select id="mobileSortSelect" aria-label="정렬 기준"></select>
-        <button id="mobileSortDirection" class="icon-button" type="button" aria-label="정렬 방향: 오름차순">↑</button>
+        <button id="mobileSortDirection" class="icon-button" type="button" aria-label="정렬 방향: 오름차순">
+          <svg class="button-icon sort-direction-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M7 10l5-5 5 5"/></svg>
+        </button>
       </div>
       <div id="cardList" class="card-list"></div>
 
       <div id="listControls" class="list-controls" hidden>
-        <button id="collapseButton" class="ghost-button" type="button">접기</button>
-        <button id="moreButton" class="ghost-button more-button" type="button">더 보기</button>
+        <button id="collapseButton" class="ghost-button" type="button">
+          <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg><span>접기</span>
+        </button>
+        <button id="moreButton" class="ghost-button more-button" type="button">
+          <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span>더 보기</span>
+        </button>
       </div>
     </section>
   </main>
 
   <div class="mobile-actionbar">
-    <button id="mobileDetailButton" class="detail-toggle" type="button" aria-expanded="false" aria-controls="detailFilters">세부 필터</button>
+    <button id="mobileDetailButton" class="detail-toggle" type="button" aria-expanded="false" aria-controls="detailFilters">
+      <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7M15 6h5M4 12h3M11 12h9M4 18h10M18 18h2"/><circle cx="13" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>
+      <span>세부 필터</span>
+    </button>
     <button id="mobileSearchButton" class="search-button" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
       <span>검색</span>
@@ -1050,7 +1411,10 @@
         </div>
       </div>
       <div class="dialog-foot">
-        <button id="passwordSubmitButton" class="save-button" type="submit">확인</button>
+        <button id="passwordSubmitButton" class="save-button" type="submit">
+          <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          <span>로그인</span>
+        </button>
       </div>
     </form>
   </dialog>
@@ -1059,7 +1423,7 @@
     <form id="settingsForm" method="dialog">
       <div class="dialog-head">
         <h2 id="settingsTitle" class="dialog-title">연결 설정</h2>
-        <button id="settingsCloseButton" class="icon-button" type="button" aria-label="닫기">×</button>
+        <button id="settingsCloseButton" class="icon-button" type="button" aria-label="닫기"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
       </div>
       <div class="dialog-body settings-grid">
         <div class="field">
@@ -1068,12 +1432,16 @@
         </div>
       </div>
       <div class="dialog-foot">
-        <button id="settingsCancelButton" class="ghost-button" type="button">취소</button>
-        <button id="settingsSaveButton" class="save-button" type="submit">연결</button>
+        <button id="settingsCancelButton" class="ghost-button" type="button"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg><span>취소</span></button>
+        <button id="settingsSaveButton" class="save-button" type="submit"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.2 1.2"/><path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.2-1.2"/></svg><span>연결</span></button>
       </div>
     </form>
   </dialog>
 
+  <div id="savingOverlay" class="saving-overlay" role="status" aria-live="polite" hidden>
+    <span class="saving-spinner" aria-hidden="true"></span>
+    <span>반영 중</span>
+  </div>
   <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
   <script>
@@ -1125,8 +1493,6 @@
       searchPanelObserver: null,
       drafts: new Map(),
       saving: new Set(),
-      saveFeedback: new Map(),
-      saveFeedbackTimers: new Map(),
     };
 
     const $ = id => document.getElementById(id);
@@ -1179,6 +1545,7 @@
       passwordForm: $('passwordForm'),
       passwordInput: $('passwordInput'),
       passwordSubmitButton: $('passwordSubmitButton'),
+      savingOverlay: $('savingOverlay'),
       toastRegion: $('toastRegion'),
     };
 
@@ -1274,8 +1641,8 @@
         return;
       }
       state.searching = true;
-      setSyncState('busy', '동기화 중');
-      setSearchBusy(true);
+      setSyncState('busy', silent ? '동기화 중' : '검색 중');
+      setSearchBusy(true, !silent);
       try {
         const data = await api('search', { filters });
         if (silent && hasActiveInlineWork()) {
@@ -1299,11 +1666,11 @@
       }
     }
 
-    function setSearchBusy(busy) {
+    function setSearchBusy(busy, showSearchingLabel = false) {
       [elements.desktopSearchButton, elements.mobileSearchButton].forEach(button => {
         button.disabled = busy;
         const label = button.querySelector('span');
-        if (label) label.textContent = busy ? '검색 중' : '검색';
+        if (label) label.textContent = busy && showSearchingLabel ? '검색 중' : '검색';
       });
     }
 
@@ -1378,7 +1745,13 @@
         const button = makeElement('button', '', 'sort-button');
         button.type = 'button';
         button.dataset.sortKey = column.key;
-        button.append(makeElement('span', column.label), makeElement('span', active ? (state.sortDirection === 'asc' ? '▲' : '▼') : '↕', 'sort-mark'));
+        const sortIcon = makeSvgIcon(
+          active
+            ? '<path d="M12 19V5M7 10l5-5 5 5"/>'
+            : '<path d="m8 9 4-4 4 4M16 15l-4 4-4-4"/>',
+          'button-icon sort-mark-icon'
+        );
+        button.append(makeElement('span', column.label), sortIcon);
         button.addEventListener('click', () => changeSort(column.key));
         th.append(button);
         elements.tableHead.append(th);
@@ -1390,7 +1763,7 @@
         COLUMNS.forEach(column => {
           if (column.result) {
             const td = makeElement('td', '', `cell-result cell-result-${column.key}`);
-            td.append(makeInlineResultField(record, column.key, false, column.key === 'finalWait'));
+            td.append(makeInlineResultField(record, column.key, false, false));
             tr.append(td);
             return;
           }
@@ -1446,7 +1819,6 @@
         ['stage1', 'finalResult', 'failureReason', 'firstWait', 'finalWait'].forEach(key => {
           inlineResults.append(makeInlineResultField(record, key, true, false));
         });
-        inlineResults.append(makeSaveFeedback(record.id));
         card.append(primary, keys, meta, inlineResults);
         elements.cardList.append(card);
       });
@@ -1468,10 +1840,11 @@
 
     function makeCopyButton(value, label) {
       const copyValue = label === '생년월일' ? normalizeBirthdate(value) : value;
-      const button = makeElement('button', '⧉', 'copy-button');
+      const button = makeElement('button', '', 'copy-button');
       button.type = 'button';
       button.setAttribute('aria-label', `${label} 복사`);
       button.title = '복사';
+      button.append(makeSvgIcon('<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>'));
       button.addEventListener('click', event => {
         event.stopPropagation();
         copyToClipboard(copyValue);
@@ -1801,7 +2174,7 @@
 
     function syncSortControls() {
       elements.mobileSortSelect.value = state.sortKey;
-      elements.mobileSortDirection.textContent = state.sortDirection === 'asc' ? '↑' : '↓';
+      elements.mobileSortDirection.classList.toggle('is-desc', state.sortDirection === 'desc');
       elements.mobileSortDirection.setAttribute('aria-label', `정렬 방향: ${state.sortDirection === 'asc' ? '오름차순' : '내림차순'}`);
     }
 
@@ -1818,8 +2191,8 @@
 
     function cleanAdmissionName(value) {
       const cleaned = String(value || '')
+        .replace(/[\r\n\t]+/g, ' ')
         .replace(/\s+/g, ' ')
-        .replace(/^(?:학생부위주\s*\((?:교과|종합)\)|학생부교과|학생부종합|논술)\s*[-·:/]?\s*/i, '')
         .trim();
       return cleaned || '-';
     }
@@ -1893,16 +2266,7 @@
         field.append(control);
       }
 
-      if (showFeedback) field.append(makeSaveFeedback(record.id));
       return field;
-    }
-
-    function makeSaveFeedback(recordId) {
-      const feedback = state.saveFeedback.get(recordId) || { message: '', type: '' };
-      const node = makeElement('div', feedback.message, `inline-save-state ${feedback.type || ''}`.trim());
-      node.dataset.feedbackFor = recordId;
-      node.setAttribute('aria-live', 'polite');
-      return node;
     }
 
     function setDraftValue(recordId, key, value) {
@@ -1920,27 +2284,10 @@
       document.querySelectorAll('.inline-result-control').forEach(control => {
         if (control.dataset.recordId === recordId) control.disabled = busy;
       });
-      updateFeedback(recordId, busy ? '저장 중' : '', '');
     }
 
-    function updateFeedback(recordId, message, type = '') {
-      if (message) state.saveFeedback.set(recordId, { message, type });
-      else state.saveFeedback.delete(recordId);
-      document.querySelectorAll('.inline-save-state').forEach(node => {
-        if (node.dataset.feedbackFor !== recordId) return;
-        node.textContent = message;
-        node.className = `inline-save-state ${type}`.trim();
-      });
-    }
-
-    function flashFeedback(recordId, message, type) {
-      clearTimeout(state.saveFeedbackTimers.get(recordId));
-      updateFeedback(recordId, message, type);
-      const timer = setTimeout(() => {
-        updateFeedback(recordId, '', '');
-        state.saveFeedbackTimers.delete(recordId);
-      }, 2200);
-      state.saveFeedbackTimers.set(recordId, timer);
+    function syncSavingOverlay() {
+      elements.savingOverlay.hidden = state.saving.size === 0;
     }
 
     async function saveInlineResult(recordId) {
@@ -1956,8 +2303,9 @@
         return;
       }
       state.saving.add(recordId);
+      syncSavingOverlay();
       setRecordControlsBusy(recordId, true);
-      setSyncState('busy', '저장 중');
+      setSyncState('busy', '반영 중');
       try {
         const data = await api('save', {
           recordId: record.id,
@@ -1967,19 +2315,16 @@
         replaceRecord(data.record);
         state.drafts.delete(recordId);
         setSyncState('online', timeLabel(data.serverTime));
-        flashFeedback(recordId, '저장됨', 'saved');
       } catch (error) {
         if (error.code === 'CONFLICT' && error.details && error.details.current) {
           replaceRecord(error.details.current);
-          flashFeedback(recordId, '새로고침됨', 'error');
-        } else {
-          flashFeedback(recordId, '저장 실패', 'error');
         }
         state.drafts.delete(recordId);
         setSyncState('error', '저장 실패');
         toast(error.message, 'error');
       } finally {
         state.saving.delete(recordId);
+        syncSavingOverlay();
         renderResults();
       }
     }
@@ -2025,9 +2370,7 @@
       state.records = [];
       state.drafts.clear();
       state.saving.clear();
-      state.saveFeedback.clear();
-      state.saveFeedbackTimers.forEach(timer => clearTimeout(timer));
-      state.saveFeedbackTimers.clear();
+      syncSavingOverlay();
       state.lastFilters = null;
       state.visibleCount = INITIAL_PAGE_SIZE;
       clearInterval(state.pollingTimer);
@@ -2139,7 +2482,8 @@
         return;
       }
       elements.passwordSubmitButton.disabled = true;
-      elements.passwordSubmitButton.textContent = '확인 중';
+      const submitLabel = elements.passwordSubmitButton.querySelector('span');
+      if (submitLabel) submitLabel.textContent = '로그인 중';
       setSyncState('busy', '확인 중');
       try {
         const data = await api('login', { password });
@@ -2154,7 +2498,7 @@
         elements.passwordInput.select();
       } finally {
         elements.passwordSubmitButton.disabled = false;
-        elements.passwordSubmitButton.textContent = '확인';
+        if (submitLabel) submitLabel.textContent = '로그인';
       }
     }
 
@@ -2167,7 +2511,8 @@
       localStorage.setItem('admissionsApiUrl', url);
       localStorage.removeItem('admissionsSession');
       elements.settingsSaveButton.disabled = true;
-      elements.settingsSaveButton.textContent = '저장 중';
+      const saveLabel = elements.settingsSaveButton.querySelector('span');
+      if (saveLabel) saveLabel.textContent = '연결 중';
       try {
         elements.settingsDialog.close();
         setSyncState('idle', '로그인 필요');
@@ -2177,7 +2522,7 @@
         toast(error.message, 'error');
       } finally {
         elements.settingsSaveButton.disabled = false;
-        elements.settingsSaveButton.textContent = '연결';
+        if (saveLabel) saveLabel.textContent = '연결';
       }
     }
 
@@ -2203,6 +2548,15 @@
       if (className) element.className = className;
       if (text !== '') element.textContent = text;
       return element;
+    }
+
+    function makeSvgIcon(markup, className = 'button-icon') {
+      const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      icon.setAttribute('viewBox', '0 0 24 24');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.setAttribute('class', className);
+      icon.innerHTML = markup;
+      return icon;
     }
 
     function configureSortControls() {

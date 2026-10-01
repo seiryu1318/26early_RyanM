@@ -376,6 +376,25 @@
     .results-count strong { color: var(--pink-700); font-variant-numeric: tabular-nums; }
     .results-actions { display: flex; align-items: center; gap: 8px; }
     .results-actions .small-button { min-height: 38px; padding: 0 12px; color: var(--pink-800); }
+    .export-button {
+      min-height: 36px !important;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 11px !important;
+      color: #8f174d !important;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.72) 0%, rgba(255,255,255,.16) 42%, transparent 43%),
+        linear-gradient(145deg, rgba(255,255,255,.98), rgba(255,218,235,.88));
+      box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(142,25,77,.08), 0 6px 14px rgba(113,27,68,.1);
+      font-size: 13.5px;
+      white-space: nowrap;
+    }
+    .export-button svg { width: 15px; height: 15px; }
+    .export-button:hover:not([disabled]) { filter: brightness(1.025); transform: translateY(-1px); }
+    .export-button[disabled] { cursor: wait; opacity: .62; transform: none; }
+    body.mobile-edition .export-button { display: none !important; }
 
     .empty-state {
       min-height: 210px;
@@ -917,6 +936,10 @@
       <div class="results-bar">
         <div id="resultsCount" class="results-count" aria-live="polite">검색 결과 <strong>0</strong></div>
         <div class="results-actions">
+          <button id="exportButton" class="small-button export-button" type="button" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+            <span>엑셀 다운로드</span>
+          </button>
           <button id="collapseTopButton" class="small-button" type="button" hidden>접기</button>
           <button id="moreTopButton" class="small-button" type="button" hidden>더 보기</button>
         </div>
@@ -1082,6 +1105,7 @@
       pollingTimer: null,
       activeRecordId: null,
       searching: false,
+      exporting: false,
       searchPanelObserver: null,
     };
 
@@ -1121,6 +1145,7 @@
       moreButton: $('moreButton'),
       collapseTopButton: $('collapseTopButton'),
       moreTopButton: $('moreTopButton'),
+      exportButton: $('exportButton'),
       syncPill: $('syncPill'),
       syncText: $('syncText'),
       settingsButton: $('settingsButton'),
@@ -1294,6 +1319,8 @@
       const hasRecords = sorted.length > 0;
       elements.resultsSection.hidden = !state.lastFilters && !hasRecords;
       elements.emptyState.hidden = hasRecords;
+      elements.exportButton.hidden = EDITION !== 'pc';
+      elements.exportButton.disabled = state.exporting || !state.lastFilters || !hasRecords;
       if (!hasRecords) {
         elements.emptyState.querySelector('span').textContent = '검색 결과 없음';
       }
@@ -1448,6 +1475,283 @@
       } catch (_) {
         toast('클립보드에 복사하지 못했습니다.', 'error', 5000);
       }
+    }
+
+    async function exportCurrentResults() {
+      if (EDITION !== 'pc' || state.exporting) return;
+      if (!state.lastFilters) {
+        toast('먼저 검색해 주세요.', 'error');
+        return;
+      }
+
+      state.exporting = true;
+      setExportBusy(true);
+      setSyncState('busy', '다운로드 중');
+      try {
+        const data = await api('export', { filters: { ...state.lastFilters } });
+        const headers = Array.isArray(data.headers) ? data.headers : [];
+        const rows = Array.isArray(data.rows) ? data.rows : [];
+        if (headers.length !== 21 || rows.some(row => !Array.isArray(row) || row.length !== 21)) {
+          throw new ApiError('INVALID_EXPORT', '엑셀 데이터 형식을 확인할 수 없습니다.');
+        }
+        const workbook = createXlsxWorkbook(headers, rows);
+        downloadBlob(workbook, exportFilename());
+        setSyncState('online', timeLabel(data.serverTime));
+        toast('엑셀 파일을 다운로드했습니다.', 'success');
+      } catch (error) {
+        setSyncState('error', '다운로드 실패');
+        toast(error && error.message ? error.message : '엑셀 다운로드에 실패했습니다.', 'error');
+      } finally {
+        state.exporting = false;
+        setExportBusy(false);
+      }
+    }
+
+    function setExportBusy(busy) {
+      if (!elements.exportButton) return;
+      elements.exportButton.disabled = busy || !state.lastFilters || state.records.length === 0;
+      const label = elements.exportButton.querySelector('span');
+      if (label) label.textContent = busy ? '다운로드 중' : '엑셀 다운로드';
+    }
+
+    function exportFilename() {
+      const now = new Date();
+      const pad = value => String(value).padStart(2, '0');
+      const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      return `수시모집 지원결과(${date}).xlsx`;
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.style.display = 'none';
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    }
+
+    function createXlsxWorkbook(headers, rows) {
+      if (rows.length > 1048575) throw new Error('엑셀에서 처리할 수 있는 행 수를 초과했습니다.');
+      const files = [
+        ['[Content_Types].xml', xlsxContentTypesXml()],
+        ['_rels/.rels', xlsxPackageRelationshipsXml()],
+        ['xl/workbook.xml', xlsxWorkbookXml()],
+        ['xl/_rels/workbook.xml.rels', xlsxWorkbookRelationshipsXml()],
+        ['xl/styles.xml', xlsxStylesXml()],
+        ['xl/worksheets/sheet1.xml', xlsxWorksheetXml(headers, rows)],
+      ];
+      const archive = createStoredZip(files);
+      return new Blob([archive], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    }
+
+    function xlsxContentTypesXml() {
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        + '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        + '<Default Extension="xml" ContentType="application/xml"/>'
+        + '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+        + '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        + '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+        + '</Types>';
+    }
+
+    function xlsxPackageRelationshipsXml() {
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+        + '</Relationships>';
+    }
+
+    function xlsxWorkbookXml() {
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        + '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        + 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        + '<bookViews><workbookView/></bookViews><sheets>'
+        + '<sheet name="수시모집 지원결과(2026)" sheetId="1" r:id="rId1"/>'
+        + '</sheets></workbook>';
+    }
+
+    function xlsxWorkbookRelationshipsXml() {
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+        + '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+        + '</Relationships>';
+    }
+
+    function xlsxStylesXml() {
+      return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        + '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        + '<fonts count="2">'
+        + '<font><sz val="11"/><color rgb="FF2E1B25"/><name val="Calibri"/><family val="2"/></font>'
+        + '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/><family val="2"/></font>'
+        + '</fonts>'
+        + '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'
+        + '<fill><patternFill patternType="solid"><fgColor rgb="FFBB1B66"/><bgColor indexed="64"/></patternFill></fill></fills>'
+        + '<borders count="2"><border/><border>'
+        + '<left style="thin"><color rgb="FFF0D6E2"/></left><right style="thin"><color rgb="FFF0D6E2"/></right>'
+        + '<top style="thin"><color rgb="FFF0D6E2"/></top><bottom style="thin"><color rgb="FFE6BACD"/></bottom>'
+        + '<diagonal/></border></borders>'
+        + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+        + '<cellXfs count="3">'
+        + '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+        + '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+        + '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+        + '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
+        + '</styleSheet>';
+    }
+
+    function xlsxWorksheetXml(headers, rows) {
+      const widths = [13, 12, 11, 8, 8, 14, 22, 13, 16, 16, 12, 24, 24, 24, 14, 22, 14, 14, 18, 15, 15];
+      const lastRow = rows.length + 1;
+      const parts = [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1:U', String(lastRow), '"/>',
+        '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>',
+        '<sheetFormatPr defaultRowHeight="20"/>',
+        '<cols>',
+      ];
+      widths.forEach((width, index) => {
+        const column = index + 1;
+        parts.push(`<col min="${column}" max="${column}" width="${width}" customWidth="1"/>`);
+      });
+      parts.push('</cols><sheetData>');
+      parts.push('<row r="1" ht="28" customHeight="1">');
+      headers.forEach((value, index) => parts.push(xlsxInlineCell(columnName(index + 1) + '1', value, 1)));
+      parts.push('</row>');
+      rows.forEach((row, rowIndex) => {
+        const excelRow = rowIndex + 2;
+        parts.push(`<row r="${excelRow}">`);
+        for (let columnIndex = 0; columnIndex < 21; columnIndex += 1) {
+          parts.push(xlsxInlineCell(columnName(columnIndex + 1) + excelRow, row[columnIndex], 2));
+        }
+        parts.push('</row>');
+      });
+      parts.push(`</sheetData><autoFilter ref="A1:U${lastRow}"/>`);
+      parts.push('<pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>');
+      parts.push('</worksheet>');
+      return parts.join('');
+    }
+
+    function xlsxInlineCell(reference, value, styleIndex) {
+      const text = xmlText(value);
+      return `<c r="${reference}" s="${styleIndex}" t="inlineStr"><is><t xml:space="preserve">${text}</t></is></c>`;
+    }
+
+    function xmlText(value) {
+      return String(value == null ? '' : value)
+        .slice(0, 32767)
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function columnName(number) {
+      let result = '';
+      for (let current = number; current > 0; current = Math.floor((current - 1) / 26)) {
+        result = String.fromCharCode(65 + ((current - 1) % 26)) + result;
+      }
+      return result;
+    }
+
+    function createStoredZip(entries) {
+      const encoder = new TextEncoder();
+      const now = new Date();
+      const year = Math.min(2107, Math.max(1980, now.getFullYear()));
+      const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2);
+      const dosDate = ((year - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+      const localParts = [];
+      const centralParts = [];
+      let offset = 0;
+
+      entries.forEach(([name, content]) => {
+        const nameBytes = encoder.encode(name);
+        const data = typeof content === 'string' ? encoder.encode(content) : content;
+        const checksum = crc32(data);
+        const localHeader = new Uint8Array(30);
+        const localView = new DataView(localHeader.buffer);
+        localView.setUint32(0, 0x04034b50, true);
+        localView.setUint16(4, 20, true);
+        localView.setUint16(6, 0x0800, true);
+        localView.setUint16(8, 0, true);
+        localView.setUint16(10, dosTime, true);
+        localView.setUint16(12, dosDate, true);
+        localView.setUint32(14, checksum, true);
+        localView.setUint32(18, data.length, true);
+        localView.setUint32(22, data.length, true);
+        localView.setUint16(26, nameBytes.length, true);
+        localView.setUint16(28, 0, true);
+        localParts.push(localHeader, nameBytes, data);
+
+        const centralHeader = new Uint8Array(46);
+        const centralView = new DataView(centralHeader.buffer);
+        centralView.setUint32(0, 0x02014b50, true);
+        centralView.setUint16(4, 20, true);
+        centralView.setUint16(6, 20, true);
+        centralView.setUint16(8, 0x0800, true);
+        centralView.setUint16(10, 0, true);
+        centralView.setUint16(12, dosTime, true);
+        centralView.setUint16(14, dosDate, true);
+        centralView.setUint32(16, checksum, true);
+        centralView.setUint32(20, data.length, true);
+        centralView.setUint32(24, data.length, true);
+        centralView.setUint16(28, nameBytes.length, true);
+        centralView.setUint16(30, 0, true);
+        centralView.setUint16(32, 0, true);
+        centralView.setUint16(34, 0, true);
+        centralView.setUint16(36, 0, true);
+        centralView.setUint32(38, 0, true);
+        centralView.setUint32(42, offset, true);
+        centralParts.push(centralHeader, nameBytes);
+        offset += localHeader.length + nameBytes.length + data.length;
+      });
+
+      const centralDirectory = joinBytes(centralParts);
+      const end = new Uint8Array(22);
+      const endView = new DataView(end.buffer);
+      endView.setUint32(0, 0x06054b50, true);
+      endView.setUint16(4, 0, true);
+      endView.setUint16(6, 0, true);
+      endView.setUint16(8, entries.length, true);
+      endView.setUint16(10, entries.length, true);
+      endView.setUint32(12, centralDirectory.length, true);
+      endView.setUint32(16, offset, true);
+      endView.setUint16(20, 0, true);
+      return joinBytes([...localParts, centralDirectory, end]);
+    }
+
+    function joinBytes(parts) {
+      const size = parts.reduce((total, part) => total + part.length, 0);
+      const joined = new Uint8Array(size);
+      let offset = 0;
+      parts.forEach(part => {
+        joined.set(part, offset);
+        offset += part.length;
+      });
+      return joined;
+    }
+
+    let crc32Table = null;
+    function crc32(bytes) {
+      if (!crc32Table) {
+        crc32Table = new Uint32Array(256);
+        for (let index = 0; index < 256; index += 1) {
+          let value = index;
+          for (let bit = 0; bit < 8; bit += 1) value = (value & 1) ? (0xedb88320 ^ (value >>> 1)) : (value >>> 1);
+          crc32Table[index] = value >>> 0;
+        }
+      }
+      let checksum = 0xffffffff;
+      for (let index = 0; index < bytes.length; index += 1) {
+        checksum = crc32Table[(checksum ^ bytes[index]) & 0xff] ^ (checksum >>> 8);
+      }
+      return (checksum ^ 0xffffffff) >>> 0;
     }
 
     function metaRow(label, value, full = false) {
@@ -1794,6 +2098,8 @@
         renderResults();
         $('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
       }));
+      if (EDITION === 'pc') elements.exportButton.addEventListener('click', exportCurrentResults);
+      else elements.exportButton.hidden = true;
       elements.mobileSortSelect.addEventListener('change', () => { state.sortKey = elements.mobileSortSelect.value; renderResults(); });
       elements.mobileSortDirection.addEventListener('click', () => {
         state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -1829,6 +2135,19 @@
           });
           else if (action === 'universities') resolve({ ok: true, suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교'].filter(v => v.includes(payload.query)), serverTime: new Date().toISOString() });
           else if (action === 'search') resolve({ ok: true, records: window.__demoRows, totalMatches: window.__demoRows.length, truncated: false, serverTime: new Date().toISOString() });
+          else if (action === 'export') resolve({
+            ok: true,
+            headers: ['대학구분', '재학여부', '재학년도', '반', '번호', '성명', '대학명', '모집시기', '전형유형', '선발유형', '계열', '전형명', '모집단위', '(원본)평가단위명', '생년월일', '수험번호', '1단계 합격', '최종 합격', '불합격 사유', '최초 충원번호', '최종 충원번호'],
+            rows: window.__demoRows.map(record => [
+              record.universityType, record.enrollment, '2027', record.classNo,
+              String(record.studentNo || '').padStart(2, '0'), record.name, record.university, '수시',
+              record.admissionType, record.selectionType, record.track, record.admissionName,
+              '', '', record.birthdate, record.examNo, record.stage1, record.finalResult,
+              record.failureReason, record.firstWait, record.finalWait,
+            ]),
+            totalMatches: window.__demoRows.length,
+            serverTime: new Date().toISOString(),
+          });
           else if (action === 'save') {
             const row = window.__demoRows.find(item => item.id === payload.recordId);
             Object.assign(row, payload.values, { version: String(Date.now()) });

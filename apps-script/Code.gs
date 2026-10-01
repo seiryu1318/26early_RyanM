@@ -83,6 +83,8 @@ function doPost(e) {
         return json_(getUniversitySuggestions_(payload.query));
       case 'search':
         return json_(search_(payload.filters || {}));
+      case 'export':
+        return json_(export_(payload.filters || {}));
       case 'save':
         return json_(save_(payload));
       default:
@@ -216,6 +218,22 @@ function search_(rawFilters) {
     records: matches,
     totalMatches,
     truncated: totalMatches > matches.length,
+    serverTime: new Date().toISOString(),
+  };
+}
+
+function export_(rawFilters) {
+  const filters = sanitizeFilters_(rawFilters);
+  if (!hasSearchCondition_(filters)) {
+    throw apiError_('FILTER_REQUIRED', '검색 조건을 한 가지 이상 입력해 주세요.');
+  }
+
+  const rows = getAllRows_().filter(row => matchesFilters_(row, filters));
+  return {
+    ok: true,
+    headers: EXPECTED_HEADERS.slice(),
+    rows,
+    totalMatches: rows.length,
     serverTime: new Date().toISOString(),
   };
 }

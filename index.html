@@ -11,6 +11,10 @@
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline'; worker-src 'self'; manifest-src 'self'; connect-src https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'">
   <title>2027 수시모집 합불 입력</title>
+  <link rel="dns-prefetch" href="//script.google.com">
+  <link rel="dns-prefetch" href="//script.googleusercontent.com">
+  <link rel="preconnect" href="https://script.google.com" crossorigin>
+  <link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="48x48" href="icons/app-icon-48.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/app-icon-180.png">
@@ -1561,6 +1565,10 @@
     <span class="saving-spinner" aria-hidden="true"></span>
     <span>반영 중</span>
   </div>
+  <div id="loadingOverlay" class="saving-overlay" role="status" aria-live="polite" aria-atomic="true" hidden>
+    <span class="saving-spinner" aria-hidden="true"></span>
+    <span>로딩 중</span>
+  </div>
   <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
   <script>
@@ -1577,6 +1585,7 @@
     const SAVE_RETRY_BASE_MS = 1000;
     const SAVE_RETRY_MAX_MS = 15000;
     const SAVE_RETRY_MAX_ATTEMPTS = 5;
+    const SEARCH_CACHE_LIMIT = 6;
     const DEMO_HOST = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
     const DEMO_MODE = DEMO_HOST && new URLSearchParams(location.search).get('demo') === '1';
 
@@ -1621,8 +1630,10 @@
       pollingBusy: false,
       searching: false,
       searchingSilent: false,
+      searchingManual: false,
       searchController: null,
       pendingManualSearch: false,
+      searchCache: new Map(),
       exporting: false,
       searchPanelObserver: null,
       dataRevision: '',
@@ -1694,6 +1705,7 @@
       passwordInput: $('passwordInput'),
       passwordSubmitButton: $('passwordSubmitButton'),
       savingOverlay: $('savingOverlay'),
+      loadingOverlay: $('loadingOverlay'),
       toastRegion: $('toastRegion'),
     };
 
@@ -1778,9 +1790,66 @@
       return Object.values(filters).some(value => String(value || '').trim());
     }
 
-    async function performSearch({ silent = false } = {}) {
+    function searchCacheKey(filters) {
+      return JSON.stringify(FILTER_KEYS.map(key => String(filters && filters[key] || '').trim()));
+    }
+
+    function cloneSearchResponse(data) {
+      const records = Array.isArray(data && data.records) ? data.records : [];
+      return {
+        records: records.map(record => ({ ...record })),
+        totalMatches: Number(data && data.totalMatches) || 0,
+        truncated: Boolean(data && data.truncated),
+        revision: String(data && data.revision != null ? data.revision : ''),
+        serverTime: data && data.serverTime,
+      };
+    }
+
+    function rememberSearchResponse(filters, data) {
+      const snapshot = cloneSearchResponse(data);
+      if (!snapshot.revision) return;
+      const key = searchCacheKey(filters);
+      state.searchCache.delete(key);
+      state.searchCache.set(key, snapshot);
+      while (state.searchCache.size > SEARCH_CACHE_LIMIT) {
+        state.searchCache.delete(state.searchCache.keys().next().value);
+      }
+    }
+
+    function cachedSearchResponse(filters) {
+      const key = searchCacheKey(filters);
+      const cached = state.searchCache.get(key);
+      if (!cached || !cached.revision || cached.revision !== String(state.dataRevision || '')) return null;
+      state.searchCache.delete(key);
+      state.searchCache.set(key, cached);
+      return cloneSearchResponse(cached);
+    }
+
+    function applySearchResponse(data, filters, { silent = false, verified = true } = {}) {
+      const nextRecords = Array.isArray(data.records) ? data.records : [];
+      const nextSignature = makeRecordsSignature(nextRecords, data.totalMatches, data.truncated);
+      const unchanged = silent && nextSignature === state.recordsSignature;
+      state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
+      if (verified) state.lastFullSyncAt = Date.now();
+      if (unchanged) return false;
+
+      state.records = nextRecords;
+      adoptRecoveredDrafts(nextRecords);
+      state.recordsSignature = nextSignature;
+      state.lastTotalMatches = Number(data.totalMatches) || 0;
+      state.lastTruncated = Boolean(data.truncated);
+      state.lastFilters = { ...filters };
+      if (!silent) state.visibleCount = INITIAL_PAGE_SIZE;
+      else state.visibleCount = Math.max(INITIAL_PAGE_SIZE, state.visibleCount);
+      updateMobileSearchSummary(filters);
+      setSearchLayout(true, { collapseMobile: !silent });
+      renderResults(data.totalMatches, data.truncated);
+      return true;
+    }
+
+    async function performSearch({ silent = false, manual = !silent } = {}) {
       if (state.searching) {
-        if (!silent && state.searchingSilent && state.searchController) {
+        if (manual && !state.searchingManual && state.searchController) {
           state.pendingManualSearch = true;
           state.searchController.abort();
         }
@@ -1798,35 +1867,33 @@
       const controller = new AbortController();
       state.searching = true;
       state.searchingSilent = silent;
+      state.searchingManual = manual;
       state.searchController = controller;
       setSyncState('busy', silent ? '동기화 중' : '검색 중');
-      if (!silent) setSearchBusy(true, true);
+      if (manual) setSearchBusy(true);
       try {
+        const cached = manual ? cachedSearchResponse(filters) : null;
+        if (cached) applySearchResponse(cached, filters, { silent: false, verified: false });
+
+        if (cached) {
+          const validation = await api('revision', {}, { signal: controller.signal });
+          const nextRevision = String(validation.revision == null ? '' : validation.revision);
+          if (nextRevision && nextRevision === cached.revision) {
+            state.dataRevision = nextRevision;
+            state.lastFullSyncAt = Date.now();
+            setSyncState('online', timeLabel(validation.serverTime));
+            schedulePolling();
+            return;
+          }
+        }
+
         const data = await api('search', { filters }, { signal: controller.signal });
         if (silent && hasActiveInlineWork()) {
           setSyncState('online', timeLabel(data.serverTime));
           return;
         }
-        const nextRecords = Array.isArray(data.records) ? data.records : [];
-        const nextSignature = makeRecordsSignature(nextRecords, data.totalMatches, data.truncated);
-        const unchanged = silent && nextSignature === state.recordsSignature;
-        state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
-        state.lastFullSyncAt = Date.now();
-        if (unchanged) {
-          setSyncState('online', timeLabel(data.serverTime));
-          return;
-        }
-        state.records = nextRecords;
-        adoptRecoveredDrafts(nextRecords);
-        state.recordsSignature = nextSignature;
-        state.lastTotalMatches = Number(data.totalMatches) || 0;
-        state.lastTruncated = Boolean(data.truncated);
-        state.lastFilters = { ...filters };
-        if (!silent) state.visibleCount = INITIAL_PAGE_SIZE;
-        else state.visibleCount = Math.max(INITIAL_PAGE_SIZE, state.visibleCount);
-        updateMobileSearchSummary(filters);
-        setSearchLayout(true, { collapseMobile: !silent });
-        renderResults(data.totalMatches, data.truncated);
+        rememberSearchResponse(filters, data);
+        applySearchResponse(data, filters, { silent });
         setSyncState('online', timeLabel(data.serverTime));
         schedulePolling();
       } catch (error) {
@@ -1836,11 +1903,12 @@
       } finally {
         state.searching = false;
         state.searchingSilent = false;
+        state.searchingManual = false;
         state.searchController = null;
-        if (!silent) setSearchBusy(false);
+        if (manual) setSearchBusy(false);
         if (state.pendingManualSearch) {
           state.pendingManualSearch = false;
-          queueMicrotask(() => performSearch({ silent: false }));
+          queueMicrotask(() => performSearch({ silent: false, manual: true }));
         }
       }
     }
@@ -1851,12 +1919,15 @@
         .join('|');
     }
 
-    function setSearchBusy(busy, showSearchingLabel = false) {
+    function setSearchBusy(busy) {
       [elements.desktopSearchButton, elements.mobileSearchButton].forEach(button => {
         button.disabled = busy;
+        button.setAttribute('aria-busy', String(busy));
         const label = button.querySelector('span');
-        if (label) label.textContent = busy && showSearchingLabel ? '검색 중' : '검색';
+        if (label) label.textContent = busy ? '로딩 중' : '검색';
       });
+      elements.searchForm.setAttribute('aria-busy', String(busy));
+      elements.loadingOverlay.hidden = !busy;
     }
 
     function schedulePolling() {
@@ -2539,7 +2610,7 @@
         || !hasFilter(state.recoveryFilters || {}) || !navigator.onLine
         || (!DEMO_MODE && !currentSessionToken())) return;
       applyFilterSnapshot(state.recoveryFilters);
-      performSearch({ silent: false });
+      performSearch({ silent: false, manual: false });
     }
 
     function adoptRecoveredDrafts(records) {
@@ -3226,8 +3297,11 @@
     }
 
     function wireEvents() {
-      elements.searchForm.addEventListener('submit', event => { event.preventDefault(); performSearch(); });
-      elements.mobileSearchButton.addEventListener('click', () => performSearch());
+      elements.searchForm.addEventListener('submit', event => {
+        event.preventDefault();
+        performSearch({ silent: false, manual: true });
+      });
+      elements.mobileSearchButton.addEventListener('click', () => performSearch({ silent: false, manual: true }));
       elements.mobileSearchSummary.addEventListener('click', () => {
         setMobileSearchExpanded(!document.body.classList.contains('mobile-search-expanded'));
       });
@@ -3288,7 +3362,16 @@
             serverTime: new Date().toISOString(),
           });
           else if (action === 'universities') resolve({ ok: true, suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교'].filter(v => v.includes(payload.query)), serverTime: new Date().toISOString() });
-          else if (action === 'search') resolve({ ok: true, records: window.__demoRows, totalMatches: window.__demoRows.length, truncated: false, revision: window.__demoRevision, serverTime: new Date().toISOString() });
+          else if (action === 'search') {
+            window.__demoSearchRequests = Number(window.__demoSearchRequests || 0) + 1;
+            if (Number(window.__demoSearchFailures) > 0) {
+              window.__demoSearchFailures = Number(window.__demoSearchFailures) - 1;
+              window.__demoSearchFailureEvents = Number(window.__demoSearchFailureEvents || 0) + 1;
+              reject(new ApiError('DEMO_SEARCH_FAILED', '데모 검색 실패'));
+              return;
+            }
+            resolve({ ok: true, records: window.__demoRows, totalMatches: window.__demoRows.length, truncated: false, revision: window.__demoRevision, serverTime: new Date().toISOString() });
+          }
           else if (action === 'export') resolve({
             ok: true,
             headers: ['대학구분', '재학여부', '재학년도', '반', '번호', '성명', '대학명', '모집시기', '전형유형', '선발유형', '계열', '전형명', '모집단위', '(원본)평가단위명', '생년월일', '수험번호', '1단계 합격', '최종 합격', '불합격 사유', '최초 충원번호', '최종 충원번호'],

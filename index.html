@@ -426,7 +426,7 @@
     .empty-state svg { display: block; width: 40px; height: 40px; margin: 0 auto 11px; color: #d784aa; }
 
     .table-wrap { width: 100%; overflow: visible; }
-    .result-table { width: 100%; min-width: 1390px; table-layout: fixed; border-collapse: separate; border-spacing: 0 4px; }
+    .result-table { width: 100%; min-width: 1450px; table-layout: fixed; border-collapse: collapse; border-spacing: 0; }
     .result-table th {
       position: sticky;
       top: calc(var(--topbar-height) + var(--sticky-search-gap) + var(--sticky-search-height) + 10px);
@@ -462,7 +462,7 @@
       max-width: none;
       padding: 8px 4px;
       border-bottom: 0;
-      background: linear-gradient(180deg, rgba(255,255,255,.54), rgba(255,247,251,.4));
+      background: rgba(255,255,255,.5);
       text-align: center;
       vertical-align: middle;
       white-space: nowrap;
@@ -471,13 +471,12 @@
       font-size: 12.5px;
       font-weight: 750;
     }
-    .result-table tbody tr:nth-child(even) td:not(.cell-dob):not(.cell-exam) {
-      background: linear-gradient(180deg, rgba(255,235,244,.47), rgba(246,217,232,.34));
-    }
-    .result-table tbody td:first-child { border-radius: 13px 0 0 13px; }
-    .result-table tbody td:last-child { border-radius: 0 13px 13px 0; }
-    .result-table tbody tr:hover td { background: linear-gradient(180deg, rgba(255,255,255,.79), rgba(255,231,242,.67)); }
+    .result-table tbody tr:nth-child(even) td { background: rgba(250,224,237,.48); }
+    .result-table tbody tr:hover td { background: rgba(255,235,244,.78); }
     .result-table .cell-name { color: var(--pink-900); font-size: 13.5px; font-weight: 900; }
+    .result-table .cell-enrollment { font-weight: 950; }
+    .result-table .cell-enrollment.is-current, .meta-row.is-current span { color: #086860; }
+    .result-table .cell-enrollment.is-graduate, .meta-row.is-graduate span { color: #713aa0; }
     .result-table .cell-dob, .result-table .cell-exam {
       color: #4c1d34;
       background: rgba(255,204,229,.62);
@@ -487,8 +486,20 @@
       letter-spacing: .02em;
     }
     .result-table .cell-exam { max-width: none; word-break: normal; }
-    .result-table .cell-university, .result-table .cell-admission { text-align: left; }
-    .result-input-wrap { min-width: 0; }
+    .result-table .cell-university, .result-table .cell-admission, .result-table .cell-recruitment-unit { text-align: left; }
+    .result-table tbody tr td.cell-result {
+      padding: 0;
+      background: #fff0f6;
+    }
+    .result-table tbody tr td.cell-result.is-filled { background: #f6c9dc; }
+    .result-table tbody tr td.cell-result.is-locked { background: #f2cf7a; }
+    .result-input-wrap {
+      min-width: 0;
+      min-height: 49px;
+      display: flex;
+      align-items: center;
+      padding: 8px 4px;
+    }
     .copy-value {
       width: 100%;
       min-width: 0;
@@ -521,15 +532,16 @@
       height: 33px;
       padding: 0 6px;
       border: 0;
-      border-radius: 9px;
+      border-radius: 0;
       color: #641638;
-      background: rgba(255,242,248,.86);
+      background-color: transparent;
       box-shadow: none;
       font-size: 12px;
       font-weight: 850;
       text-align: center;
       white-space: nowrap;
     }
+    .inline-result-control:focus-visible { outline: 2px solid rgba(152,21,82,.44); outline-offset: -2px; }
     select.inline-result-control {
       appearance: none;
       padding-right: 24px;
@@ -545,11 +557,12 @@
       font-weight: 750;
     }
     input.inline-result-control { font-variant-numeric: tabular-nums; }
+    input.inline-result-control::placeholder { color: #85757d; font-weight: 750; opacity: 1; }
     .inline-result-control:disabled { cursor: wait; opacity: .58; }
     .inline-result-control.is-filled {
       color: #641638;
-      background-color: #f6c9dc;
-      box-shadow: inset 0 0 0 1px rgba(152,21,82,.08);
+      background-color: transparent;
+      box-shadow: none;
     }
     .stage1-locked {
       min-height: 33px;
@@ -558,9 +571,9 @@
       justify-content: center;
       width: 100%;
       padding: 0 5px;
-      border-radius: 9px;
+      border-radius: 0;
       color: #713c00;
-      background: #f2cf7a;
+      background: transparent;
       box-shadow: none;
       font-size: 11.5px;
       font-weight: 950;
@@ -596,14 +609,14 @@
       animation: saving-spin .7s linear infinite;
     }
     @keyframes saving-spin { to { transform: rotate(360deg); } }
-    .result-table :is(th, td):nth-child(1) { width: 74px; }
-    .result-table :is(th, td):nth-child(2) { width: 72px; }
-    .result-table :is(th, td):nth-child(3) { width: 39px; }
-    .result-table :is(th, td):nth-child(4) { width: 42px; }
-    .result-table :is(th, td):nth-child(5) { width: 76px; }
-    .result-table :is(th, td):nth-child(6) { width: 112px; }
-    .result-table :is(th, td):nth-child(7) { width: 52px; }
-    .result-table :is(th, td):nth-child(8) { width: 62px; }
+    .result-table :is(th, td):nth-child(1) { width: 72px; }
+    .result-table :is(th, td):nth-child(2) { width: 39px; }
+    .result-table :is(th, td):nth-child(3) { width: 42px; }
+    .result-table :is(th, td):nth-child(4) { width: 76px; }
+    .result-table :is(th, td):nth-child(5) { width: 112px; }
+    .result-table :is(th, td):nth-child(6) { width: 52px; }
+    .result-table :is(th, td):nth-child(7) { width: 62px; }
+    .result-table :is(th, td):nth-child(8) { width: 134px; }
     .result-table :is(th, td):nth-child(9) { width: 134px; }
     .result-table :is(th, td):nth-child(10) { width: 92px; }
     .result-table :is(th, td):nth-child(11) { width: 116px; }
@@ -819,13 +832,20 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
       margin-top: 12px;
-      padding: 10px;
+      padding: 0;
       border-top: 0;
-      border-radius: 16px;
-      background: linear-gradient(145deg, rgba(255,255,255,.28), rgba(255,211,232,.3));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.52), 0 5px 13px rgba(104,26,63,.05);
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
     }
-    .card-result-field { min-width: 0; }
+    .card-result-field {
+      min-width: 0;
+      padding: 7px 6px;
+      border-radius: 10px;
+      background: #fff0f6;
+    }
+    .card-result-field.is-filled { background: #f6c9dc; }
+    .card-result-field.is-locked { background: #f2cf7a; }
     .card-result-field:nth-child(5) { grid-column: 1 / -1; }
     .card-result-field label {
       display: block;
@@ -1104,8 +1124,8 @@
         max-width: 100%;
         gap: 6px;
         margin-top: 8px;
-        padding: 7px;
-        border-radius: 12px;
+        padding: 0;
+        border-radius: 0;
       }
       body.mobile-edition .card-result-field { grid-column: span 2; }
       body.mobile-edition .card-result-field:nth-child(4),
@@ -1118,7 +1138,7 @@
       body.mobile-edition .card-inline-results .stage1-locked {
         height: 40px;
         min-height: 40px;
-        border-radius: 10px;
+        border-radius: 0;
         font-size: 13px;
       }
       body.mobile-edition .copy-button {
@@ -1347,12 +1367,6 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
             <span>엑셀 다운로드</span>
           </button>
-          <button id="collapseTopButton" class="small-button" type="button" hidden>
-            <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg><span>접기</span>
-          </button>
-          <button id="moreTopButton" class="small-button" type="button" hidden>
-            <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span>더 보기</span>
-          </button>
         </div>
       </div>
 
@@ -1456,7 +1470,6 @@
     const DEMO_MODE = DEMO_HOST && new URLSearchParams(location.search).get('demo') === '1';
 
     const COLUMNS = [
-      { key: 'universityType', label: '대학구분' },
       { key: 'enrollment', label: '재학여부' },
       { key: 'classNo', label: '반' },
       { key: 'studentNo', label: '번호' },
@@ -1465,6 +1478,7 @@
       { key: 'track', label: '계열' },
       { key: 'admissionType', label: '전형유형' },
       { key: 'admissionName', label: '전형명' },
+      { key: 'recruitmentUnit', label: '모집단위' },
       { key: 'birthdate', label: '생년월일' },
       { key: 'examNo', label: '수험번호' },
       { key: 'stage1', label: '1단계 합격', result: true },
@@ -1529,8 +1543,6 @@
       listControls: $('listControls'),
       collapseButton: $('collapseButton'),
       moreButton: $('moreButton'),
-      collapseTopButton: $('collapseTopButton'),
-      moreTopButton: $('moreTopButton'),
       exportButton: $('exportButton'),
       syncPill: $('syncPill'),
       syncText: $('syncText'),
@@ -1715,10 +1727,7 @@
       elements.listControls.hidden = !hasRecords || (!canMore && !canCollapse);
       elements.moreButton.hidden = !canMore;
       elements.collapseButton.hidden = !canCollapse;
-      elements.moreTopButton.hidden = !canMore;
-      elements.collapseTopButton.hidden = !canCollapse;
       elements.moreButton.setAttribute('aria-expanded', String(canMore));
-      elements.moreTopButton.setAttribute('aria-expanded', String(canMore));
     }
 
     function sortedRecords() {
@@ -1763,16 +1772,25 @@
         COLUMNS.forEach(column => {
           if (column.result) {
             const td = makeElement('td', '', `cell-result cell-result-${column.key}`);
-            td.append(makeInlineResultField(record, column.key, false, false));
+            const field = makeInlineResultField(record, column.key, false, false);
+            if (field.classList.contains('is-filled')) td.classList.add('is-filled');
+            if (field.classList.contains('is-locked')) td.classList.add('is-locked');
+            td.append(field);
             tr.append(td);
             return;
           }
           const value = displayValue(record, column.key);
           const td = makeElement('td');
           if (column.key === 'name') td.className = 'cell-name';
+          if (column.key === 'enrollment') {
+            td.classList.add('cell-enrollment');
+            const statusClass = enrollmentStatusClass(record.enrollment);
+            if (statusClass) td.classList.add(statusClass);
+          }
           if (column.key === 'birthdate') td.className = 'cell-dob';
           if (column.key === 'examNo') td.className = 'cell-exam';
           if (column.key === 'admissionName') td.className = 'cell-admission';
+          if (column.key === 'recruitmentUnit') td.className = 'cell-recruitment-unit';
           if (column.key === 'university') td.className = 'cell-university';
           td.title = value === '-' ? '' : value;
           if (['name', 'birthdate', 'examNo'].includes(column.key)) {
@@ -1809,10 +1827,11 @@
 
         const meta = makeElement('div', '', 'card-meta');
         meta.append(
-          metaRow('대학구분', record.universityType), metaRow('재학여부', record.enrollment),
+          metaRow('재학여부', record.enrollment, false, enrollmentStatusClass(record.enrollment)),
           metaRow('반', record.classNo), metaRow('번호', record.studentNo),
           metaRow('계열', record.track), metaRow('전형유형', record.admissionType),
-          metaRow('전형명', cleanAdmissionName(record.admissionName), true)
+          metaRow('전형명', cleanAdmissionName(record.admissionName), true),
+          metaRow('모집단위', record.recruitmentUnit, true)
         );
 
         const inlineResults = makeElement('div', '', 'card-inline-results');
@@ -2157,12 +2176,18 @@
       return (checksum ^ 0xffffffff) >>> 0;
     }
 
-    function metaRow(label, value, full = false) {
-      const row = makeElement('div', '', 'meta-row' + (full ? ' full' : ''));
+    function metaRow(label, value, full = false, statusClass = '') {
+      const row = makeElement('div', '', ['meta-row', full ? 'full' : '', statusClass].filter(Boolean).join(' '));
       const text = makeElement('span', value || '-');
       text.title = value || '';
       row.append(makeElement('small', label), text);
       return row;
+    }
+
+    function enrollmentStatusClass(value) {
+      if (value === '재학생') return 'is-current';
+      if (value === '졸업생') return 'is-graduate';
+      return '';
     }
 
     function changeSort(key) {
@@ -2220,6 +2245,7 @@
       if (showLabel) field.append(makeElement('label', definition.label));
 
       if (key === 'stage1' && record.stage1Locked) {
+        field.classList.add('is-locked');
         const locked = makeElement('span', '일괄합산', 'stage1-locked');
         locked.title = '일괄합산';
         field.append(locked);
@@ -2232,6 +2258,7 @@
           control.value = values[key] || '';
           control.addEventListener('change', event => {
             event.stopPropagation();
+            syncResultFieldFilledState(field, Boolean(control.value));
             setDraftValue(record.id, key, control.value);
             saveInlineResult(record.id);
           });
@@ -2241,7 +2268,7 @@
           control.inputMode = 'numeric';
           control.autocomplete = 'off';
           control.maxLength = 6;
-          control.placeholder = '미입력';
+          control.placeholder = '클릭 후 입력';
           control.value = values[key] || '';
           control.addEventListener('input', event => {
             event.stopPropagation();
@@ -2249,6 +2276,7 @@
             if (control.value !== sanitized) control.value = sanitized;
             setDraftValue(record.id, key, sanitized);
             control.classList.toggle('is-filled', Boolean(sanitized));
+            syncResultFieldFilledState(field, Boolean(sanitized));
           });
           control.addEventListener('change', event => { event.stopPropagation(); saveInlineResult(record.id); });
           control.addEventListener('blur', () => saveInlineResult(record.id));
@@ -2258,6 +2286,7 @@
           });
         }
         control.className = 'inline-result-control' + (control.value ? ' is-filled' : '');
+        syncResultFieldFilledState(field, Boolean(control.value));
         control.dataset.recordId = record.id;
         control.dataset.resultKey = key;
         control.setAttribute('aria-label', `${record.name || ''} ${definition.label}`.trim());
@@ -2267,6 +2296,12 @@
       }
 
       return field;
+    }
+
+    function syncResultFieldFilledState(field, filled) {
+      field.classList.toggle('is-filled', filled);
+      const cell = field.closest('.cell-result');
+      if (cell) cell.classList.toggle('is-filled', filled);
     }
 
     function setDraftValue(recordId, key, value) {
@@ -2570,15 +2605,15 @@
       elements.detailToggle.addEventListener('click', () => toggleDetails());
       elements.mobileDetailButton.addEventListener('click', () => toggleDetails());
       elements.clearButton.addEventListener('click', resetSearch);
-      [elements.moreButton, elements.moreTopButton].forEach(button => button.addEventListener('click', () => {
+      elements.moreButton.addEventListener('click', () => {
         state.visibleCount += MORE_PAGE_SIZE;
         renderResults();
-      }));
-      [elements.collapseButton, elements.collapseTopButton].forEach(button => button.addEventListener('click', () => {
+      });
+      elements.collapseButton.addEventListener('click', () => {
         state.visibleCount = INITIAL_PAGE_SIZE;
         renderResults();
         $('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }));
+      });
       if (EDITION === 'pc') elements.exportButton.addEventListener('click', exportCurrentResults);
       else elements.exportButton.hidden = true;
       elements.mobileSortSelect.addEventListener('change', () => { state.sortKey = elements.mobileSortSelect.value; renderResults(); });
@@ -2617,7 +2652,7 @@
               record.universityType, record.enrollment, '2027', record.classNo,
               String(record.studentNo || '').padStart(2, '0'), record.name, record.university, '수시',
               record.admissionType, record.selectionType, record.track, record.admissionName,
-              '', '', record.birthdate, record.examNo, record.stage1, record.finalResult,
+              record.recruitmentUnit, '', record.birthdate, record.examNo, record.stage1, record.finalResult,
               record.failureReason, record.firstWait, record.finalWait,
             ]),
             totalMatches: window.__demoRows.length,
@@ -2634,9 +2669,9 @@
 
     function demoRows() {
       return [
-        { id:'demo-1',version:'1',universityType:'일반대학',enrollment:'재학생',classNo:'3',studentNo:'12',name:'김민준',university:'연세대학교',track:'자연',admissionType:'종합',admissionName:'활동우수형',birthdate:'080315',examNo:'Y20270018',selectionType:'단계별전형',stage1Locked:false,stage1:'합격',finalResult:'',failureReason:'',firstWait:'',finalWait:'' },
-        { id:'demo-2',version:'1',universityType:'일반대학',enrollment:'재학생',classNo:'2',studentNo:'7',name:'이서연',university:'고려대학교',track:'인문',admissionType:'교과',admissionName:'학교추천',birthdate:'080921',examNo:'K20270104',selectionType:'일괄합산',stage1Locked:true,stage1:'일괄합산',finalResult:'합격',failureReason:'',firstWait:'',finalWait:'' },
-        { id:'demo-3',version:'1',universityType:'일반대학',enrollment:'졸업생',classNo:'1',studentNo:'3',name:'박도윤',university:'성균관대학교',track:'자연',admissionType:'논술',admissionName:'논술우수',birthdate:'070602',examNo:'S20270077',selectionType:'일괄합산',stage1Locked:true,stage1:'일괄합산',finalResult:'',failureReason:'',firstWait:'12',finalWait:'5' },
+        { id:'demo-1',version:'1',universityType:'일반대학',enrollment:'재학생',classNo:'3',studentNo:'12',name:'김민준',university:'연세대학교',track:'자연',admissionType:'종합',admissionName:'활동우수형',recruitmentUnit:'경영학과',birthdate:'080315',examNo:'Y20270018',selectionType:'단계별전형',stage1Locked:false,stage1:'합격',finalResult:'',failureReason:'',firstWait:'',finalWait:'' },
+        { id:'demo-2',version:'1',universityType:'일반대학',enrollment:'재학생',classNo:'2',studentNo:'7',name:'이서연',university:'고려대학교',track:'인문',admissionType:'교과',admissionName:'학교추천',recruitmentUnit:'정치외교학과',birthdate:'080921',examNo:'K20270104',selectionType:'일괄합산',stage1Locked:true,stage1:'일괄합산',finalResult:'합격',failureReason:'',firstWait:'',finalWait:'' },
+        { id:'demo-3',version:'1',universityType:'일반대학',enrollment:'졸업생',classNo:'1',studentNo:'3',name:'박도윤',university:'성균관대학교',track:'자연',admissionType:'논술',admissionName:'논술우수',recruitmentUnit:'전자전기공학부',birthdate:'070602',examNo:'S20270077',selectionType:'일괄합산',stage1Locked:true,stage1:'일괄합산',finalResult:'',failureReason:'',firstWait:'12',finalWait:'5' },
       ];
     }
 

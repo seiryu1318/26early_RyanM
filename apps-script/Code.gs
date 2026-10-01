@@ -370,7 +370,7 @@ function hasSearchCondition_(filters) {
 function matchesFilters_(row, f) {
   if (!includes_(row[COL.university], f.university)) return false;
   if (!includes_(row[COL.name], f.name)) return false;
-  if (!includesAdmissionName_(row[COL.admissionName], f.admissionName)) return false;
+  if (!includesAdmissionNameRow_(row, f.admissionName)) return false;
   if (!equals_(row[COL.universityType], f.universityType)) return false;
   if (!equals_(row[COL.enrollment], f.enrollment)) return false;
   if (!equals_(row[COL.classNo], f.classNo)) return false;
@@ -378,7 +378,7 @@ function matchesFilters_(row, f) {
   if (!includes_(row[COL.university], f.detailUniversity)) return false;
   if (!equals_(row[COL.track], f.track)) return false;
   if (!equals_(normalizeAdmissionType_(row[COL.admissionType]), f.admissionType)) return false;
-  if (!includesAdmissionName_(row[COL.admissionName], f.detailAdmissionName)) return false;
+  if (!includesAdmissionNameRow_(row, f.detailAdmissionName)) return false;
   return true;
 }
 
@@ -396,7 +396,8 @@ function toRecord_(row) {
     university: text_(row[COL.university]),
     track: text_(row[COL.track]),
     admissionType: normalizeAdmissionType_(row[COL.admissionType]),
-    admissionName: normalizeAdmissionName_(row[COL.admissionName], row[COL.admissionType]),
+    admissionName: resolveAdmissionName_(row),
+    recruitmentUnit: text_(row[COL.department]),
     birthdate: normalizeBirthdate_(row[COL.birthdate]),
     examNo: text_(row[COL.examNo]),
     selectionType: text_(row[COL.selectionType]),
@@ -444,6 +445,14 @@ function normalizeAdmissionName_(value, admissionType) {
   const original = inlineText_(value);
   if (!original) return '';
 
+  // 일부 대학의 L열은 전형유형을 대괄호 태그로 한 번 더 붙입니다.
+  // 태그만 제거하고 뒤의 공식 전형명과 내부 괄호는 그대로 둡니다.
+  const withoutLeadingTag = original.replace(
+    /^\[\s*(?:학생부\s*종합|학생부\s*교과|실기\s*(?:[/·ㆍ]\s*)?실적)\s*\]\s*/,
+    ''
+  );
+  if (withoutLeadingTag !== original) return withoutLeadingTag || original;
+
   const type = normalizeAdmissionType_(admissionType);
   const prefixesByType = {
     '교과': [
@@ -482,9 +491,8 @@ function normalizeAdmissionName_(value, admissionType) {
     const match = original.match(prefixes[index]);
     if (!match) continue;
 
-    // A category word is redundant only when it introduces a separately
-    // delimited name. Preserve names such as "논술전형" or
-    // "학생부종합전형" when the category is part of the official name.
+    // 전형유형 바깥쪽 한 겹만 제거합니다. 내부의 "전형", Ⅰ/Ⅱ,
+    // 서류형/면접형과 중첩 괄호는 공식 명칭의 일부일 수 있어 보존합니다.
     const rest = original.slice(match[0].length);
     if (!/^\s*(?:[\(（\[【{]|[:：\-–—/|·,，;；])/.test(rest)) continue;
 
@@ -492,10 +500,142 @@ function normalizeAdmissionName_(value, admissionType) {
       .replace(/^\s*(?:[:：\-–—/|·,，;；]+\s*)+/, '')
       .trim();
     const unwrapped = unwrapSingleAdmissionWrapper_(withoutPrefix);
+    const beginsWithWrapper = /^[\(（\[【{]/.test(withoutPrefix);
+    if (beginsWithWrapper && unwrapped === withoutPrefix) return original;
     return unwrapped || original;
   }
 
   return original;
+}
+
+/**
+ * 화면에 표시할 전형명은 다음 우선순위를 따릅니다.
+ * 1) 대학어디가/대학 공식 모집요강으로 확인한 교정값
+ * 2) L열 전형명(중복된 전형유형 표기만 제거)
+ * 3) L열이 비어 있을 때에만 N열의 유효한 전형명 조각
+ */
+function resolveAdmissionName_(row) {
+  const university = inlineText_(row[COL.university]);
+  const rawName = inlineText_(row[COL.admissionName]);
+  const admissionType = row[COL.admissionType];
+  const official = resolveOfficialAdmissionName_(university, rawName);
+  if (official) return official;
+
+  const nameFromL = normalizeAdmissionName_(rawName, admissionType);
+  const nameFromN = extractAdmissionNameFromOriginalUnit_(
+    row[COL.originalUnit],
+    row[COL.department],
+    admissionType
+  );
+  return crossCheckAdmissionNames_(nameFromL, nameFromN);
+}
+
+function crossCheckAdmissionNames_(nameFromL, nameFromN) {
+  const primary = inlineText_(nameFromL);
+  const reference = inlineText_(nameFromN);
+  if (!primary) return reference;
+  if (!reference) return primary;
+
+  const primaryKey = normalize_(primary);
+  const referenceKey = normalize_(reference);
+  if (primaryKey === referenceKey) return primary;
+
+  // N열은 교차 검토와 검색 보조에만 씁니다. 서로 다른 표기라면
+  // 사용자 지정 우선순위에 따라 비어 있지 않은 L열을 유지합니다.
+  return primary;
+}
+
+function resolveOfficialAdmissionName_(university, rawName) {
+  const universityKey = normalize_(university);
+  const nameKey = normalize_(rawName)
+    .replace(/（/g, '(')
+    .replace(/）/g, ')')
+    .replace(/[–—]/g, '-');
+  if (!universityKey || !nameKey) return '';
+
+  // 아래 교정값은 2027학년도 대학어디가/대학 공식 전형계획에서
+  // 명칭을 확인한 경우만 둡니다. 전형유형은 별도 열에 있으므로
+  // "학생부교과(...)" 같은 바깥 분류어는 표시값에서 제외합니다.
+  if (universityKey === '광운대학교') {
+    if (nameKey.includes('광운참빛인재전형ⅰ-면접형') || nameKey.includes('광운참빛인재전형i-면접형')) {
+      return '광운참빛인재전형Ⅰ-면접형';
+    }
+    if (nameKey.includes('광운참빛인재전형ⅱ-서류형') || nameKey.includes('광운참빛인재전형ii-서류형')) {
+      return '광운참빛인재전형Ⅱ-서류형';
+    }
+    if (nameKey.includes('소프트웨어우수인재전형')) return '소프트웨어우수인재전형';
+  }
+
+  if (universityKey === '세종대학교') {
+    if (nameKey.includes('세종창의인재') || nameKey.includes('세종인재')) {
+      if (nameKey.includes('면접형')) return '세종인재 전형(면접형)';
+      if (nameKey.includes('서류형')) return '세종인재 전형(서류형)';
+    }
+  }
+
+  if (universityKey === '건국대학교') {
+    if (nameKey.includes('ku자기추천')) return 'KU자기추천';
+    if (nameKey.includes('ku지역균형')) return 'KU지역균형';
+    if (nameKey.includes('ku논술우수자')) return 'KU논술우수자';
+  }
+
+  if (universityKey === '동국대학교') {
+    if (nameKey.includes('학교장추천인재')) return '학교장추천인재';
+    if (nameKey.includes('dodream')) return 'Do Dream';
+    if (nameKey.includes('논술')) return '논술';
+  }
+
+  if (universityKey === '청운대학교') {
+    if (nameKey.includes('일반전형')) return '일반전형';
+    if (nameKey.includes('청운인재전형')) return '청운인재전형';
+    if (nameKey.includes('지역인재전형')) return '지역인재전형';
+  }
+
+  if (universityKey === '국민대학교' && nameKey.includes('국민프런티어')) {
+    return '국민프런티어';
+  }
+
+  if (universityKey === '경기대학교' && nameKey.includes('kgu학생부종합')) {
+    return 'KGU학생부종합전형';
+  }
+
+  if (universityKey === '명지대학교') {
+    if (nameKey.includes('명지인재면접')) return '명지인재면접전형';
+    if (nameKey.includes('명지인재서류')) return '명지인재서류전형';
+  }
+
+  if (universityKey === '한성대학교' && nameKey.includes('한성인재')) {
+    return '한성인재';
+  }
+
+  return '';
+}
+
+function extractAdmissionNameFromOriginalUnit_(value, department, admissionType) {
+  const source = inlineText_(value);
+  if (!source || isUnusableOriginalUnit_(source)) return '';
+
+  const departmentKey = normalize_(department);
+  const candidates = source
+    .split(/\s*(?:-|–|—|\||\/|>)\s*/)
+    .map(inlineText_)
+    .filter(Boolean)
+    .filter(candidate => normalize_(candidate) !== departmentKey)
+    .filter(candidate => !isUnusableOriginalUnit_(candidate))
+    .filter(candidate => /(전형|추천|인재|우수자|논술|실기|특기|교과|종합|균형|면접)/.test(candidate));
+
+  if (!candidates.length) return '';
+  return normalizeAdmissionName_(candidates[0], admissionType);
+}
+
+function isUnusableOriginalUnit_(value) {
+  const compact = normalize_(value);
+  if (!compact) return true;
+  return /^group\d*$/i.test(compact) ||
+    compact === '비블라인드' ||
+    compact === '수시전형전체' ||
+    compact === '수시모집' ||
+    /^20\d{2}학년도.*수시모집$/.test(compact);
 }
 
 function escapeRegExp_(value) {
@@ -565,6 +705,20 @@ function includesAdmissionName_(source, query) {
   if (!normalize_(query)) return true;
   return normalize_(source).includes(normalize_(query)) ||
     normalize_(normalizeAdmissionName_(source)).includes(normalize_(query));
+}
+
+function includesAdmissionNameRow_(row, query) {
+  if (!normalize_(query)) return true;
+  const sources = [
+    resolveAdmissionName_(row),
+    row[COL.admissionName],
+    extractAdmissionNameFromOriginalUnit_(
+      row[COL.originalUnit],
+      row[COL.department],
+      row[COL.admissionType]
+    ),
+  ];
+  return sources.some(source => includesAdmissionName_(source, query));
 }
 
 function validateEnum_(value, allowed, label) {

@@ -246,7 +246,7 @@
     }
     .primary-search {
       display: grid;
-      grid-template-columns: minmax(120px, .58fr) minmax(96px, .42fr) minmax(130px, .62fr) minmax(175px, 1fr) minmax(190px, 1.08fr) auto;
+      grid-template-columns: minmax(120px, .58fr) minmax(96px, .42fr) minmax(130px, .62fr) minmax(175px, 1fr) minmax(190px, 1.08fr) 112px;
       align-items: end;
       gap: 7px;
       padding: 0;
@@ -319,9 +319,10 @@
     .search-button[disabled] { cursor: wait; opacity: .7; transform: none; }
 
     .search-utility {
-      display: flex;
+      display: grid;
+      grid-template-columns: minmax(120px, .58fr) minmax(96px, .42fr) minmax(130px, .62fr) minmax(175px, 1fr) minmax(190px, 1.08fr) auto;
+      gap: 7px;
       align-items: center;
-      justify-content: space-between;
       min-height: 36px;
       margin-top: 4px;
       padding: 0 2px;
@@ -343,6 +344,8 @@
     .detail-toggle:hover, .ghost-button:hover, .small-button:hover { background: rgba(255,255,255,.9); }
     .detail-toggle { padding: 0 12px; }
     .detail-toggle::after { content: none; }
+    #detailToggle { grid-column: 4; justify-self: start; }
+    #clearButton { grid-column: 6; justify-self: end; }
     .clear-button { padding: 0 13px; color: var(--muted); background: transparent; border-color: transparent; }
 
     .detail-filters {
@@ -357,6 +360,71 @@
       box-shadow: none;
       animation: unfold .18s ease-out;
     }
+    .campus-toggle-field {
+      min-width: 0;
+      display: grid;
+      align-content: end;
+      gap: 4px;
+    }
+    .filter-option-label {
+      margin-left: 3px;
+      color: #795361;
+      font-size: 13.5px;
+      font-weight: 800;
+    }
+    .campus-toggle {
+      position: relative;
+      min-width: 0;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 11px;
+      border-radius: 12px;
+      color: #765464;
+      background: rgba(255,250,252,.78);
+      font-size: 14px;
+      font-weight: 850;
+      cursor: pointer;
+      user-select: none;
+    }
+    .campus-toggle:hover { background: rgba(255,255,255,.92); }
+    .campus-toggle:focus-within { background: #fff; box-shadow: 0 0 0 2px rgba(187,27,102,.2); }
+    .campus-toggle input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .campus-toggle-control {
+      position: relative;
+      width: 32px;
+      height: 18px;
+      flex: 0 0 32px;
+      border-radius: 999px;
+      background: #d9c8d0;
+      transition: background .16s ease;
+    }
+    .campus-toggle-control::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(59,19,38,.2);
+      transition: transform .16s ease;
+    }
+    .campus-toggle input:checked + .campus-toggle-control { background: var(--pink-700); }
+    .campus-toggle input:checked + .campus-toggle-control::after { transform: translateX(14px); }
+    .campus-toggle input:checked ~ .campus-toggle-text { color: var(--pink-900); }
     @keyframes unfold { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
 
     .suggestions {
@@ -752,6 +820,9 @@
     @media (max-width: 960px) {
       .primary-search { grid-template-columns: 1fr 1fr; }
       .primary-search .search-button { width: 100%; }
+      .search-utility { grid-template-columns: 1fr 1fr; }
+      #detailToggle { grid-column: 2; grid-row: 1; justify-self: start; }
+      #clearButton { grid-column: 1; grid-row: 1; justify-self: start; }
       .detail-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
 
@@ -776,7 +847,7 @@
     body.mobile-edition .field label { margin-left: 3px; }
     body.mobile-edition .field input, body.mobile-edition .field select { height: 50px; background: rgba(255,255,255,.88); }
     body.mobile-edition .primary-search .search-button { display: none; }
-    body.mobile-edition .search-utility { min-height: 44px; padding: 3px 0 0; }
+    body.mobile-edition .search-utility { min-height: 44px; display: flex; padding: 3px 0 0; }
     body.mobile-edition #detailToggle { display: none; }
     body.mobile-edition .search-utility { justify-content: flex-end; }
     body.mobile-edition .detail-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px; }
@@ -845,15 +916,32 @@
     .card-quick-meta .meta-row small { line-height: 1.25; }
     .card-quick-meta .meta-row span { line-height: 1.3; }
     .card-keydata { display: grid; grid-template-columns: 1fr 1.15fr; gap: 8px; margin: 12px 0; }
-    .keydata-box { min-width: 0; padding: 9px; border-radius: 14px; background: linear-gradient(180deg, rgba(255,244,249,.66), rgba(255,211,231,.53)); box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 4px 11px rgba(110,27,66,.07); }
-    .keydata-box small { display: block; color: #8a5b70; font-size: 12px; font-weight: 800; }
-    .keydata-box .copy-value { width: 100%; justify-content: space-between; margin-top: 2px; color: #3f1a2c; font-size: 14px; font-weight: 950; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .card-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 11px; }
+    .keydata-box { min-width: 0; padding: 9px; border-radius: 14px; background: linear-gradient(180deg, rgba(255,244,249,.66), rgba(255,211,231,.53)); box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 4px 11px rgba(110,27,66,.07); text-align: center; }
+    .keydata-box small { display: block; color: #8a5b70; font-size: 12px; font-weight: 800; text-align: center; }
+    .keydata-box .copy-value { width: 100%; display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; align-items: center; gap: 2px; margin-top: 2px; color: #3f1a2c; font-size: 14px; font-weight: 950; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .keydata-box .copy-text { grid-column: 2; text-align: center; }
+    .keydata-box .copy-button { grid-column: 3; justify-self: center; }
+    .card-meta {
+      display: grid;
+      grid-template-columns: minmax(68px, .72fr) minmax(0, 1.14fr) minmax(0, 1.14fr);
+      gap: 5px;
+      padding: 7px;
+      border-radius: 13px;
+      background: linear-gradient(115deg, rgba(255,255,255,.55), rgba(255,232,243,.48));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+    }
     .meta-row { min-width: 0; }
-    .card-meta .meta-row.full { grid-column: auto; }
-    .card-meta .meta-row:last-child { grid-column: 1 / -1; }
+    .card-meta .meta-row {
+      min-width: 0;
+      padding: 6px 7px;
+      border-radius: 9px;
+      background: rgba(255,255,255,.34);
+    }
+    .card-meta .meta-row.full, .card-meta .meta-row:last-child { grid-column: auto; }
     .meta-row small { display: block; color: #9c7a89; font-size: 12px; font-weight: 800; }
     .meta-row span { display: block; min-width: 0; overflow: hidden; color: #4b3440; font-size: 14px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+    .card-meta .meta-row small { color: #9a627c; font-size: 11px; letter-spacing: -.01em; }
+    .card-meta .meta-row span { margin-top: 2px; color: #49313d; font-weight: 850; }
     .card-inline-results {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -899,7 +987,7 @@
       left: 0;
       z-index: 900;
       display: grid;
-      grid-template-columns: auto 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 9px;
       padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
       border-top: 0;
@@ -907,8 +995,9 @@
       box-shadow: 0 -7px 20px rgba(75,18,45,.12);
       backdrop-filter: blur(20px);
     }
-    body.mobile-edition .mobile-actionbar .detail-toggle { min-width: 108px; height: 52px; background: #fff; }
-    body.mobile-edition .mobile-actionbar .search-button { height: 52px; }
+    body.mobile-edition .mobile-actionbar .detail-toggle,
+    body.mobile-edition .mobile-actionbar .search-button { width: 100%; min-width: 0; height: 48px; }
+    body.mobile-edition .mobile-actionbar .detail-toggle { background: #fff; }
     body.mobile-edition dialog {
       width: 100%;
       max-width: none;
@@ -1092,8 +1181,7 @@
       body.mobile-edition .primary-search .field:nth-child(5) { grid-column: auto; }
       body.mobile-edition .detail-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       body.mobile-edition .card-primary { grid-template-columns: minmax(170px, .7fr) minmax(0, 1.3fr); }
-      body.mobile-edition .card-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      body.mobile-edition .card-meta .meta-row:last-child { grid-column: auto; }
+      body.mobile-edition .card-meta { grid-template-columns: minmax(80px, .72fr) minmax(0, 1.14fr) minmax(0, 1.14fr); }
     }
 
     @media (min-width: 900px) {
@@ -1254,6 +1342,14 @@
       }
       body.mobile-edition .meta-row small { font-size: 11.5px; line-height: 1.35; }
       body.mobile-edition .meta-row span { font-size: 13.5px; line-height: 1.35; }
+      body.mobile-edition .card-meta { gap: 4px; padding: 5px; }
+      body.mobile-edition .card-meta .meta-row {
+        display: block;
+        padding: 5px;
+        text-align: left;
+      }
+      body.mobile-edition .card-meta .meta-row small { font-size: 10.5px; }
+      body.mobile-edition .card-meta .meta-row span { margin-top: 1px; font-size: 12.5px; }
       body.mobile-edition .card-inline-results {
         grid-template-columns: repeat(6, minmax(0, 1fr));
         min-width: 0;
@@ -1302,13 +1398,16 @@
         padding: 7px 9px calc(7px + env(safe-area-inset-bottom));
       }
       body.mobile-edition .mobile-actionbar .detail-toggle {
-        min-width: 96px;
+        width: 100%;
+        min-width: 0;
         height: 44px;
         padding: 0 11px;
         border-radius: 13px;
         font-size: 14.5px;
       }
       body.mobile-edition .mobile-actionbar .search-button {
+        width: 100%;
+        min-width: 0;
         height: 44px;
         border-radius: 14px;
         font-size: 15.5px;
@@ -1502,6 +1601,14 @@
             <input id="detailUniversityInput" type="search" autocomplete="off" placeholder="대학명" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="detailUniversitySuggestions">
             <div id="detailUniversitySuggestions" class="suggestions" role="listbox" hidden></div>
           </div>
+          <div class="campus-toggle-field">
+            <span id="campusToggleLabel" class="filter-option-label">대학명 범위</span>
+            <label class="campus-toggle" for="includeCampusesToggle">
+              <input id="includeCampusesToggle" type="checkbox" aria-labelledby="campusToggleLabel campusToggleText">
+              <span class="campus-toggle-control" aria-hidden="true"></span>
+              <span id="campusToggleText" class="campus-toggle-text">캠퍼스 포함</span>
+            </label>
+          </div>
           <div class="field select-wrap">
             <label for="trackSelect">계열</label>
             <select id="trackSelect"><option value="">전체</option></select>
@@ -1635,7 +1742,8 @@
     const SAVE_RETRY_BASE_MS = 1000;
     const SAVE_RETRY_MAX_MS = 15000;
     const SAVE_RETRY_MAX_ATTEMPTS = 5;
-    const SEARCH_CACHE_LIMIT = 6;
+    const SEARCH_CACHE_LIMIT = 12;
+    const SEARCH_CACHE_TTL_MS = 30000;
     const DEMO_HOST = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
     const DEMO_MODE = DEMO_HOST && new URLSearchParams(location.search).get('demo') === '1';
 
@@ -1667,7 +1775,7 @@
     const RESULT_KEYS = Object.freeze(Object.keys(RESULT_DEFINITIONS));
     const FILTER_KEYS = Object.freeze([
       'university', 'name', 'admissionName', 'universityType', 'enrollment', 'classNo',
-      'detailName', 'detailUniversity', 'track', 'admissionType', 'detailAdmissionName',
+      'detailName', 'detailUniversity', 'track', 'admissionType', 'detailAdmissionName', 'includeCampuses',
     ]);
 
     const state = {
@@ -1692,6 +1800,10 @@
       lastTotalMatches: 0,
       lastTruncated: false,
       universities: [],
+      universitySearchIndex: [],
+      universitySuggestionCache: new Map(),
+      universitySuggestionRequests: new Map(),
+      metaPromise: null,
       installPrompt: null,
       drafts: new Map(),
       inFlightDrafts: new Map(),
@@ -1724,6 +1836,7 @@
       classSelect: $('classSelect'),
       detailNameInput: $('detailNameInput'),
       detailUniversityInput: $('detailUniversityInput'),
+      includeCampusesToggle: $('includeCampusesToggle'),
       trackSelect: $('trackSelect'),
       admissionTypeSelect: $('admissionTypeSelect'),
       detailAdmissionInput: $('detailAdmissionInput'),
@@ -1821,27 +1934,167 @@
     }
 
     function collectFilters() {
+      const university = elements.universityInput.value.trim();
+      const name = elements.nameInput.value.trim();
+      const admissionName = elements.admissionInput.value.trim();
       return {
-        university: elements.universityInput.value,
-        name: elements.nameInput.value,
-        admissionName: elements.admissionInput.value,
+        university,
+        name,
+        admissionName,
         universityType: elements.universityTypeSelect.value,
         enrollment: elements.enrollmentSelect.value,
         classNo: elements.classSelect.value,
-        detailName: elements.detailNameInput.value,
-        detailUniversity: elements.detailUniversityInput.value,
+        detailName: name ? '' : elements.detailNameInput.value.trim(),
+        detailUniversity: university ? '' : elements.detailUniversityInput.value.trim(),
         track: elements.trackSelect.value,
         admissionType: elements.admissionTypeSelect.value,
-        detailAdmissionName: elements.detailAdmissionInput.value,
+        detailAdmissionName: admissionName ? '' : elements.detailAdmissionInput.value.trim(),
+        includeCampuses: Boolean(elements.includeCampusesToggle.checked),
       };
     }
 
+    function clearShadowedDetailFilters() {
+      if (elements.universityInput.value.trim()) elements.detailUniversityInput.value = '';
+      if (elements.nameInput.value.trim()) elements.detailNameInput.value = '';
+      if (elements.admissionInput.value.trim()) elements.detailAdmissionInput.value = '';
+    }
+
     function hasFilter(filters) {
-      return Object.values(filters).some(value => String(value || '').trim());
+      return FILTER_KEYS.some(key => key !== 'includeCampuses' && String(filters && filters[key] || '').trim());
     }
 
     function searchCacheKey(filters) {
-      return JSON.stringify(FILTER_KEYS.map(key => String(filters && filters[key] || '').trim()));
+      return JSON.stringify(FILTER_KEYS.map(key => key === 'includeCampuses'
+        ? Boolean(filters && filters[key])
+        : String(filters && filters[key] || '').trim()));
+    }
+
+    function normalizeUniversityTerm(value) {
+      return String(value || '')
+        .normalize('NFKC')
+        .toLocaleLowerCase('ko')
+        .replace(/\s+/g, '');
+    }
+
+    function setUniversityOptions(values) {
+      const unique = [...new Set((Array.isArray(values) ? values : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean))];
+      state.universities = unique;
+      state.universitySearchIndex = unique.map(name => ({ name, normalized: normalizeUniversityTerm(name) }));
+      state.universitySuggestionCache.clear();
+    }
+
+    function localUniversitySuggestions(query, limit = 12) {
+      const normalizedQuery = normalizeUniversityTerm(query);
+      if (!normalizedQuery) return [];
+      return state.universitySearchIndex
+        .filter(item => item.normalized.includes(normalizedQuery))
+        .sort((left, right) => {
+          const leftExact = left.normalized === normalizedQuery ? 0 : (left.normalized.startsWith(normalizedQuery) ? 1 : 2);
+          const rightExact = right.normalized === normalizedQuery ? 0 : (right.normalized.startsWith(normalizedQuery) ? 1 : 2);
+          const leftCampus = /[（(]|캠퍼스/.test(left.name) ? 1 : 0;
+          const rightCampus = /[（(]|캠퍼스/.test(right.name) ? 1 : 0;
+          return leftExact - rightExact || leftCampus - rightCampus || left.name.localeCompare(right.name, 'ko');
+        })
+        .slice(0, limit)
+        .map(item => item.name);
+    }
+
+    function canonicalUniversityName(query, candidates) {
+      const raw = String(query || '').trim();
+      const normalized = normalizeUniversityTerm(raw);
+      if (!normalized) return '';
+      const indexed = (Array.isArray(candidates) ? candidates : [])
+        .map(name => ({ name: String(name || '').trim(), normalized: normalizeUniversityTerm(name) }))
+        .filter(item => item.name);
+      const exact = indexed.find(item => item.normalized === normalized);
+      if (exact) return exact.name;
+
+      const campusMatch = normalized.match(/^(.*?)(\([^)]*\))$/);
+      const base = campusMatch ? campusMatch[1] : normalized;
+      const campusSuffix = campusMatch ? campusMatch[2] : '';
+      const aliases = new Set([normalized]);
+      if (base.endsWith('대')) aliases.add(`${base.slice(0, -1)}대학교${campusSuffix}`);
+      else if (!base.endsWith('대학교')) aliases.add(`${base}대학교${campusSuffix}`);
+      const aliasMatches = indexed.filter(item => aliases.has(item.normalized));
+      return aliasMatches.length === 1 ? aliasMatches[0].name : raw;
+    }
+
+    async function universitySuggestions(query) {
+      const normalizedQuery = normalizeUniversityTerm(query);
+      if ([...normalizedQuery].length < 2) return [];
+      if (state.universitySearchIndex.length) return localUniversitySuggestions(query);
+      if (state.metaPromise) {
+        try { await state.metaPromise; } catch (_) { /* Fall through to the focused endpoint. */ }
+        if (state.universitySearchIndex.length) return localUniversitySuggestions(query);
+      }
+
+      const cached = state.universitySuggestionCache.get(normalizedQuery);
+      if (cached) return [...cached];
+      const pending = state.universitySuggestionRequests.get(normalizedQuery);
+      if (pending) return pending;
+
+      const request = api('universities', { query: String(query || '').trim() })
+        .then(data => {
+          const names = [...new Set((Array.isArray(data.suggestions) ? data.suggestions : [])
+            .map(value => String(value || '').trim())
+            .filter(Boolean))].slice(0, 12);
+          state.universitySuggestionCache.set(normalizedQuery, names);
+          while (state.universitySuggestionCache.size > 24) {
+            state.universitySuggestionCache.delete(state.universitySuggestionCache.keys().next().value);
+          }
+          return [...names];
+        })
+        .finally(() => state.universitySuggestionRequests.delete(normalizedQuery));
+      state.universitySuggestionRequests.set(normalizedQuery, request);
+      return request;
+    }
+
+    function abortError() {
+      const error = new Error('검색 요청이 취소되었습니다.');
+      error.name = 'AbortError';
+      return error;
+    }
+
+    function waitForSharedPromise(promise, signal) {
+      if (!signal) return Promise.resolve(promise);
+      if (signal.aborted) return Promise.reject(abortError());
+      return new Promise((resolve, reject) => {
+        const onAbort = () => reject(abortError());
+        signal.addEventListener('abort', onAbort, { once: true });
+        Promise.resolve(promise).then(resolve, reject).finally(() => {
+          signal.removeEventListener('abort', onAbort);
+        });
+      });
+    }
+
+    async function canonicalizeUniversityInputs(signal) {
+      if (state.metaPromise && !state.universitySearchIndex.length) {
+        try { await waitForSharedPromise(state.metaPromise, signal); }
+        catch (error) {
+          if (error && error.name === 'AbortError') throw error;
+          /* Search can still use the typed value. */
+        }
+      }
+      if (signal && signal.aborted) throw abortError();
+      const primaryValue = elements.universityInput.value.trim();
+      const inputs = primaryValue ? [elements.universityInput] : [elements.detailUniversityInput];
+      await Promise.all(inputs.map(async input => {
+        const query = input.value.trim();
+        if (!query) return;
+        let candidates = state.universities;
+        if (!candidates.length) {
+          try { candidates = await waitForSharedPromise(universitySuggestions(query), signal); }
+          catch (error) {
+            if (error && error.name === 'AbortError') throw error;
+            candidates = [];
+          }
+        }
+        if ((signal && signal.aborted) || input.value.trim() !== query) return;
+        const canonical = canonicalUniversityName(query, candidates);
+        if (canonical) input.value = canonical;
+      }));
     }
 
     function cloneSearchResponse(data) {
@@ -1857,7 +2110,8 @@
 
     function rememberSearchResponse(filters, data) {
       const snapshot = cloneSearchResponse(data);
-      if (!snapshot.revision) return;
+      if (!snapshot.revision || !snapshot.records.length) return;
+      snapshot.cachedAt = Date.now();
       const key = searchCacheKey(filters);
       state.searchCache.delete(key);
       state.searchCache.set(key, snapshot);
@@ -1869,7 +2123,11 @@
     function cachedSearchResponse(filters) {
       const key = searchCacheKey(filters);
       const cached = state.searchCache.get(key);
-      if (!cached || !cached.revision || cached.revision !== String(state.dataRevision || '')) return null;
+      if (!cached || !cached.revision || cached.revision !== String(state.dataRevision || '')
+        || Date.now() - Number(cached.cachedAt || 0) > SEARCH_CACHE_TTL_MS) {
+        state.searchCache.delete(key);
+        return null;
+      }
       state.searchCache.delete(key);
       state.searchCache.set(key, cached);
       return cloneSearchResponse(cached);
@@ -1899,8 +2157,9 @@
 
     async function performSearch({ silent = false, manual = !silent } = {}) {
       if (state.searching) {
-        if (manual && !state.searchingManual && state.searchController) {
+        if (manual && state.searchController) {
           state.pendingManualSearch = true;
+          setSearchBusy(true);
           state.searchController.abort();
         }
         return;
@@ -1909,8 +2168,9 @@
         if (!silent) toast('입력값 저장이 끝난 뒤 다시 검색해 주세요.', 'error');
         return;
       }
-      const filters = silent && state.lastFilters ? state.lastFilters : collectFilters();
-      if (!hasFilter(filters)) {
+      if (!silent) clearShadowedDetailFilters();
+      const initialFilters = silent && state.lastFilters ? state.lastFilters : collectFilters();
+      if (!hasFilter(initialFilters)) {
         if (!silent) toast('검색 조건을 한 가지 이상 입력해 주세요.', 'error');
         return;
       }
@@ -1922,6 +2182,9 @@
       setSyncState('busy', silent ? '동기화 중' : '검색 중');
       if (manual) setSearchBusy(true);
       try {
+        if (!silent) await canonicalizeUniversityInputs(controller.signal);
+        if (controller.signal.aborted) return;
+        const filters = silent && state.lastFilters ? state.lastFilters : collectFilters();
         const cached = manual ? cachedSearchResponse(filters) : null;
         if (cached) applySearchResponse(cached, filters, { silent: false, verified: false });
 
@@ -1951,12 +2214,13 @@
         setSyncState('error', '연결 오류');
         if (!silent && error.code !== 'CONFIG_REQUIRED') toast(error.message, 'error');
       } finally {
+        const rerunManualSearch = state.pendingManualSearch;
         state.searching = false;
         state.searchingSilent = false;
         state.searchingManual = false;
         state.searchController = null;
-        if (manual) setSearchBusy(false);
-        if (state.pendingManualSearch) {
+        if (manual && !rerunManualSearch) setSearchBusy(false);
+        if (rerunManualSearch) {
           state.pendingManualSearch = false;
           queueMicrotask(() => performSearch({ silent: false, manual: true }));
         }
@@ -2571,7 +2835,11 @@
 
     function normalizeFilterSnapshot(filters) {
       const normalized = {};
-      FILTER_KEYS.forEach(key => { normalized[key] = String(filters && filters[key] || ''); });
+      FILTER_KEYS.forEach(key => {
+        normalized[key] = key === 'includeCampuses'
+          ? Boolean(filters && filters[key])
+          : String(filters && filters[key] || '');
+      });
       return normalized;
     }
 
@@ -2660,6 +2928,7 @@
       elements.trackSelect.value = values.track;
       elements.admissionTypeSelect.value = values.admissionType;
       elements.detailAdmissionInput.value = values.detailAdmissionName;
+      elements.includeCampusesToggle.checked = Boolean(values.includeCampuses);
     }
 
     function resumeRecoveredDrafts() {
@@ -3054,6 +3323,7 @@
       add(filters.universityType);
       add(filters.track);
       add(filters.admissionType);
+      add(filters.includeCampuses ? '캠퍼스 포함' : '');
       elements.mobileSearchSummaryText.textContent = parts.join(' · ') || '검색 조건';
       elements.mobileSearchSummaryText.title = parts.join(' · ');
     }
@@ -3123,23 +3393,31 @@
       setSyncState(currentApiUrl() && currentSessionToken() ? 'online' : 'idle', currentApiUrl() && currentSessionToken() ? '연결됨' : '연결 필요');
     }
 
-    async function loadMeta() {
-      try {
-        const data = await api('meta');
-        populateSelect(elements.universityTypeSelect, data.options.universityTypes);
-        populateSelect(elements.trackSelect, data.options.tracks);
-        populateSelect(elements.admissionTypeSelect, data.options.admissionTypes);
-        state.universities = Array.isArray(data.options.universities) ? data.options.universities : [];
-        state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
-        setSyncState('online', timeLabel(data.serverTime));
-        resumeRecoveredDrafts();
-        retryAllDrafts({ immediate: true });
-      } catch (error) {
-        if (error.code !== 'CONFIG_REQUIRED') {
-          setSyncState('error', '연결 오류');
-          toast(error.message, 'error');
+    function loadMeta() {
+      if (state.metaPromise) return state.metaPromise;
+      const request = (async () => {
+        try {
+          const data = await api('meta');
+          populateSelect(elements.universityTypeSelect, data.options.universityTypes);
+          populateSelect(elements.trackSelect, data.options.tracks);
+          populateSelect(elements.admissionTypeSelect, data.options.admissionTypes);
+          setUniversityOptions(data.options.universities);
+          state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
+          setSyncState('online', timeLabel(data.serverTime));
+          resumeRecoveredDrafts();
+          retryAllDrafts({ immediate: true });
+        } catch (error) {
+          if (error.code !== 'CONFIG_REQUIRED') {
+            setSyncState('error', '연결 오류');
+            toast(error.message, 'error');
+          }
         }
-      }
+      })();
+      const wrapped = request.finally(() => {
+        if (state.metaPromise === wrapped) state.metaPromise = null;
+      });
+      state.metaPromise = wrapped;
+      return wrapped;
     }
 
     function populateSelect(select, values) {
@@ -3172,20 +3450,13 @@
 
       async function update() {
         const query = input.value.trim();
-        if ([...query].length < 3) { close(); return; }
+        if ([...normalizeUniversityTerm(query)].length < 2) { close(); return; }
         const sequence = ++requestSequence;
         try {
-          const normalizedQuery = query.normalize('NFKC').toLocaleLowerCase('ko');
-          const data = state.universities.length
-            ? {
-              suggestions: state.universities
-                .filter(name => String(name).normalize('NFKC').toLocaleLowerCase('ko').includes(normalizedQuery))
-                .slice(0, 12),
-            }
-            : await api('universities', { query });
+          const nextSuggestions = await universitySuggestions(query);
           if (sequence !== requestSequence) return;
           if (document.activeElement !== input) { close(); return; }
-          suggestions = data.suggestions || [];
+          suggestions = nextSuggestions;
           panel.replaceChildren();
           suggestions.forEach((name, index) => {
             const button = makeElement('button', name, 'suggestion-item');
@@ -3209,7 +3480,10 @@
         if (active) { input.setAttribute('aria-activedescendant', active.id); active.scrollIntoView({ block: 'nearest' }); }
       }
 
-      input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(update, 260); });
+      input.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(update, EDITION === 'mobile' ? 90 : 140);
+      });
       input.addEventListener('keydown', event => {
         if (panel.hidden) return;
         if (event.key === 'ArrowDown') { event.preventDefault(); selectIndex(activeIndex + 1); }
@@ -3425,13 +3699,24 @@
           else if (action === 'revision') resolve({ ok: true, revision: window.__demoRevision, serverTime: new Date().toISOString() });
           else if (action === 'meta') resolve({
             ok: true,
-            options: { universityTypes: ['일반대학'], enrollments: ['재학생', '졸업생'], classes: ['1', '2', '3'], tracks: ['인문', '자연'], admissionTypes: ['교과', '종합', '논술'], universities: ['연세대학교', '연세대학교(미래)', '고려대학교'] },
+            options: { universityTypes: ['일반대학'], enrollments: ['재학생', '졸업생'], classes: ['1', '2', '3'], tracks: ['인문', '자연'], admissionTypes: ['교과', '종합', '논술'], universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)'] },
             revision: window.__demoRevision,
             serverTime: new Date().toISOString(),
           });
-          else if (action === 'universities') resolve({ ok: true, suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교'].filter(v => v.includes(payload.query)), serverTime: new Date().toISOString() });
+          else if (action === 'universities') {
+            window.__demoUniversitySuggestionRequests = Number(window.__demoUniversitySuggestionRequests || 0) + 1;
+            const query = normalizeUniversityTerm(payload.query);
+            resolve({
+              ok: true,
+              suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)']
+                .filter(value => normalizeUniversityTerm(value).includes(query)),
+              serverTime: new Date().toISOString(),
+            });
+          }
           else if (action === 'search') {
             window.__demoSearchRequests = Number(window.__demoSearchRequests || 0) + 1;
+            if (!Array.isArray(window.__demoSearchPayloads)) window.__demoSearchPayloads = [];
+            window.__demoSearchPayloads.push(JSON.parse(JSON.stringify(payload || {})));
             if (Number(window.__demoSearchFailures) > 0) {
               window.__demoSearchFailures = Number(window.__demoSearchFailures) - 1;
               window.__demoSearchFailureEvents = Number(window.__demoSearchFailureEvents || 0) + 1;

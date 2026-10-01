@@ -15,13 +15,13 @@ const CONFIG = Object.freeze({
   maxSearchResults: 250,
   maxSuggestions: 12,
   lockWaitMs: 20000,
-  rowsCachePrefix: 'admissions-rows-v2',
+  rowsCachePrefix: 'admissions-rows-v3',
   rowsCacheTtlSeconds: 60,
   rowsCacheChunkChars: 80000,
   rowsCacheMaxChunks: 24,
-  searchIndexCachePrefix: 'admissions-search-index-v1',
-  searchMatchCachePrefix: 'admissions-search-match-v1',
-  metaCachePrefix: 'admissions-meta-v1',
+  searchIndexCachePrefix: 'admissions-search-index-v3',
+  searchMatchCachePrefix: 'admissions-search-match-v3',
+  metaCachePrefix: 'admissions-meta-v2',
   searchMatchCacheTtlSeconds: 45,
   searchCacheMaxValueBytes: 90000,
   dataRevisionProperty: 'DATA_REVISION',
@@ -70,7 +70,11 @@ const RESULT_KEYS = Object.freeze(['stage1', 'finalResult', 'failureReason', 'fi
 const SEARCH_FILTER_KEYS = Object.freeze([
   'university', 'name', 'admissionName', 'universityType', 'enrollment', 'classNo',
   'detailName', 'detailUniversity', 'track', 'admissionType', 'detailAdmissionName',
+  'includeCampuses',
 ]);
+const SEARCH_VALUE_FILTER_KEYS = Object.freeze(
+  SEARCH_FILTER_KEYS.filter(key => key !== 'includeCampuses')
+);
 const EXACT_CANDIDATE_FIELDS = Object.freeze([
   'universityType', 'enrollment', 'classNo', 'track', 'admissionType',
 ]);
@@ -187,20 +191,19 @@ function requireSession_(token) {
 }
 
 function getMeta_() {
-  const currentRevision = getDataRevision_();
-  const cached = readMetaCache_(currentRevision);
+  const snapshot = getRowsSnapshot_();
+  const cached = readMetaCache_(snapshot.revision, snapshot.snapshotToken);
   if (cached) {
     SEARCH_METRICS_.metaCacheHits += 1;
     return {
       ok: true,
       options: cached.options,
       rowCount: cached.rowCount,
-      revision: currentRevision,
+      revision: snapshot.revision,
       serverTime: new Date().toISOString(),
     };
   }
 
-  const snapshot = getRowsSnapshot_();
   const rows = snapshot.rows;
   const options = {
     universityTypes: uniqueSorted_(rows.map(r => r[COL.universityType])),
@@ -222,7 +225,7 @@ function getMeta_() {
     options,
     rowCount: rows.length,
   };
-  writeMetaCache_(snapshot.revision, result);
+  writeMetaCache_(snapshot.revision, snapshot.snapshotToken, result);
   return {
     ok: true,
     ...result,
@@ -232,8 +235,8 @@ function getMeta_() {
 }
 
 function getUniversitySuggestions_(query) {
-  const q = normalize_(query);
-  if (q.length < 3) {
+  const q = normalizeUniversity_(query);
+  if ([...q].length < 2) {
     return { ok: true, suggestions: [], serverTime: new Date().toISOString() };
   }
 
@@ -241,7 +244,7 @@ function getUniversitySuggestions_(query) {
   const universities = meta.options.universities || [];
 
   const suggestions = universities
-    .filter(name => normalize_(name).includes(q))
+    .filter(name => normalizeUniversity_(name).includes(q))
     .slice(0, CONFIG.maxSuggestions);
 
   return { ok: true, suggestions, serverTime: new Date().toISOString() };
@@ -432,8 +435,14 @@ function getAllRows_() {
 
 function getRowsSnapshot_() {
   const revision = getDataRevision_();
-  const cachedRows = readRowsCache_(revision);
-  if (cachedRows) return { rows: cachedRows, revision };
+  const cached = readRowsCache_(revision);
+  if (cached) {
+    return {
+      rows: cached.rows,
+      revision,
+      snapshotToken: cached.snapshotToken,
+    };
+  }
 
   const sheet = getSheet_();
   assertSchema_(sheet);
@@ -444,8 +453,9 @@ function getRowsSnapshot_() {
       .getRange(CONFIG.firstDataRow, 1, lastRow - CONFIG.headerRow, CONFIG.totalColumns)
       .getDisplayValues();
 
-  if (getDataRevision_() === revision) writeRowsCache_(rows, revision);
-  return { rows, revision };
+  const snapshotToken = createRowsSnapshotToken_(revision);
+  if (getDataRevision_() === revision) writeRowsCache_(rows, revision, snapshotToken);
+  return { rows, revision, snapshotToken };
 }
 
 function getDataRevision_() {
@@ -462,6 +472,16 @@ function rowsCacheKey_(revision, suffix) {
   return CONFIG.rowsCachePrefix + ':' + revision + ':' + suffix;
 }
 
+function createRowsSnapshotToken_(revision) {
+  return digestHex_(
+    text_(revision) + '\u001e' + String(Date.now()) + '\u001e' + Utilities.getUuid()
+  );
+}
+
+function rowsCacheChunkKey_(revision, snapshotToken, index) {
+  return rowsCacheKey_(revision, 'snapshot:' + digestHex_(snapshotToken) + ':' + String(index));
+}
+
 function readRowsCache_(revision) {
   try {
     const cache = CacheService.getScriptCache();
@@ -469,11 +489,13 @@ function readRowsCache_(revision) {
     if (!metaRaw) return null;
     const meta = JSON.parse(metaRaw);
     const chunkCount = Number(meta.chunks);
+    const snapshotToken = text_(meta.snapshotToken);
     if (!Number.isInteger(chunkCount) || chunkCount < 1 || chunkCount > CONFIG.rowsCacheMaxChunks) return null;
+    if (!snapshotToken) return null;
 
     const keys = [];
     for (let index = 0; index < chunkCount; index += 1) {
-      keys.push(rowsCacheKey_(revision, String(index)));
+      keys.push(rowsCacheChunkKey_(revision, snapshotToken, index));
     }
     const stored = cache.getAll(keys);
     const encoded = keys.map(key => stored[key] || '').join('');
@@ -482,14 +504,15 @@ function readRowsCache_(revision) {
     const zipped = Utilities.base64DecodeWebSafe(encoded);
     const json = Utilities.ungzip(Utilities.newBlob(zipped)).getDataAsString('UTF-8');
     const rows = JSON.parse(json);
-    return Array.isArray(rows) ? rows : null;
+    return Array.isArray(rows) ? { rows, snapshotToken } : null;
   } catch (_) {
     return null;
   }
 }
 
-function writeRowsCache_(rows, revision) {
+function writeRowsCache_(rows, revision, snapshotToken) {
   try {
+    if (!snapshotToken) return;
     const json = JSON.stringify(rows);
     const zipped = Utilities.gzip(Utilities.newBlob(json, 'application/json'));
     const encoded = Utilities.base64EncodeWebSafe(zipped.getBytes());
@@ -502,12 +525,12 @@ function writeRowsCache_(rows, revision) {
     const cache = CacheService.getScriptCache();
     const entries = {};
     chunks.forEach((chunk, index) => {
-      entries[rowsCacheKey_(revision, String(index))] = chunk;
+      entries[rowsCacheChunkKey_(revision, snapshotToken, index)] = chunk;
     });
     cache.putAll(entries, CONFIG.rowsCacheTtlSeconds);
     cache.put(
       rowsCacheKey_(revision, 'meta'),
-      JSON.stringify({ chunks: chunks.length }),
+      JSON.stringify({ chunks: chunks.length, snapshotToken }),
       CONFIG.rowsCacheTtlSeconds
     );
   } catch (_) {
@@ -531,13 +554,13 @@ function putCacheSafely_(key, value, ttlSeconds) {
   }
 }
 
-function metaCacheKey_(revision) {
-  return CONFIG.metaCachePrefix + ':' + digestHex_(revision);
+function metaCacheKey_(revision, snapshotToken) {
+  return CONFIG.metaCachePrefix + ':' + digestHex_(revision + '\u001e' + snapshotToken);
 }
 
-function readMetaCache_(revision) {
+function readMetaCache_(revision, snapshotToken) {
   try {
-    const raw = CacheService.getScriptCache().get(metaCacheKey_(revision));
+    const raw = CacheService.getScriptCache().get(metaCacheKey_(revision, snapshotToken));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== 'object' || !parsed.options || !Number.isInteger(parsed.rowCount)) {
@@ -549,21 +572,24 @@ function readMetaCache_(revision) {
   }
 }
 
-function writeMetaCache_(revision, value) {
+function writeMetaCache_(revision, snapshotToken, value) {
   putCacheSafely_(
-    metaCacheKey_(revision),
+    metaCacheKey_(revision, snapshotToken),
     JSON.stringify(value),
     CONFIG.rowsCacheTtlSeconds
   );
 }
 
-function universityIndexCacheKey_(revision) {
-  return CONFIG.searchIndexCachePrefix + ':' + digestHex_(revision) + ':university';
+function universityIndexCacheKey_(revision, snapshotToken) {
+  return CONFIG.searchIndexCachePrefix + ':' +
+    digestHex_(revision + '\u001e' + snapshotToken) + ':university';
 }
 
-function readPersistentUniversityMap_(revision, rowCount) {
+function readPersistentUniversityMap_(revision, snapshotToken, rowCount) {
   try {
-    const raw = CacheService.getScriptCache().get(universityIndexCacheKey_(revision));
+    const raw = CacheService.getScriptCache().get(
+      universityIndexCacheKey_(revision, snapshotToken)
+    );
     if (!raw) return null;
     const entries = JSON.parse(raw);
     if (!Array.isArray(entries)) return null;
@@ -582,9 +608,9 @@ function readPersistentUniversityMap_(revision, rowCount) {
   }
 }
 
-function writePersistentUniversityMap_(revision, map) {
+function writePersistentUniversityMap_(revision, snapshotToken, map) {
   putCacheSafely_(
-    universityIndexCacheKey_(revision),
+    universityIndexCacheKey_(revision, snapshotToken),
     JSON.stringify(Array.from(map.entries())),
     CONFIG.rowsCacheTtlSeconds
   );
@@ -596,6 +622,7 @@ function getRuntimeSearchIndex_(snapshot) {
   if (
     RUNTIME_SEARCH_INDEX_ &&
     RUNTIME_SEARCH_INDEX_.revision === snapshot.revision &&
+    RUNTIME_SEARCH_INDEX_.snapshotToken === snapshot.snapshotToken &&
     RUNTIME_SEARCH_INDEX_.rows.length === snapshot.rows.length &&
     now - RUNTIME_SEARCH_INDEX_.createdAt < maxAgeMs
   ) {
@@ -604,6 +631,7 @@ function getRuntimeSearchIndex_(snapshot) {
 
   RUNTIME_SEARCH_INDEX_ = {
     revision: snapshot.revision,
+    snapshotToken: snapshot.snapshotToken,
     rows: snapshot.rows,
     createdAt: now,
     normalizedRows: new Array(snapshot.rows.length),
@@ -616,7 +644,7 @@ function getRuntimeSearchIndex_(snapshot) {
 
 function candidateValue_(row, field) {
   switch (field) {
-    case 'university': return normalize_(row[COL.university]);
+    case 'university': return normalizeUniversity_(row[COL.university]);
     case 'universityType': return normalize_(row[COL.universityType]);
     case 'enrollment': return normalize_(row[COL.enrollment]);
     case 'classNo': return normalize_(row[COL.classNo]);
@@ -630,7 +658,11 @@ function ensureCandidateMap_(searchIndex, field) {
   if (searchIndex.candidateMaps[field]) return searchIndex.candidateMaps[field];
 
   if (field === 'university') {
-    const persistent = readPersistentUniversityMap_(searchIndex.revision, searchIndex.rows.length);
+    const persistent = readPersistentUniversityMap_(
+      searchIndex.revision,
+      searchIndex.snapshotToken,
+      searchIndex.rows.length
+    );
     if (persistent) {
       searchIndex.candidateMaps[field] = persistent;
       return persistent;
@@ -646,28 +678,43 @@ function ensureCandidateMap_(searchIndex, field) {
   });
   searchIndex.candidateMaps[field] = map;
   SEARCH_METRICS_.candidateMapBuilds += 1;
-  if (field === 'university') writePersistentUniversityMap_(searchIndex.revision, map);
+  if (field === 'university') {
+    writePersistentUniversityMap_(searchIndex.revision, searchIndex.snapshotToken, map);
+  }
   return map;
 }
 
 function normalizedSearchFilters_(filters) {
   const normalized = {};
-  SEARCH_FILTER_KEYS.forEach(key => { normalized[key] = normalize_(filters[key]); });
+  SEARCH_FILTER_KEYS.forEach(key => {
+    if (key === 'includeCampuses') {
+      normalized[key] = filters[key] === true;
+    } else if (key === 'university' || key === 'detailUniversity') {
+      normalized[key] = normalizeUniversity_(filters[key]);
+    } else {
+      normalized[key] = normalize_(filters[key]);
+    }
+  });
   return normalized;
 }
 
 function normalizedFilterSignature_(filters) {
-  return SEARCH_FILTER_KEYS.map(key => filters[key] || '').join('\u001f');
+  return SEARCH_FILTER_KEYS.map(key => (
+    key === 'includeCampuses' ? (filters[key] ? '1' : '0') : (filters[key] || '')
+  )).join('\u001f');
 }
 
-function searchMatchCacheKey_(revision, normalizedFilters) {
-  const signature = revision + '\u001e' + normalizedFilterSignature_(normalizedFilters);
+function searchMatchCacheKey_(revision, snapshotToken, normalizedFilters) {
+  const signature = revision + '\u001e' + snapshotToken + '\u001e' +
+    normalizedFilterSignature_(normalizedFilters);
   return CONFIG.searchMatchCachePrefix + ':' + digestHex_(signature);
 }
 
-function readMatchCache_(revision, normalizedFilters, rowCount) {
+function readMatchCache_(revision, snapshotToken, normalizedFilters, rowCount) {
   try {
-    const raw = CacheService.getScriptCache().get(searchMatchCacheKey_(revision, normalizedFilters));
+    const raw = CacheService.getScriptCache().get(
+      searchMatchCacheKey_(revision, snapshotToken, normalizedFilters)
+    );
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || !Array.isArray(parsed.rowIndexes)) return null;
@@ -681,20 +728,100 @@ function readMatchCache_(revision, normalizedFilters, rowCount) {
   }
 }
 
-function writeMatchCache_(revision, normalizedFilters, match) {
+function writeMatchCache_(revision, snapshotToken, normalizedFilters, match) {
   putCacheSafely_(
-    searchMatchCacheKey_(revision, normalizedFilters),
+    searchMatchCacheKey_(revision, snapshotToken, normalizedFilters),
     JSON.stringify({ rowIndexes: match.rowIndexes, candidateCount: match.candidateCount }),
     CONFIG.searchMatchCacheTtlSeconds
   );
 }
 
-function universityCandidateIndexes_(map, query) {
+function normalizeUniversity_(value) {
+  let normalized = text_(value);
+  try {
+    normalized = normalized.normalize('NFKC');
+  } catch (_) {
+    // Apps Script V8에서는 지원되지만, 구형 런타임에서도 검색은 계속합니다.
+  }
+  return normalized
+    .trim()
+    .toLocaleLowerCase('ko-KR')
+    .replace(/[\s\u200B-\u200D\u2060\uFEFF]+/g, '')
+    .replace(/[（]/g, '(')
+    .replace(/[）]/g, ')');
+}
+
+function universityIdentity_(value) {
+  const key = normalizeUniversity_(value);
+  if (!key) {
+    return { key: '', baseKey: '', alias: '', isCampus: false, campusAlias: '' };
+  }
+
+  let baseKey = key;
+  let isCampus = false;
+  let campusName = '';
+  const parenthesized = key.match(/^(.+?)\([^()]+\)$/);
+  if (parenthesized) {
+    baseKey = parenthesized[1];
+    campusName = key.slice(parenthesized[1].length + 1, -1);
+    isCampus = true;
+  } else {
+    // 괄호 없이 "미래캠퍼스", "세종캠퍼스"처럼 적힌 분교 표기도
+    // 본교명과 같은 묶음으로 처리합니다.
+    const namedCampus = key.match(/^(.+?대학교).+캠퍼스$/);
+    if (namedCampus) {
+      baseKey = namedCampus[1];
+      campusName = key.slice(namedCampus[1].length, -'캠퍼스'.length);
+      isCampus = true;
+    }
+  }
+
+  // "건국", "건국대", "건국대학교"를 같은 본교 별칭으로 취급합니다.
+  const alias = baseKey.replace(/대학교$/, '').replace(/대학$/, '').replace(/대$/, '');
+  const normalizedCampusName = campusName.replace(/캠퍼스$/, '');
+  const campusAliases = {
+    세: '세',
+    세종: '세',
+    글: '글',
+    글로컬: '글',
+    미: '미',
+    미래: '미',
+  };
+  const campusAlias = campusAliases[normalizedCampusName] || normalizedCampusName;
+  return { key, baseKey, alias, isCampus, campusAlias };
+}
+
+function universityMatchesQuery_(university, query, includeCampuses) {
+  const source = universityIdentity_(university);
+  const requested = universityIdentity_(query);
+  if (!requested.key) return true;
+  if (source.key === requested.key) return true;
+
+  // 사용자가 특정 캠퍼스명을 직접 입력했다면 그 캠퍼스만 찾습니다. 시트의
+  // (세)/(글)과 사용자가 쓰는 (세종)/(글로컬) 표기도 같은 값으로 봅니다.
+  if (requested.isCampus) {
+    return source.isCampus && source.alias === requested.alias &&
+      source.campusAlias === requested.campusAlias;
+  }
+  if (!requested.alias || source.alias !== requested.alias) return false;
+  return includeCampuses === true || !source.isCampus;
+}
+
+function universityCandidateIndexes_(map, query, includeCampuses) {
+  const requested = universityIdentity_(query);
+  if (!requested.key) return [];
+
+  // 정확한 대학명/캠퍼스명이 들어온 일반 검색은 Map의 단일 bucket을 바로
+  // 사용합니다. 대학교를 바꿔 검색할 때 전체 행을 다시 훑지 않습니다.
+  if (map.has(requested.key) && (!includeCampuses || requested.isCampus)) {
+    return map.get(requested.key).slice();
+  }
+
   const indexes = [];
   map.forEach((rowIndexes, university) => {
-    // 대학명 필터의 기존 부분 일치 의미를 지키기 위해 정확히 같은 bucket뿐
-    // 아니라 검색어를 포함하는 모든 대학 bucket을 합칩니다.
-    if (university.includes(query)) indexes.push(...rowIndexes);
+    if (universityMatchesQuery_(university, requested.key, includeCampuses)) {
+      indexes.push(...rowIndexes);
+    }
   });
   indexes.sort((a, b) => a - b);
   return indexes;
@@ -705,8 +832,12 @@ function candidateRowIndexes_(searchIndex, filters) {
   const universityMapRequired = filters.university || filters.detailUniversity;
   if (universityMapRequired) {
     const universityMap = ensureCandidateMap_(searchIndex, 'university');
-    if (filters.university) lists.push(universityCandidateIndexes_(universityMap, filters.university));
-    if (filters.detailUniversity) lists.push(universityCandidateIndexes_(universityMap, filters.detailUniversity));
+    if (filters.university) {
+      lists.push(universityCandidateIndexes_(universityMap, filters.university, filters.includeCampuses));
+    }
+    if (filters.detailUniversity) {
+      lists.push(universityCandidateIndexes_(universityMap, filters.detailUniversity, filters.includeCampuses));
+    }
   }
 
   EXACT_CANDIDATE_FIELDS.forEach(field => {
@@ -751,7 +882,7 @@ function getNormalizedSearchRow_(searchIndex, rowIndex) {
   if (searchIndex.normalizedRows[rowIndex]) return searchIndex.normalizedRows[rowIndex];
   const row = searchIndex.rows[rowIndex];
   const normalized = {
-    university: normalize_(row[COL.university]),
+    university: normalizeUniversity_(row[COL.university]),
     name: normalize_(row[COL.name]),
     universityType: normalize_(row[COL.universityType]),
     enrollment: normalize_(row[COL.enrollment]),
@@ -767,13 +898,21 @@ function getNormalizedSearchRow_(searchIndex, rowIndex) {
 
 function matchesNormalizedFilters_(searchIndex, rowIndex, filters) {
   const row = getNormalizedSearchRow_(searchIndex, rowIndex);
-  if (filters.university && !row.university.includes(filters.university)) return false;
+  if (filters.university && !universityMatchesQuery_(
+    row.university,
+    filters.university,
+    filters.includeCampuses
+  )) return false;
   if (filters.name && !row.name.includes(filters.name)) return false;
   if (filters.universityType && row.universityType !== filters.universityType) return false;
   if (filters.enrollment && row.enrollment !== filters.enrollment) return false;
   if (filters.classNo && row.classNo !== filters.classNo) return false;
   if (filters.detailName && !row.name.includes(filters.detailName)) return false;
-  if (filters.detailUniversity && !row.university.includes(filters.detailUniversity)) return false;
+  if (filters.detailUniversity && !universityMatchesQuery_(
+    row.university,
+    filters.detailUniversity,
+    filters.includeCampuses
+  )) return false;
   if (filters.track && row.track !== filters.track) return false;
   if (filters.admissionType && row.admissionType !== filters.admissionType) return false;
 
@@ -787,7 +926,12 @@ function matchesNormalizedFilters_(searchIndex, rowIndex, filters) {
 
 function findMatchingRowIndexes_(snapshot, filters) {
   const normalizedFilters = normalizedSearchFilters_(filters);
-  const cached = readMatchCache_(snapshot.revision, normalizedFilters, snapshot.rows.length);
+  const cached = readMatchCache_(
+    snapshot.revision,
+    snapshot.snapshotToken,
+    normalizedFilters,
+    snapshot.rows.length
+  );
   if (cached) {
     SEARCH_METRICS_.matchCacheHits += 1;
     return { ...cached, cacheHit: true };
@@ -800,7 +944,7 @@ function findMatchingRowIndexes_(snapshot, filters) {
     matchesNormalizedFilters_(searchIndex, rowIndex, normalizedFilters)
   ));
   const result = { rowIndexes, candidateCount: candidates.length, cacheHit: false };
-  writeMatchCache_(snapshot.revision, normalizedFilters, result);
+  writeMatchCache_(snapshot.revision, snapshot.snapshotToken, normalizedFilters, result);
   return result;
 }
 
@@ -846,34 +990,36 @@ function columnLetter_(column) {
 }
 
 function sanitizeFilters_(filters) {
+  const source = filters && typeof filters === 'object' ? filters : {};
   return {
-    university: cleanText_(filters.university, 80),
-    name: cleanText_(filters.name, 40),
-    admissionName: cleanText_(filters.admissionName, 100),
-    universityType: cleanText_(filters.universityType, 40),
-    enrollment: cleanText_(filters.enrollment, 40),
-    classNo: cleanText_(filters.classNo, 20),
-    detailName: cleanText_(filters.detailName, 40),
-    detailUniversity: cleanText_(filters.detailUniversity, 80),
-    track: cleanText_(filters.track, 40),
-    admissionType: cleanText_(filters.admissionType, 40),
-    detailAdmissionName: cleanText_(filters.detailAdmissionName, 100),
+    university: cleanText_(source.university, 80),
+    name: cleanText_(source.name, 40),
+    admissionName: cleanText_(source.admissionName, 100),
+    universityType: cleanText_(source.universityType, 40),
+    enrollment: cleanText_(source.enrollment, 40),
+    classNo: cleanText_(source.classNo, 20),
+    detailName: cleanText_(source.detailName, 40),
+    detailUniversity: cleanText_(source.detailUniversity, 80),
+    track: cleanText_(source.track, 40),
+    admissionType: cleanText_(source.admissionType, 40),
+    detailAdmissionName: cleanText_(source.detailAdmissionName, 100),
+    includeCampuses: cleanBoolean_(source.includeCampuses),
   };
 }
 
 function hasSearchCondition_(filters) {
-  return Object.keys(filters).some(key => normalize_(filters[key]).length > 0);
+  return SEARCH_VALUE_FILTER_KEYS.some(key => normalize_(filters[key]).length > 0);
 }
 
 function matchesFilters_(row, f) {
-  if (!includes_(row[COL.university], f.university)) return false;
+  if (!universityMatchesQuery_(row[COL.university], f.university, f.includeCampuses)) return false;
   if (!includes_(row[COL.name], f.name)) return false;
   if (!includesAdmissionNameRow_(row, f.admissionName)) return false;
   if (!equals_(row[COL.universityType], f.universityType)) return false;
   if (!equals_(row[COL.enrollment], f.enrollment)) return false;
   if (!equals_(row[COL.classNo], f.classNo)) return false;
   if (!includes_(row[COL.name], f.detailName)) return false;
-  if (!includes_(row[COL.university], f.detailUniversity)) return false;
+  if (!universityMatchesQuery_(row[COL.university], f.detailUniversity, f.includeCampuses)) return false;
   if (!equals_(row[COL.track], f.track)) return false;
   if (!equals_(normalizeAdmissionType_(row[COL.admissionType]), f.admissionType)) return false;
   if (!includesAdmissionNameRow_(row, f.detailAdmissionName)) return false;
@@ -1332,6 +1478,12 @@ function cleanText_(value, maxLength) {
     .replace(/[\u0000-\u001F\u007F]/g, '')
     .trim()
     .slice(0, maxLength);
+}
+
+function cleanBoolean_(value) {
+  if (value === true || value === 1) return true;
+  const normalized = normalize_(value);
+  return normalized === 'true' || normalized === '1' || normalized === 'on' || normalized === 'yes';
 }
 
 function text_(value) {

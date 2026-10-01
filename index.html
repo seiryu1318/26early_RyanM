@@ -823,7 +823,7 @@
     }
     .card-primary {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(104px, .8fr) minmax(0, 1.2fr);
       gap: 10px;
       align-items: start;
       padding-bottom: 11px;
@@ -834,6 +834,16 @@
     .card-name-row { display: flex; align-items: center; gap: 6px; }
     .card-name-row .copy-button { flex: 0 0 auto; }
     .card-university { min-width: 0; margin-top: 3px; overflow: hidden; color: #654653; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+    .card-quick-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 5px 9px;
+      min-width: 0;
+      padding-top: 1px;
+    }
+    .card-quick-meta .meta-row { min-width: 0; }
+    .card-quick-meta .meta-row small { line-height: 1.25; }
+    .card-quick-meta .meta-row span { line-height: 1.3; }
     .card-keydata { display: grid; grid-template-columns: 1fr 1.15fr; gap: 8px; margin: 12px 0; }
     .keydata-box { min-width: 0; padding: 9px; border-radius: 14px; background: linear-gradient(180deg, rgba(255,244,249,.66), rgba(255,211,231,.53)); box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 4px 11px rgba(110,27,66,.07); }
     .keydata-box small { display: block; color: #8a5b70; font-size: 12px; font-weight: 800; }
@@ -841,7 +851,7 @@
     .card-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 11px; }
     .meta-row { min-width: 0; }
     .card-meta .meta-row.full { grid-column: auto; }
-    .card-meta .meta-row:nth-child(7) { grid-column: 1 / -1; }
+    .card-meta .meta-row:last-child { grid-column: 1 / -1; }
     .meta-row small { display: block; color: #9c7a89; font-size: 12px; font-weight: 800; }
     .meta-row span { display: block; min-width: 0; overflow: hidden; color: #4b3440; font-size: 14px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
     .card-inline-results {
@@ -929,6 +939,29 @@
         scrollbar-gutter: stable;
       }
       body.pc-edition .result-table th { top: 0; }
+    }
+
+    /* A multi-row search panel can consume nearly the whole window when a PC
+       app window is made short. In that case the panel joins the document
+       flow, while the result bar and table header retain their own sticky
+       positions. This leaves a usable table viewport and lets wheel scrolling
+       chain back to the page instead of trapping the user in the table. */
+    body.pc-edition.has-searched.pc-short-viewport .search-panel {
+      position: relative;
+      top: auto;
+    }
+    body.pc-edition.has-searched.pc-short-viewport .results-bar {
+      top: calc(var(--topbar-height) + var(--sticky-search-gap));
+    }
+    body.pc-edition.has-searched.pc-short-viewport .result-table th {
+      top: calc(var(--topbar-height) + var(--sticky-search-gap) + var(--sticky-results-bar-height));
+    }
+    @media (max-width: 1413px) {
+      body.pc-edition.pc-short-viewport .table-wrap {
+        max-height: max(180px, calc(100dvh - var(--topbar-height) - var(--sticky-search-gap) - var(--sticky-results-bar-height) - 18px));
+        overscroll-behavior: auto;
+      }
+      body.pc-edition.has-searched.pc-short-viewport .result-table th { top: 0; }
     }
 
     body:not(.has-searched) main {
@@ -1058,12 +1091,14 @@
       body.mobile-edition .primary-search .field:nth-child(4) { grid-column: span 2; }
       body.mobile-edition .primary-search .field:nth-child(5) { grid-column: auto; }
       body.mobile-edition .detail-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      body.mobile-edition .card-primary { grid-template-columns: minmax(170px, .7fr) minmax(0, 1.3fr); }
       body.mobile-edition .card-meta { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      body.mobile-edition .card-meta .meta-row:last-child { grid-column: auto; }
     }
 
     @media (min-width: 900px) {
+      body.mobile-edition .card-quick-meta { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       body.mobile-edition .card-meta { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      body.mobile-edition .card-meta .meta-row:nth-child(7) { grid-column: span 2; }
       body.mobile-edition .card-inline-results { grid-template-columns: repeat(5, minmax(0, 1fr)); }
       body.mobile-edition .card-result-field,
       body.mobile-edition .card-result-field:nth-child(4),
@@ -1342,6 +1377,21 @@
         padding: 0 8px;
       }
       body.mobile-edition.has-searched .detail-filters { margin-top: 4px; }
+    }
+
+    /* iOS focuses and enlarges form controls whose computed text is below 16px.
+       Keep native pinch zoom available and prevent only that focus-triggered zoom. */
+    body.mobile-edition input,
+    body.mobile-edition select,
+    body.mobile-edition textarea { font-size: 16px !important; }
+    body.mobile-edition .card-quick-meta .meta-row {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: baseline;
+      gap: 3px;
+    }
+    @media (max-width: 350px) {
+      body.mobile-edition .card-quick-meta .meta-row { display: block; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -2091,7 +2141,7 @@
       records.forEach(record => {
         const card = makeElement('article', '', 'result-card');
         const primary = makeElement('div', '', 'card-primary');
-        const identity = makeElement('div');
+        const identity = makeElement('div', '', 'card-identity');
         const nameRow = makeElement('div', '', 'card-name-row');
         const name = makeElement('h3', record.name || '-', 'card-name');
         name.title = record.name || '';
@@ -2099,16 +2149,23 @@
         const university = makeElement('div', record.university || '-', 'card-university');
         university.title = record.university || '';
         identity.append(nameRow, university);
-        primary.append(identity);
+
+        const quickMeta = makeElement('div', '', 'card-quick-meta');
+        quickMeta.setAttribute('aria-label', '학생 정보');
+        quickMeta.append(
+          metaRow('재학여부', record.enrollment, false, enrollmentStatusClass(record.enrollment)),
+          metaRow('반', record.classNo),
+          metaRow('번호', record.studentNo),
+          metaRow('계열', record.track)
+        );
+        primary.append(identity, quickMeta);
 
         const keys = makeElement('div', '', 'card-keydata');
         keys.append(keyData('생년월일', normalizeBirthdate(record.birthdate)), keyData('수험번호', record.examNo || '-'));
 
         const meta = makeElement('div', '', 'card-meta');
         meta.append(
-          metaRow('재학여부', record.enrollment, false, enrollmentStatusClass(record.enrollment)),
-          metaRow('반', record.classNo), metaRow('번호', record.studentNo),
-          metaRow('계열', record.track), metaRow('전형유형', record.admissionType),
+          metaRow('전형유형', record.admissionType),
           metaRow('전형명', cleanAdmissionName(record.admissionName), true),
           metaRow('모집단위', record.recruitmentUnit, true)
         );
@@ -2969,6 +3026,17 @@
         ? Math.ceil(elements.searchPanel.getBoundingClientRect().height)
         : 0;
       document.documentElement.style.setProperty('--sticky-search-height', `${height}px`);
+      const rootStyle = getComputedStyle(document.documentElement);
+      const cssPixels = (name, fallback) => Number.parseFloat(rootStyle.getPropertyValue(name)) || fallback;
+      const reservedHeight = cssPixels('--topbar-height', 68)
+        + cssPixels('--sticky-search-gap', 12)
+        + cssPixels('--sticky-results-bar-height', 58)
+        + 28;
+      const tableRoom = window.innerHeight - height - reservedHeight;
+      document.body.classList.toggle(
+        'pc-short-viewport',
+        EDITION === 'pc' && isActive && tableRoom < 240
+      );
     }
 
     function updateMobileSearchSummary(filters = state.lastFilters || {}) {

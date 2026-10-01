@@ -243,6 +243,9 @@ function save_(payload) {
   const expectedVersion = cleanText_(payload.expectedVersion, 128);
   const values = payload.values || {};
   if (!recordId) throw apiError_('RECORD_ID_REQUIRED', '저장할 학생 정보가 없습니다.');
+  if (!expectedVersion) {
+    throw apiError_('VERSION_REQUIRED', '자료 버전이 없습니다. 다시 검색한 뒤 저장해 주세요.');
+  }
 
   const lock = LockService.getScriptLock();
   lock.waitLock(CONFIG.lockWaitMs);
@@ -267,7 +270,7 @@ function save_(payload) {
 
     const current = rows[rowIndex];
     const currentVersion = makeVersion_(current);
-    if (expectedVersion && currentVersion !== expectedVersion) {
+    if (currentVersion !== expectedVersion) {
       const conflict = apiError_('CONFLICT', '다른 사용자가 먼저 수정했습니다. 최신 값을 불러왔습니다.');
       conflict.details = { current: toRecord_(current) };
       throw conflict;
@@ -394,7 +397,7 @@ function toRecord_(row) {
     track: text_(row[COL.track]),
     admissionType: normalizeAdmissionType_(row[COL.admissionType]),
     admissionName: normalizeAdmissionName_(row[COL.admissionName]),
-    birthdate: text_(row[COL.birthdate]),
+    birthdate: normalizeBirthdate_(row[COL.birthdate]),
     examNo: text_(row[COL.examNo]),
     selectionType: text_(row[COL.selectionType]),
     stage1Locked,
@@ -425,32 +428,146 @@ function makeVersion_(row) {
 }
 
 function normalizeAdmissionType_(value) {
-  const raw = text_(value).trim();
-  const compact = normalize_(raw);
-  if (compact.includes('학생부위주(교과)') || compact.includes('학생부교과')) return '교과';
-  if (compact.includes('학생부위주(종합)') || compact.includes('학생부종합')) return '종합';
+  const raw = inlineText_(value);
+  const compact = normalize_(raw).replace(/（/g, '(').replace(/）/g, ')');
+  const slashless = compact.replace(/[\/·ㆍ]/g, '');
+  if (compact === '교과' || compact.includes('학생부위주(교과)') || compact.includes('학생부교과')) return '교과';
+  if (compact === '종합' || compact.includes('학생부위주(종합)') || compact.includes('학생부종합')) return '종합';
   if (compact.includes('논술')) return '논술';
+  if (slashless === '실기실적위주' || slashless === '실기실적') return '실기·실적';
+  if (compact === '학생부위주' || compact === '학생부') return '학생부';
+  if (compact === '면접위주' || compact === '면접') return '면접';
   return raw;
 }
 
 function normalizeAdmissionName_(value) {
-  let raw = text_(value).trim();
-  const wrappers = ['학생부교과', '학생부종합', '논술위주'];
-  wrappers.forEach(prefix => {
-    const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const full = new RegExp('^' + escaped + '\\s*\\((.*)\\)$');
-    const match = raw.match(full);
-    if (match) raw = match[1].trim();
-  });
-  raw = raw
-    .replace(/학생부교과/g, '')
-    .replace(/학생부종합/g, '')
-    .replace(/논술위주/g, '')
-    .replace(/^\s*[\-–—:：/|]+\s*/, '')
+  let raw = inlineText_(value);
+  if (!raw) return '';
+
+  const category = '(?:' +
+    '학생부\\s*위주(?:\\s*[\\(（]\\s*(?:교과|종합)\\s*[\\)）])?|' +
+    '학생부\\s*(?:교과|종합)|' +
+    '실기\\s*(?:[/·ㆍ]\\s*)?실적(?:\\s*위주)?|' +
+    '논술\\s*위주|논술' +
+  ')';
+  const leadingCategory = new RegExp(
+    '^\\s*(?:' +
+      '\\(\\s*' + category + '\\s*\\)|' +
+      '\\[\\s*' + category + '\\s*\\]|' +
+      '\\{\\s*' + category + '\\s*\\}|' +
+      '【\\s*' + category + '\\s*】|' +
+      category +
+    ')'
+  );
+  const leadingSeparators = /^\s*(?:[:：\-–—/|·,，;；]+\s*)+/;
+
+  // Some source cells repeat both a broad and a narrow category. Strip only
+  // consecutive leading category labels so meaningful text later in the name
+  // is never removed.
+  let previous = '';
+  while (raw && raw !== previous) {
+    previous = raw;
+    raw = raw.replace(leadingCategory, '').replace(leadingSeparators, '').trim();
+  }
+
+  raw = normalizeAdmissionWrappers_(raw);
+
+  return raw
     .replace(/\(\s*\)/g, '')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/（\s*）/g, '')
+    .replace(/\)\s*\(/g, ') (')
+    .replace(/）\s*（/g, '） （')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+전형/g, '전형')
     .trim();
-  return raw || text_(value).trim();
+}
+
+function normalizeAdmissionWrappers_(value) {
+  const groups = balancedWrapperGroups_(value);
+  if (!groups) return value;
+
+  const meaningful = groups.map(inlineText_).filter(Boolean);
+  if (groups.length === 1) return meaningful[0] || '';
+  return meaningful.join(' · ');
+}
+
+function balancedWrapperGroups_(value) {
+  const source = inlineText_(value);
+  if (!source) return null;
+
+  const closingFor = {
+    '(': ')',
+    '（': '）',
+    '[': ']',
+    '【': '】',
+  };
+  const closingCharacters = {
+    ')': true,
+    '）': true,
+    ']': true,
+    '】': true,
+  };
+  const groups = [];
+  let index = 0;
+
+  while (index < source.length) {
+    while (index < source.length && /\s/.test(source.charAt(index))) index += 1;
+    if (index >= source.length) break;
+
+    const opening = source.charAt(index);
+    const expectedClosing = closingFor[opening];
+    if (!expectedClosing) return null;
+
+    const contentStart = index + 1;
+    const stack = [expectedClosing];
+    index += 1;
+
+    while (index < source.length && stack.length) {
+      const character = source.charAt(index);
+      if (closingFor[character]) {
+        stack.push(closingFor[character]);
+      } else if (character === stack[stack.length - 1]) {
+        stack.pop();
+      } else if (closingCharacters[character]) {
+        return null;
+      }
+      index += 1;
+    }
+
+    if (stack.length) return null;
+    groups.push(source.slice(contentStart, index - 1));
+
+    while (index < source.length && /\s/.test(source.charAt(index))) index += 1;
+    if (index < source.length && !closingFor[source.charAt(index)]) return null;
+  }
+
+  return groups.length ? groups : null;
+}
+
+function normalizeBirthdate_(value) {
+  const raw = inlineText_(value);
+  if (!raw) return '';
+
+  // Preserve a two-digit source year as YYMMDD (for example 08.06.26 ->
+  // 080626), while retaining an explicitly supplied four-digit year.
+  const parts = raw.match(/\d+/g) || [];
+  if (parts.length >= 3 && /^\d{2}$/.test(parts[0]) && /^\d{1,2}$/.test(parts[1]) && /^\d{1,2}$/.test(parts[2])) {
+    return parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
+  }
+  if (parts.length >= 3 && /^\d{4}$/.test(parts[0]) && /^\d{1,2}$/.test(parts[1]) && /^\d{1,2}$/.test(parts[2])) {
+    return parts[0] + parts[1].padStart(2, '0') + parts[2].padStart(2, '0');
+  }
+
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 6 || digits.length === 8) return digits;
+  return digits.slice(0, 8);
+}
+
+function inlineText_(value) {
+  return text_(value)
+    .replace(/[\r\n\t\f\v]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function includesAdmissionName_(source, query) {

@@ -6,7 +6,7 @@
   <meta name="color-scheme" content="light">
   <meta name="robots" content="noindex,nofollow,noarchive">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'">
-  <title>수시모집 합불 입력</title>
+  <title>2027 수시모집 합불 입력</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop stop-color='%23ff4f9a'/%3E%3Cstop offset='1' stop-color='%23b70f63'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='url(%23g)'/%3E%3Cpath d='M19 33.5 28 42l18-21' fill='none' stroke='white' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <style>
     :root {
@@ -23,7 +23,7 @@
       --ink: #2e1b25;
       --muted: #715b66;
       --line: rgba(145, 28, 82, .16);
-      --glass: rgba(255, 255, 255, .88);
+      --glass: rgba(255, 245, 250, .54);
       --topbar-height: 68px;
       --radius-xl: 28px;
       --radius-lg: 20px;
@@ -102,12 +102,12 @@
       height: var(--topbar-height);
       border-bottom: 1px solid rgba(255, 255, 255, .58);
       background:
-        linear-gradient(180deg, rgba(255,255,255,.96) 0 16%, rgba(255,247,251,.9) 45%, rgba(252,221,235,.84) 100%);
+        linear-gradient(180deg, rgba(255,255,255,.78) 0 16%, rgba(255,247,251,.64) 45%, rgba(252,221,235,.57) 100%);
       box-shadow: 0 10px 34px rgba(78, 20, 48, .16), inset 0 -1px 0 rgba(166,37,95,.08);
-      backdrop-filter: blur(22px) saturate(1.45);
+      backdrop-filter: blur(14px) saturate(1.35);
     }
     .topbar-inner {
-      width: min(1540px, calc(100% - 32px));
+      width: min(1760px, calc(100% - 24px));
       height: 100%;
       margin: 0 auto;
       display: flex;
@@ -186,7 +186,7 @@
     main {
       position: relative;
       z-index: 2;
-      width: min(1540px, calc(100% - 32px));
+      width: min(1760px, calc(100% - 24px));
       margin: 0 auto;
       padding: calc(var(--topbar-height) + 54px) 0 70px;
     }
@@ -196,9 +196,9 @@
       border: 1px solid rgba(255,255,255,.62);
       border-radius: var(--radius-xl);
       background:
-        linear-gradient(112deg, rgba(255,255,255,.96) 0%, rgba(255,255,255,.7) 27%, rgba(255,228,240,.74) 68%, rgba(246,190,217,.72) 100%);
+        linear-gradient(112deg, rgba(255,255,255,.68) 0%, rgba(255,255,255,.45) 27%, rgba(255,228,240,.5) 68%, rgba(246,190,217,.47) 100%);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(24px) saturate(1.3);
+      backdrop-filter: blur(14px) saturate(1.35);
     }
     .glass-panel::before {
       content: "";
@@ -207,8 +207,8 @@
       z-index: 0;
       border-radius: calc(var(--radius-xl) - 1px);
       background:
-        linear-gradient(164deg, rgba(255,255,255,.72) 0%, rgba(255,255,255,.22) 25%, transparent 42%),
-        radial-gradient(ellipse at 18% -10%, rgba(255,255,255,.8), transparent 40%);
+        linear-gradient(164deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.14) 25%, transparent 42%),
+        radial-gradient(ellipse at 18% -10%, rgba(255,255,255,.56), transparent 40%);
       clip-path: inset(0 round calc(var(--radius-xl) - 1px));
       pointer-events: none;
     }
@@ -217,21 +217,21 @@
     .search-panel {
       padding: 18px;
       background:
-        linear-gradient(118deg, rgba(255,255,255,.97) 0%, rgba(255,248,252,.88) 38%, rgba(255,218,235,.84) 76%, rgba(244,174,207,.78) 100%);
+        linear-gradient(118deg, rgba(255,255,255,.68) 0%, rgba(255,248,252,.55) 38%, rgba(255,218,235,.54) 76%, rgba(244,174,207,.48) 100%);
       box-shadow: 0 30px 82px rgba(70,22,45,.25), 0 9px 28px rgba(137,35,82,.16), inset 0 1px 0 rgba(255,255,255,.98);
       transition: padding .22s ease, border-radius .22s ease, box-shadow .22s ease;
     }
     .primary-search {
       display: grid;
-      grid-template-columns: minmax(100px, .45fr) minmax(135px, .72fr) minmax(180px, 1.15fr) minmax(190px, 1.25fr) auto;
+      grid-template-columns: minmax(120px, .58fr) minmax(96px, .42fr) minmax(130px, .62fr) minmax(175px, 1fr) minmax(190px, 1.08fr) auto;
       align-items: end;
       gap: 8px;
       padding: 9px;
       border: 1px solid rgba(255,255,255,.72);
       border-radius: 24px;
       background:
-        linear-gradient(180deg, rgba(255,255,255,.93), rgba(255,239,247,.78)),
-        linear-gradient(110deg, rgba(255,255,255,.7), rgba(245,173,207,.18));
+        linear-gradient(180deg, rgba(255,255,255,.67), rgba(255,239,247,.52)),
+        linear-gradient(110deg, rgba(255,255,255,.48), rgba(245,173,207,.13));
       box-shadow: inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(148,35,86,.07), 0 11px 30px rgba(108,28,66,.11);
     }
     .field { position: relative; min-width: 0; }
@@ -250,7 +250,7 @@
       border: 0;
       border-radius: 15px;
       color: var(--ink);
-      background: linear-gradient(180deg, rgba(255,255,255,.99), rgba(255,245,249,.94));
+      background: linear-gradient(180deg, rgba(255,255,255,.84), rgba(255,245,249,.72));
       box-shadow: inset 0 1px 0 #fff, inset 0 -2px 4px rgba(130,29,76,.055), 0 4px 11px rgba(103,29,64,.055);
       font-size: 16px;
       appearance: none;
@@ -324,7 +324,7 @@
       padding: 18px;
       border: 1px solid rgba(255,255,255,.64);
       border-radius: 20px;
-      background: linear-gradient(145deg, rgba(255,255,255,.82), rgba(255,228,240,.68));
+      background: linear-gradient(145deg, rgba(255,255,255,.62), rgba(255,228,240,.48));
       box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 8px 20px rgba(111,27,67,.07);
       animation: unfold .18s ease-out;
     }
@@ -359,7 +359,7 @@
     .results-section {
       margin-top: 22px;
       overflow: clip;
-      background: linear-gradient(126deg, rgba(255,255,255,.94), rgba(255,236,245,.82) 60%, rgba(244,190,216,.75));
+      background: linear-gradient(126deg, rgba(255,255,255,.58), rgba(255,236,245,.49) 60%, rgba(244,190,216,.45));
     }
     .results-bar {
       display: flex;
@@ -369,7 +369,7 @@
       min-height: 58px;
       padding: 11px 18px;
       border-bottom: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,232,243,.5));
+      background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,232,243,.37));
       box-shadow: inset 0 1px 0 rgba(255,255,255,.94);
     }
     .results-count { font-weight: 850; letter-spacing: -.02em; }
@@ -408,7 +408,7 @@
     .empty-state svg { display: block; width: 40px; height: 40px; margin: 0 auto 11px; color: #d784aa; }
 
     .table-wrap { width: 100%; overflow: visible; }
-    .result-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
+    .result-table { width: 100%; min-width: 1390px; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
     .result-table th {
       position: sticky;
       top: calc(var(--topbar-height) + var(--sticky-search-gap) + var(--sticky-search-height) + 10px);
@@ -416,23 +416,23 @@
       padding: 0;
       border-bottom: 1px solid rgba(137,24,76,.18);
       background:
-        linear-gradient(180deg, rgba(255,255,255,.98) 0%, rgba(255,247,251,.96) 37%, rgba(250,218,233,.96) 100%);
+        linear-gradient(180deg, rgba(255,255,255,.86) 0%, rgba(255,247,251,.8) 37%, rgba(250,218,233,.78) 100%);
       box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(142,28,81,.08), 0 5px 13px rgba(88,20,52,.08);
       backdrop-filter: blur(15px);
       white-space: nowrap;
     }
     .sort-button {
       width: 100%;
-      min-height: 52px;
+      min-height: 47px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 6px;
-      padding: 8px 10px;
+      padding: 7px 4px;
       border: 0;
       background: transparent;
       color: #713a54;
-      font-size: 14.5px;
+      font-size: 12px;
       font-weight: 850;
       cursor: pointer;
     }
@@ -440,61 +440,122 @@
     .sort-mark { color: #b98da1; font-size: 11px; }
     th[aria-sort="ascending"] .sort-mark, th[aria-sort="descending"] .sort-mark { color: var(--pink-700); }
     .result-table td {
-      max-width: 190px;
-      padding: 14px 11px;
+      max-width: none;
+      padding: 9px 4px;
       border-bottom: 1px solid rgba(132,41,82,.09);
-      background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,247,251,.7));
+      background: linear-gradient(180deg, rgba(255,255,255,.59), rgba(255,247,251,.45));
       text-align: center;
       vertical-align: middle;
-      word-break: keep-all;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12px;
+      font-weight: 750;
     }
-    .result-table tbody tr:hover td { background: linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,231,242,.93)); }
-    .result-table .cell-name { color: var(--pink-900); font-size: 17px; font-weight: 900; }
+    .result-table tbody tr:hover td { background: linear-gradient(180deg, rgba(255,255,255,.79), rgba(255,231,242,.67)); }
+    .result-table .cell-name { color: var(--pink-900); font-size: 13px; font-weight: 900; }
     .result-table .cell-dob, .result-table .cell-exam {
       color: #4c1d34;
-      background: rgba(255,226,239,.78);
-      font-size: 16px;
+      background: rgba(255,204,229,.62);
+      font-size: 12.5px;
       font-weight: 900;
       font-variant-numeric: tabular-nums;
       letter-spacing: .02em;
     }
-    .result-table .cell-exam { max-width: 220px; word-break: break-all; }
-    .result-table .cell-admission { max-width: 250px; text-align: left; }
-    .result-table .cell-action { min-width: 132px; }
+    .result-table .cell-exam { max-width: none; word-break: normal; }
+    .result-table .cell-university, .result-table .cell-admission { text-align: left; }
+    .result-input-wrap { min-width: 0; }
     .copy-value {
+      width: 100%;
       min-width: 0;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 5px;
     }
-    .copy-text { min-width: 0; overflow-wrap: anywhere; }
+    .copy-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .copy-button {
-      min-width: 30px;
-      min-height: 30px;
-      padding: 4px 6px;
+      min-width: 25px;
+      min-height: 25px;
+      padding: 2px 4px;
       border: 0;
       border-radius: 10px;
       color: var(--pink-800);
       background: rgba(255,255,255,.58);
       box-shadow: 0 3px 9px rgba(128,24,73,.08);
-      font-size: 16px;
+      font-size: 13px;
       font-weight: 900;
       cursor: pointer;
     }
     .copy-button:hover { color: #fff; background: var(--pink-600); }
-    .edit-button {
-      min-height: 40px;
-      padding: 0 13px;
+    .inline-result-control {
+      width: 100%;
+      min-width: 0;
+      height: 33px;
+      padding: 0 6px;
       border: 0;
-      border-radius: 12px;
-      color: var(--pink-800);
-      background: linear-gradient(180deg, #fff 0%, #fff7fa 34%, #ffddea 100%);
-      box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 rgba(150,25,80,.08), 0 6px 14px rgba(147,25,80,.13);
+      border-radius: 9px;
+      color: #641638;
+      background: linear-gradient(180deg, rgba(255,255,255,.82), rgba(255,217,234,.68));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.88), 0 3px 8px rgba(109,25,63,.09);
+      font-size: 11.5px;
       font-weight: 850;
-      cursor: pointer;
+      text-align: center;
+      white-space: nowrap;
     }
-    .edit-button.has-result { color: #fff; border-color: transparent; background: linear-gradient(180deg, #ff82b5, #e13b84 45%, #ac185b); box-shadow: inset 0 1px 0 rgba(255,255,255,.68), 0 7px 15px rgba(143,20,75,.22); }
+    select.inline-result-control { appearance: auto; padding-right: 2px; cursor: pointer; }
+    input.inline-result-control { font-variant-numeric: tabular-nums; }
+    .inline-result-control:disabled { cursor: wait; opacity: .58; }
+    .inline-result-control.is-filled {
+      color: #fff;
+      background: linear-gradient(155deg, rgba(245,100,161,.92), rgba(177,25,91,.92));
+    }
+    .stage1-locked {
+      min-height: 33px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 0 5px;
+      border-radius: 9px;
+      color: #713c00;
+      background: linear-gradient(180deg, rgba(255,247,211,.9), rgba(249,195,91,.78));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.86), 0 3px 8px rgba(124,82,10,.12);
+      font-size: 11px;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+    .inline-save-state {
+      min-height: 15px;
+      margin-top: 2px;
+      color: #7e5b6b;
+      font-size: 9.5px;
+      font-weight: 800;
+      line-height: 1;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .inline-save-state.saved { color: #137554; }
+    .inline-save-state.error { color: #b3224e; }
+    .result-table :is(th, td):nth-child(1) { width: 74px; }
+    .result-table :is(th, td):nth-child(2) { width: 72px; }
+    .result-table :is(th, td):nth-child(3) { width: 39px; }
+    .result-table :is(th, td):nth-child(4) { width: 42px; }
+    .result-table :is(th, td):nth-child(5) { width: 76px; }
+    .result-table :is(th, td):nth-child(6) { width: 112px; }
+    .result-table :is(th, td):nth-child(7) { width: 52px; }
+    .result-table :is(th, td):nth-child(8) { width: 62px; }
+    .result-table :is(th, td):nth-child(9) { width: 134px; }
+    .result-table :is(th, td):nth-child(10) { width: 92px; }
+    .result-table :is(th, td):nth-child(11) { width: 116px; }
+    .result-table :is(th, td):nth-child(12),
+    .result-table :is(th, td):nth-child(13) { width: 90px; }
+    .result-table :is(th, td):nth-child(14) { width: 103px; }
+    .result-table :is(th, td):nth-child(15),
+    .result-table :is(th, td):nth-child(16) { width: 82px; }
+    .result-table th:nth-child(n+12) {
+      background: linear-gradient(180deg, rgba(255,238,246,.82), rgba(245,180,211,.72));
+    }
 
     .list-controls {
       display: flex;
@@ -535,31 +596,6 @@
     }
     .dialog-title { margin: 0; font-size: 18px; font-weight: 900; letter-spacing: -.03em; }
     .dialog-body { padding: 18px; }
-    .identity-card {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 9px;
-      margin-bottom: 16px;
-      padding: 15px;
-      border: 0;
-      border-radius: 18px;
-      background: linear-gradient(145deg, #fff, #ffeef5);
-    }
-    .identity-name { grid-column: 1 / -1; color: var(--pink-900); font-size: 23px; font-weight: 950; }
-    .identity-item small { display: block; color: #91717f; font-size: 12px; font-weight: 750; }
-    .identity-item strong { display: block; margin-top: 2px; font-size: 16px; font-weight: 900; word-break: break-all; }
-    .editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .locked-value {
-      min-height: 48px;
-      display: flex;
-      align-items: center;
-      padding: 0 14px;
-      border: 0;
-      border-radius: 15px;
-      color: #775364;
-      background: #f2e8ed;
-      font-weight: 850;
-    }
     .dialog-foot {
       position: sticky;
       bottom: 0;
@@ -665,7 +701,7 @@
       gap: 8px;
       padding: 9px 11px;
       border-bottom: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(255,255,255,.97), rgba(251,221,235,.95));
+      background: linear-gradient(180deg, rgba(255,255,255,.78), rgba(251,221,235,.7));
       box-shadow: inset 0 1px 0 #fff, 0 6px 16px rgba(91,22,55,.1);
       backdrop-filter: blur(16px);
     }
@@ -687,8 +723,9 @@
       border: 0;
       border-radius: 18px;
       background:
-        linear-gradient(160deg, rgba(255,255,255,.99) 0%, rgba(255,255,255,.88) 25%, rgba(255,234,244,.91) 66%, rgba(248,204,225,.88) 100%);
+        linear-gradient(160deg, rgba(255,255,255,.66) 0%, rgba(255,255,255,.5) 25%, rgba(255,234,244,.56) 66%, rgba(248,204,225,.52) 100%);
       box-shadow: 0 12px 27px rgba(83,23,51,.14), inset 0 1px 0 #fff, inset 0 -1px 0 rgba(138,31,80,.07);
+      backdrop-filter: blur(12px) saturate(1.3);
     }
     .card-primary {
       display: grid;
@@ -698,32 +735,43 @@
       padding-bottom: 11px;
       border-bottom: 1px solid var(--line);
     }
-    .card-name { margin: 0; color: var(--pink-900); font-size: 21px; font-weight: 950; letter-spacing: -.04em; }
+    .card-primary > * { min-width: 0; }
+    .card-name { min-width: 0; margin: 0; overflow: hidden; color: var(--pink-900); font-size: 19px; font-weight: 950; letter-spacing: -.04em; text-overflow: ellipsis; white-space: nowrap; }
     .card-name-row { display: flex; align-items: center; gap: 6px; }
     .card-name-row .copy-button { flex: 0 0 auto; }
-    .card-university { margin-top: 3px; color: #654653; font-weight: 800; word-break: keep-all; }
-    .card-status {
-      max-width: 104px;
-      padding: 5px 9px;
-      border-radius: 999px;
-      color: var(--pink-800);
-      background: var(--pink-100);
-      font-size: 12px;
-      font-weight: 900;
-      text-align: center;
-      word-break: keep-all;
-    }
-    .card-status.done { color: #fff; background: linear-gradient(145deg, #ee5c98, #af1b60); }
+    .card-university { min-width: 0; margin-top: 3px; overflow: hidden; color: #654653; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
     .card-keydata { display: grid; grid-template-columns: 1fr 1.15fr; gap: 8px; margin: 12px 0; }
-    .keydata-box { min-width: 0; padding: 10px; border-radius: 14px; background: linear-gradient(180deg, rgba(255,244,249,.94), rgba(255,211,231,.8)); box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 4px 11px rgba(110,27,66,.07); }
+    .keydata-box { min-width: 0; padding: 9px; border-radius: 14px; background: linear-gradient(180deg, rgba(255,244,249,.66), rgba(255,211,231,.53)); box-shadow: inset 0 1px 0 rgba(255,255,255,.75), 0 4px 11px rgba(110,27,66,.07); }
     .keydata-box small { display: block; color: #8a5b70; font-size: 12px; font-weight: 800; }
-    .keydata-box .copy-value { width: 100%; justify-content: space-between; margin-top: 2px; color: #3f1a2c; font-size: 16px; font-weight: 950; font-variant-numeric: tabular-nums; }
+    .keydata-box .copy-value { width: 100%; justify-content: space-between; margin-top: 2px; color: #3f1a2c; font-size: 14px; font-weight: 950; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .card-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 11px; }
     .meta-row { min-width: 0; }
     .meta-row.full { grid-column: 1 / -1; }
     .meta-row small { display: block; color: #9c7a89; font-size: 12px; font-weight: 800; }
-    .meta-row span { display: block; color: #4b3440; font-size: 15px; font-weight: 750; overflow-wrap: anywhere; }
-    .card-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+    .meta-row span { display: block; min-width: 0; overflow: hidden; color: #4b3440; font-size: 14px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+    .card-inline-results {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 11px;
+      border-top: 1px solid rgba(132,41,82,.12);
+    }
+    .card-result-field { min-width: 0; }
+    .card-result-field:nth-child(5) { grid-column: 1 / -1; }
+    .card-result-field label {
+      display: block;
+      margin: 0 0 4px 2px;
+      overflow: hidden;
+      color: #845269;
+      font-size: 11px;
+      font-weight: 850;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .card-inline-results .inline-result-control,
+    .card-inline-results .stage1-locked { height: 38px; min-height: 38px; font-size: 12.5px; }
+    .card-inline-results .inline-save-state { grid-column: 1 / -1; }
     body.mobile-edition .list-controls { padding: 11px; }
     body.mobile-edition .list-controls button { min-width: 0; flex: 1; }
     body.mobile-edition .mobile-actionbar {
@@ -753,8 +801,6 @@
     }
     body.mobile-edition .dialog-head { min-height: 60px; }
     body.mobile-edition .dialog-body { padding: 14px; }
-    body.mobile-edition .identity-card, body.mobile-edition .editor-grid { grid-template-columns: 1fr; }
-    body.mobile-edition .identity-name { grid-column: 1; }
     body.mobile-edition .dialog-foot { display: grid; grid-template-columns: auto 1fr; }
     body.mobile-edition .toast-region { right: 10px; bottom: calc(82px + env(safe-area-inset-bottom)); left: 10px; }
     body.mobile-edition .toast { max-width: none; }
@@ -765,8 +811,10 @@
       body.pc-edition .primary-search { grid-template-columns: 1fr; }
       body.pc-edition .detail-filters { grid-template-columns: 1fr; }
       body.pc-edition .sync-pill span:last-child { display: none; }
-      .editor-grid, .identity-card { grid-template-columns: 1fr; }
-      .identity-name { grid-column: 1; }
+    }
+
+    @media (max-width: 1413px) {
+      body.pc-edition .table-wrap { overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
     }
 
     body:not(.has-searched) main {
@@ -814,7 +862,8 @@
       margin: 0 0 3px 2px;
       font-size: 12.5px;
     }
-    body.mobile-edition.has-searched .primary-search .field input {
+    body.mobile-edition.has-searched .primary-search .field input,
+    body.mobile-edition.has-searched .primary-search .field select {
       height: 42px;
       padding: 0 8px;
       border-radius: 12px;
@@ -844,7 +893,7 @@
     <div class="topbar-inner">
       <div class="brand">
         <span class="brand-mark" aria-hidden="true">✓</span>
-        <span class="brand-title">합불 입력</span>
+        <span class="brand-title">2027 수시모집 합불 입력</span>
       </div>
       <div class="topbar-actions">
         <a class="edition-switch pc-edition-link" href="https://seiryu1318.github.io/26early_RyanM/">모바일 버전</a>
@@ -853,7 +902,7 @@
           <span class="sync-dot" aria-hidden="true"></span>
           <span id="syncText">연결 필요</span>
         </div>
-        <button id="settingsButton" class="icon-button" type="button" aria-label="연결 설정">
+        <button id="settingsButton" class="icon-button" type="button" aria-label="연결 설정" hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3v-4h.08A1.7 1.7 0 0 0 4.64 8.9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.53 1.7 1.7 0 0 0 10.03 3H10V3h4v.08a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.25.62.85 1.03 1.52 1.03H21v4h-.08c-.67 0-1.27.4-1.52 1Z"/></svg>
         </button>
       </div>
@@ -864,6 +913,14 @@
     <section class="search-panel glass-panel" aria-label="검색">
       <form id="searchForm" novalidate>
         <div class="primary-search">
+          <div class="field select-wrap primary-enrollment-field">
+            <label for="enrollmentSelect">재학여부</label>
+            <select id="enrollmentSelect" name="enrollment">
+              <option value="">모두</option>
+              <option value="재학생">재학생</option>
+              <option value="졸업생">졸업생</option>
+            </select>
+          </div>
           <div class="field select-wrap primary-class-field">
             <label for="classSelect">반</label>
             <select id="classSelect" name="classNo">
@@ -902,10 +959,6 @@
           <div class="field select-wrap">
             <label for="universityTypeSelect">대학구분</label>
             <select id="universityTypeSelect"><option value="">전체</option></select>
-          </div>
-          <div class="field select-wrap">
-            <label for="enrollmentSelect">재학여부</label>
-            <select id="enrollmentSelect"><option value="">전체</option></select>
           </div>
           <div class="field">
             <label for="detailNameInput">성명</label>
@@ -1016,60 +1069,6 @@
     </form>
   </dialog>
 
-  <dialog id="resultDialog" aria-labelledby="resultDialogTitle">
-    <form id="resultForm" method="dialog">
-      <div class="dialog-head">
-        <h2 id="resultDialogTitle" class="dialog-title">합불 입력</h2>
-        <button id="resultCloseButton" class="icon-button" type="button" aria-label="닫기">×</button>
-      </div>
-      <div class="dialog-body">
-        <div class="identity-card">
-          <div id="editorName" class="identity-name"></div>
-          <div class="identity-item"><small>생년월일</small><strong id="editorBirthdate"></strong></div>
-          <div class="identity-item"><small>수험번호</small><strong id="editorExamNo"></strong></div>
-          <div class="identity-item"><small>대학명</small><strong id="editorUniversity"></strong></div>
-          <div class="identity-item"><small>전형명</small><strong id="editorAdmission"></strong></div>
-        </div>
-        <div class="editor-grid">
-          <div class="field select-wrap" id="stage1SelectField">
-            <label for="stage1Select">1단계 합격</label>
-            <select id="stage1Select">
-              <option value="">미입력</option><option value="합격">합격</option><option value="불합격">불합격</option>
-            </select>
-          </div>
-          <div class="field" id="stage1LockedField" hidden>
-            <label>1단계 합격</label>
-            <div class="locked-value">일괄합산</div>
-          </div>
-          <div class="field select-wrap">
-            <label for="finalResultSelect">최종 합격</label>
-            <select id="finalResultSelect">
-              <option value="">미입력</option><option value="합격">합격</option><option value="불합격">불합격</option><option value="충원합격">충원합격</option>
-            </select>
-          </div>
-          <div class="field select-wrap">
-            <label for="failureReasonSelect">불합격 사유</label>
-            <select id="failureReasonSelect">
-              <option value="">미입력</option><option value="미응시">미응시</option><option value="최저미충족">최저미충족</option><option value="불합격">불합격</option><option value="1단계 불합격">1단계 불합격</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="firstWaitInput">최초 충원번호</label>
-            <input id="firstWaitInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="숫자">
-          </div>
-          <div class="field">
-            <label for="finalWaitInput">최종 충원번호</label>
-            <input id="finalWaitInput" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="숫자">
-          </div>
-        </div>
-      </div>
-      <div class="dialog-foot">
-        <button id="resultCancelButton" class="ghost-button" type="button">취소</button>
-        <button id="resultSaveButton" class="save-button" type="submit">저장</button>
-      </div>
-    </form>
-  </dialog>
-
   <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
 
   <script>
@@ -1080,7 +1079,8 @@
     const POLL_INTERVAL_MS = EDITION === 'mobile' ? 15000 : 10000;
     const INITIAL_PAGE_SIZE = EDITION === 'mobile' ? 10 : 15;
     const MORE_PAGE_SIZE = 10;
-    const DEMO_MODE = new URLSearchParams(location.search).get('demo') === '1';
+    const DEMO_HOST = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
+    const DEMO_MODE = DEMO_HOST && new URLSearchParams(location.search).get('demo') === '1';
 
     const COLUMNS = [
       { key: 'universityType', label: '대학구분' },
@@ -1094,7 +1094,19 @@
       { key: 'admissionName', label: '전형명' },
       { key: 'birthdate', label: '생년월일' },
       { key: 'examNo', label: '수험번호' },
+      { key: 'stage1', label: '1단계 합격', result: true },
+      { key: 'finalResult', label: '최종 합격', result: true },
+      { key: 'failureReason', label: '불합격 사유', result: true },
+      { key: 'firstWait', label: '최초 충원번호', result: true },
+      { key: 'finalWait', label: '최종 충원번호', result: true },
     ];
+    const RESULT_DEFINITIONS = Object.freeze({
+      stage1: { label: '1단계 합격', type: 'select', options: ['', '합격', '불합격'] },
+      finalResult: { label: '최종 합격', type: 'select', options: ['', '합격', '불합격', '충원합격'] },
+      failureReason: { label: '불합격 사유', type: 'select', options: ['', '미응시', '최저미충족', '불합격', '1단계 불합격'] },
+      firstWait: { label: '최초 충원번호', type: 'rank' },
+      finalWait: { label: '최종 충원번호', type: 'rank' },
+    });
 
     const state = {
       records: [],
@@ -1103,10 +1115,13 @@
       sortDirection: 'asc',
       lastFilters: null,
       pollingTimer: null,
-      activeRecordId: null,
       searching: false,
       exporting: false,
       searchPanelObserver: null,
+      drafts: new Map(),
+      saving: new Set(),
+      saveFeedback: new Map(),
+      saveFeedbackTimers: new Map(),
     };
 
     const $ = id => document.getElementById(id);
@@ -1159,23 +1174,6 @@
       passwordForm: $('passwordForm'),
       passwordInput: $('passwordInput'),
       passwordSubmitButton: $('passwordSubmitButton'),
-      resultDialog: $('resultDialog'),
-      resultForm: $('resultForm'),
-      resultCloseButton: $('resultCloseButton'),
-      resultCancelButton: $('resultCancelButton'),
-      resultSaveButton: $('resultSaveButton'),
-      editorName: $('editorName'),
-      editorBirthdate: $('editorBirthdate'),
-      editorExamNo: $('editorExamNo'),
-      editorUniversity: $('editorUniversity'),
-      editorAdmission: $('editorAdmission'),
-      stage1SelectField: $('stage1SelectField'),
-      stage1LockedField: $('stage1LockedField'),
-      stage1Select: $('stage1Select'),
-      finalResultSelect: $('finalResultSelect'),
-      failureReasonSelect: $('failureReasonSelect'),
-      firstWaitInput: $('firstWaitInput'),
-      finalWaitInput: $('finalWaitInput'),
       toastRegion: $('toastRegion'),
     };
 
@@ -1188,7 +1186,7 @@
     }
 
     function currentApiUrl() {
-      return localStorage.getItem('admissionsApiUrl') || DEFAULT_API_URL;
+      return DEFAULT_API_URL;
     }
 
     function currentSessionToken() {
@@ -1261,18 +1259,24 @@
 
     async function performSearch({ silent = false } = {}) {
       if (state.searching) return;
+      if (hasActiveInlineWork()) {
+        if (!silent) toast('입력값 저장이 끝난 뒤 다시 검색해 주세요.', 'error');
+        return;
+      }
       const filters = silent && state.lastFilters ? state.lastFilters : collectFilters();
       if (!hasFilter(filters)) {
         if (!silent) toast('검색 조건을 한 가지 이상 입력해 주세요.', 'error');
         return;
       }
-      if (elements.resultDialog.open) return;
-
       state.searching = true;
       setSyncState('busy', '동기화 중');
       setSearchBusy(true);
       try {
         const data = await api('search', { filters });
+        if (silent && hasActiveInlineWork()) {
+          setSyncState('online', timeLabel(data.serverTime));
+          return;
+        }
         state.records = Array.isArray(data.records) ? data.records : [];
         state.lastFilters = { ...filters };
         if (!silent) state.visibleCount = INITIAL_PAGE_SIZE;
@@ -1302,8 +1306,14 @@
       clearInterval(state.pollingTimer);
       if (!state.lastFilters) return;
       state.pollingTimer = setInterval(() => {
-        if (!document.hidden && !elements.resultDialog.open) performSearch({ silent: true });
+        if (!document.hidden && !hasActiveInlineWork()) performSearch({ silent: true });
       }, POLL_INTERVAL_MS);
+    }
+
+    function hasActiveInlineWork() {
+      if (state.drafts.size > 0 || state.saving.size > 0) return true;
+      const active = document.activeElement;
+      return Boolean(active && active.classList && active.classList.contains('inline-result-control'));
     }
 
     function renderResults(totalMatches = state.records.length, truncated = false) {
@@ -1320,7 +1330,7 @@
       elements.resultsSection.hidden = !state.lastFilters && !hasRecords;
       elements.emptyState.hidden = hasRecords;
       elements.exportButton.hidden = EDITION !== 'pc';
-      elements.exportButton.disabled = state.exporting || !state.lastFilters || !hasRecords;
+      elements.exportButton.disabled = state.exporting || hasActiveInlineWork() || !state.lastFilters || !hasRecords;
       if (!hasRecords) {
         elements.emptyState.querySelector('span').textContent = '검색 결과 없음';
       }
@@ -1368,20 +1378,25 @@
         th.append(button);
         elements.tableHead.append(th);
       });
-      const actionTh = makeElement('th');
-      actionTh.append(makeElement('span', '합불 입력', 'sort-button'));
-      elements.tableHead.append(actionTh);
 
       elements.tableBody.replaceChildren();
       records.forEach(record => {
         const tr = makeElement('tr');
         COLUMNS.forEach(column => {
+          if (column.result) {
+            const td = makeElement('td', '', `cell-result cell-result-${column.key}`);
+            td.append(makeInlineResultField(record, column.key, false, column.key === 'finalWait'));
+            tr.append(td);
+            return;
+          }
           const value = displayValue(record, column.key);
           const td = makeElement('td');
           if (column.key === 'name') td.className = 'cell-name';
           if (column.key === 'birthdate') td.className = 'cell-dob';
           if (column.key === 'examNo') td.className = 'cell-exam';
           if (column.key === 'admissionName') td.className = 'cell-admission';
+          if (column.key === 'university') td.className = 'cell-university';
+          td.title = value === '-' ? '' : value;
           if (['name', 'birthdate', 'examNo'].includes(column.key)) {
             td.append(makeCopyValue(value, column.label));
           } else {
@@ -1389,9 +1404,6 @@
           }
           tr.append(td);
         });
-        const action = makeElement('td', '', 'cell-action');
-        action.append(makeEditButton(record));
-        tr.append(action);
         elements.tableBody.append(tr);
       });
     }
@@ -1406,25 +1418,31 @@
         const primary = makeElement('div', '', 'card-primary');
         const identity = makeElement('div');
         const nameRow = makeElement('div', '', 'card-name-row');
-        nameRow.append(makeElement('h3', record.name || '-', 'card-name'), makeCopyButton(record.name || '-', '성명'));
-        identity.append(nameRow, makeElement('div', record.university || '-', 'card-university'));
-        const status = makeElement('span', resultStatus(record), 'card-status' + (hasResult(record) ? ' done' : ''));
-        primary.append(identity, status);
+        const name = makeElement('h3', record.name || '-', 'card-name');
+        name.title = record.name || '';
+        nameRow.append(name, makeCopyButton(record.name || '-', '성명'));
+        const university = makeElement('div', record.university || '-', 'card-university');
+        university.title = record.university || '';
+        identity.append(nameRow, university);
+        primary.append(identity);
 
         const keys = makeElement('div', '', 'card-keydata');
-        keys.append(keyData('생년월일', formatBirthdate(record.birthdate)), keyData('수험번호', record.examNo || '-'));
+        keys.append(keyData('생년월일', normalizeBirthdate(record.birthdate)), keyData('수험번호', record.examNo || '-'));
 
         const meta = makeElement('div', '', 'card-meta');
         meta.append(
           metaRow('대학구분', record.universityType), metaRow('재학여부', record.enrollment),
           metaRow('반', record.classNo), metaRow('번호', record.studentNo),
           metaRow('계열', record.track), metaRow('전형유형', record.admissionType),
-          metaRow('전형명', record.admissionName, true)
+          metaRow('전형명', cleanAdmissionName(record.admissionName), true)
         );
 
-        const foot = makeElement('div', '', 'card-foot');
-        foot.append(makeEditButton(record));
-        card.append(primary, keys, meta, foot);
+        const inlineResults = makeElement('div', '', 'card-inline-results');
+        ['stage1', 'finalResult', 'failureReason', 'firstWait', 'finalWait'].forEach(key => {
+          inlineResults.append(makeInlineResultField(record, key, true, false));
+        });
+        inlineResults.append(makeSaveFeedback(record.id));
+        card.append(primary, keys, meta, inlineResults);
         elements.cardList.append(card);
       });
     }
@@ -1437,18 +1455,21 @@
 
     function makeCopyValue(value, label) {
       const wrap = makeElement('span', '', 'copy-value');
-      wrap.append(makeElement('span', value || '-', 'copy-text'), makeCopyButton(value, label));
+      const text = makeElement('span', value || '-', 'copy-text');
+      text.title = value || '';
+      wrap.append(text, makeCopyButton(value, label));
       return wrap;
     }
 
     function makeCopyButton(value, label) {
+      const copyValue = label === '생년월일' ? normalizeBirthdate(value) : value;
       const button = makeElement('button', '⧉', 'copy-button');
       button.type = 'button';
       button.setAttribute('aria-label', `${label} 복사`);
       button.title = '복사';
       button.addEventListener('click', event => {
         event.stopPropagation();
-        copyToClipboard(value);
+        copyToClipboard(copyValue);
       });
       return button;
     }
@@ -1479,6 +1500,10 @@
 
     async function exportCurrentResults() {
       if (EDITION !== 'pc' || state.exporting) return;
+      if (hasActiveInlineWork()) {
+        toast('입력값 저장이 끝난 뒤 다운로드해 주세요.', 'error');
+        return;
+      }
       if (!state.lastFilters) {
         toast('먼저 검색해 주세요.', 'error');
         return;
@@ -1509,7 +1534,7 @@
 
     function setExportBusy(busy) {
       if (!elements.exportButton) return;
-      elements.exportButton.disabled = busy || !state.lastFilters || state.records.length === 0;
+      elements.exportButton.disabled = busy || state.exporting || hasActiveInlineWork() || !state.lastFilters || state.records.length === 0;
       const label = elements.exportButton.querySelector('span');
       if (label) label.textContent = busy ? '다운로드 중' : '엑셀 다운로드';
     }
@@ -1756,15 +1781,10 @@
 
     function metaRow(label, value, full = false) {
       const row = makeElement('div', '', 'meta-row' + (full ? ' full' : ''));
-      row.append(makeElement('small', label), makeElement('span', value || '-'));
+      const text = makeElement('span', value || '-');
+      text.title = value || '';
+      row.append(makeElement('small', label), text);
       return row;
-    }
-
-    function makeEditButton(record) {
-      const button = makeElement('button', resultStatus(record), 'edit-button' + (hasResult(record) ? ' has-result' : ''));
-      button.type = 'button';
-      button.addEventListener('click', () => openResultEditor(record.id));
-      return button;
     }
 
     function changeSort(key) {
@@ -1781,83 +1801,181 @@
     }
 
     function displayValue(record, key) {
-      if (key === 'birthdate') return formatBirthdate(record[key]);
+      if (key === 'birthdate') return normalizeBirthdate(record[key]);
+      if (key === 'admissionName') return cleanAdmissionName(record[key]);
       return record[key] || '-';
     }
 
-    function formatBirthdate(value) {
+    function normalizeBirthdate(value) {
       const digits = String(value || '').replace(/\D/g, '');
-      return digits.length === 6 ? `${digits.slice(0,2)}.${digits.slice(2,4)}.${digits.slice(4,6)}` : (value || '-');
+      return digits.length >= 6 ? digits.slice(-6) : (digits || '-');
     }
 
-    function resultStatus(record) {
-      if (record.finalResult) return record.finalResult;
-      if (record.stage1 && record.stage1 !== '일괄합산') return `1단계 ${record.stage1}`;
-      if (record.failureReason) return record.failureReason;
-      if (record.stage1Locked) return '일괄합산';
-      return '합불 입력';
+    function cleanAdmissionName(value) {
+      const cleaned = String(value || '')
+        .replace(/\s+/g, ' ')
+        .replace(/^(?:학생부위주\s*\((?:교과|종합)\)|학생부교과|학생부종합|논술)\s*[-·:/]?\s*/i, '')
+        .trim();
+      return cleaned || '-';
     }
 
-    function hasResult(record) {
-      return Boolean(record.finalResult || record.failureReason || record.firstWait || record.finalWait || (record.stage1 && record.stage1 !== '일괄합산'));
+    function resultValues(record) {
+      return {
+        stage1: record.stage1Locked ? '일괄합산' : String(record.stage1 || ''),
+        finalResult: String(record.finalResult || ''),
+        failureReason: String(record.failureReason || ''),
+        firstWait: String(record.firstWait || ''),
+        finalWait: String(record.finalWait || ''),
+      };
     }
 
-    function openResultEditor(recordId) {
+    function currentResultValues(record) {
+      const draft = state.drafts.get(record.id);
+      return draft ? draft.values : resultValues(record);
+    }
+
+    function makeInlineResultField(record, key, showLabel, showFeedback) {
+      const definition = RESULT_DEFINITIONS[key];
+      const field = makeElement('div', '', showLabel ? 'card-result-field' : 'result-input-wrap');
+      field.dataset.recordId = record.id;
+      field.dataset.resultKey = key;
+      if (showLabel) field.append(makeElement('label', definition.label));
+
+      if (key === 'stage1' && record.stage1Locked) {
+        const locked = makeElement('span', '일괄합산', 'stage1-locked');
+        locked.title = '일괄합산';
+        field.append(locked);
+      } else {
+        const values = currentResultValues(record);
+        let control;
+        if (definition.type === 'select') {
+          control = document.createElement('select');
+          definition.options.forEach(optionValue => control.append(makeOption(optionValue, optionValue || '미입력')));
+          control.value = values[key] || '';
+          control.addEventListener('change', event => {
+            event.stopPropagation();
+            setDraftValue(record.id, key, control.value);
+            saveInlineResult(record.id);
+          });
+        } else {
+          control = document.createElement('input');
+          control.type = 'text';
+          control.inputMode = 'numeric';
+          control.autocomplete = 'off';
+          control.maxLength = 6;
+          control.placeholder = '미입력';
+          control.value = values[key] || '';
+          control.addEventListener('input', event => {
+            event.stopPropagation();
+            const sanitized = control.value.replace(/\D/g, '').slice(0, 6);
+            if (control.value !== sanitized) control.value = sanitized;
+            setDraftValue(record.id, key, sanitized);
+            control.classList.toggle('is-filled', Boolean(sanitized));
+          });
+          control.addEventListener('change', event => { event.stopPropagation(); saveInlineResult(record.id); });
+          control.addEventListener('blur', () => saveInlineResult(record.id));
+          control.addEventListener('keydown', event => {
+            event.stopPropagation();
+            if (event.key === 'Enter') { event.preventDefault(); control.blur(); }
+          });
+        }
+        control.className = 'inline-result-control' + (control.value ? ' is-filled' : '');
+        control.dataset.recordId = record.id;
+        control.dataset.resultKey = key;
+        control.setAttribute('aria-label', `${record.name || ''} ${definition.label}`.trim());
+        control.disabled = state.saving.has(record.id);
+        control.addEventListener('click', event => event.stopPropagation());
+        field.append(control);
+      }
+
+      if (showFeedback) field.append(makeSaveFeedback(record.id));
+      return field;
+    }
+
+    function makeSaveFeedback(recordId) {
+      const feedback = state.saveFeedback.get(recordId) || { message: '', type: '' };
+      const node = makeElement('div', feedback.message, `inline-save-state ${feedback.type || ''}`.trim());
+      node.dataset.feedbackFor = recordId;
+      node.setAttribute('aria-live', 'polite');
+      return node;
+    }
+
+    function setDraftValue(recordId, key, value) {
       const record = state.records.find(item => item.id === recordId);
-      if (!record) return;
-      state.activeRecordId = recordId;
-      elements.editorName.textContent = record.name || '-';
-      elements.editorBirthdate.textContent = formatBirthdate(record.birthdate);
-      elements.editorExamNo.textContent = record.examNo || '-';
-      elements.editorUniversity.textContent = record.university || '-';
-      elements.editorAdmission.textContent = record.admissionName || '-';
-      elements.stage1SelectField.hidden = record.stage1Locked;
-      elements.stage1LockedField.hidden = !record.stage1Locked;
-      elements.stage1Select.value = record.stage1Locked ? '' : (record.stage1 || '');
-      elements.finalResultSelect.value = record.finalResult || '';
-      elements.failureReasonSelect.value = record.failureReason || '';
-      elements.firstWaitInput.value = record.firstWait || '';
-      elements.finalWaitInput.value = record.finalWait || '';
-      elements.resultDialog.showModal();
+      if (!record || state.saving.has(recordId)) return;
+      const existing = state.drafts.get(recordId);
+      const values = existing ? { ...existing.values } : resultValues(record);
+      values[key] = value;
+      if (record.stage1Locked) values.stage1 = '일괄합산';
+      state.drafts.set(recordId, { values, expectedVersion: record.version });
+      setExportBusy(state.exporting);
     }
 
-    async function saveResult() {
-      const record = state.records.find(item => item.id === state.activeRecordId);
-      if (!record) return;
-      if (!/^\d{0,6}$/.test(elements.firstWaitInput.value) || !/^\d{0,6}$/.test(elements.finalWaitInput.value)) {
+    function setRecordControlsBusy(recordId, busy) {
+      document.querySelectorAll('.inline-result-control').forEach(control => {
+        if (control.dataset.recordId === recordId) control.disabled = busy;
+      });
+      updateFeedback(recordId, busy ? '저장 중' : '', '');
+    }
+
+    function updateFeedback(recordId, message, type = '') {
+      if (message) state.saveFeedback.set(recordId, { message, type });
+      else state.saveFeedback.delete(recordId);
+      document.querySelectorAll('.inline-save-state').forEach(node => {
+        if (node.dataset.feedbackFor !== recordId) return;
+        node.textContent = message;
+        node.className = `inline-save-state ${type}`.trim();
+      });
+    }
+
+    function flashFeedback(recordId, message, type) {
+      clearTimeout(state.saveFeedbackTimers.get(recordId));
+      updateFeedback(recordId, message, type);
+      const timer = setTimeout(() => {
+        updateFeedback(recordId, '', '');
+        state.saveFeedbackTimers.delete(recordId);
+      }, 2200);
+      state.saveFeedbackTimers.set(recordId, timer);
+    }
+
+    async function saveInlineResult(recordId) {
+      if (state.saving.has(recordId)) return;
+      const record = state.records.find(item => item.id === recordId);
+      const draft = state.drafts.get(recordId);
+      if (!record || !draft) return;
+      const values = { ...draft.values };
+      if (!/^\d{0,6}$/.test(values.firstWait) || !/^\d{0,6}$/.test(values.finalWait)) {
+        state.drafts.delete(recordId);
+        renderResults();
         toast('충원번호는 숫자만 입력해 주세요.', 'error');
         return;
       }
-      elements.resultSaveButton.disabled = true;
-      elements.resultSaveButton.textContent = '저장 중';
+      state.saving.add(recordId);
+      setRecordControlsBusy(recordId, true);
       setSyncState('busy', '저장 중');
       try {
         const data = await api('save', {
           recordId: record.id,
-          expectedVersion: record.version,
-          values: {
-            stage1: record.stage1Locked ? '일괄합산' : elements.stage1Select.value,
-            finalResult: elements.finalResultSelect.value,
-            failureReason: elements.failureReasonSelect.value,
-            firstWait: elements.firstWaitInput.value,
-            finalWait: elements.finalWaitInput.value,
-          },
+          expectedVersion: draft.expectedVersion,
+          values,
         });
         replaceRecord(data.record);
-        elements.resultDialog.close();
-        renderResults();
+        state.drafts.delete(recordId);
         setSyncState('online', timeLabel(data.serverTime));
-        toast('저장되었습니다.', 'success');
+        flashFeedback(recordId, '저장됨', 'saved');
       } catch (error) {
         if (error.code === 'CONFLICT' && error.details && error.details.current) {
           replaceRecord(error.details.current);
-          openResultEditor(error.details.current.id);
+          flashFeedback(recordId, '새로고침됨', 'error');
+        } else {
+          flashFeedback(recordId, '저장 실패', 'error');
         }
+        state.drafts.delete(recordId);
         setSyncState('error', '저장 실패');
         toast(error.message, 'error');
       } finally {
-        elements.resultSaveButton.disabled = false;
-        elements.resultSaveButton.textContent = '저장';
+        state.saving.delete(recordId);
+        renderResults();
       }
     }
 
@@ -1900,6 +2018,11 @@
     function resetSearch() {
       elements.searchForm.reset();
       state.records = [];
+      state.drafts.clear();
+      state.saving.clear();
+      state.saveFeedback.clear();
+      state.saveFeedbackTimers.forEach(timer => clearTimeout(timer));
+      state.saveFeedbackTimers.clear();
       state.lastFilters = null;
       state.visibleCount = INITIAL_PAGE_SIZE;
       clearInterval(state.pollingTimer);
@@ -1912,7 +2035,6 @@
       try {
         const data = await api('meta');
         populateSelect(elements.universityTypeSelect, data.options.universityTypes);
-        populateSelect(elements.enrollmentSelect, data.options.enrollments);
         populateSelect(elements.trackSelect, data.options.tracks);
         populateSelect(elements.admissionTypeSelect, data.options.admissionTypes);
         setSyncState('online', timeLabel(data.serverTime));
@@ -2112,12 +2234,6 @@
       elements.settingsForm.addEventListener('submit', event => { event.preventDefault(); saveSettings(); });
       elements.passwordForm.addEventListener('submit', event => { event.preventDefault(); loginWithPassword(); });
       elements.passwordDialog.addEventListener('cancel', event => event.preventDefault());
-      elements.resultCloseButton.addEventListener('click', () => elements.resultDialog.close());
-      elements.resultCancelButton.addEventListener('click', () => elements.resultDialog.close());
-      elements.resultForm.addEventListener('submit', event => { event.preventDefault(); saveResult(); });
-      [elements.firstWaitInput, elements.finalWaitInput].forEach(input => input.addEventListener('input', () => {
-        input.value = input.value.replace(/\D/g, '').slice(0, 6);
-      }));
       document.addEventListener('visibilitychange', () => {
         if (!document.hidden && state.lastFilters) performSearch({ silent: true });
       });

@@ -15,6 +15,11 @@ const CONFIG = Object.freeze({
   maxSearchResults: 250,
   maxSuggestions: 12,
   lockWaitMs: 20000,
+  rowsCachePrefix: 'admissions-rows-v2',
+  rowsCacheTtlSeconds: 60,
+  rowsCacheChunkChars: 80000,
+  rowsCacheMaxChunks: 24,
+  dataRevisionProperty: 'DATA_REVISION',
   passwordProperty: 'ACCESS_PASSWORD',
   sessionSecretProperty: 'SESSION_SECRET',
   sessionDurationMs: 3 * 60 * 60 * 1000,
@@ -56,6 +61,7 @@ const ALLOWED = Object.freeze({
   finalResult: ['', '합격', '불합격', '충원합격'],
   failureReason: ['', '미응시', '최저미충족', '불합격', '1단계 불합격'],
 });
+const RESULT_KEYS = Object.freeze(['stage1', 'finalResult', 'failureReason', 'firstWait', 'finalWait']);
 
 function doGet() {
   return json_({
@@ -77,6 +83,8 @@ function doPost(e) {
     switch (String(payload.action || '')) {
       case 'health':
         return json_({ ok: true, serverTime: new Date().toISOString() });
+      case 'revision':
+        return json_(getRevision_());
       case 'meta':
         return json_(getMeta_());
       case 'universities':
@@ -156,7 +164,8 @@ function requireSession_(token) {
 }
 
 function getMeta_() {
-  const rows = getAllRows_();
+  const snapshot = getRowsSnapshot_();
+  const rows = snapshot.rows;
   return {
     ok: true,
     options: {
@@ -165,8 +174,10 @@ function getMeta_() {
       classes: uniqueSorted_(rows.map(r => r[COL.classNo]), true),
       tracks: uniqueSorted_(rows.map(r => r[COL.track])),
       admissionTypes: uniqueSorted_(rows.map(r => normalizeAdmissionType_(r[COL.admissionType]))),
+      universities: uniqueSorted_(rows.map(r => r[COL.university])),
     },
     rowCount: rows.length,
+    revision: snapshot.revision,
     serverTime: new Date().toISOString(),
   };
 }
@@ -201,15 +212,16 @@ function search_(rawFilters) {
     throw apiError_('FILTER_REQUIRED', '검색 조건을 한 가지 이상 입력해 주세요.');
   }
 
-  const rows = getAllRows_();
+  const snapshot = getRowsSnapshot_();
+  const rows = snapshot.rows;
   const matches = [];
   let totalMatches = 0;
 
-  rows.forEach(row => {
+  rows.forEach((row, rowIndex) => {
     if (!matchesFilters_(row, filters)) return;
     totalMatches += 1;
     if (matches.length < CONFIG.maxSearchResults) {
-      matches.push(toRecord_(row));
+      matches.push(toRecord_(row, CONFIG.firstDataRow + rowIndex));
     }
   });
 
@@ -218,6 +230,15 @@ function search_(rawFilters) {
     records: matches,
     totalMatches,
     truncated: totalMatches > matches.length,
+    revision: snapshot.revision,
+    serverTime: new Date().toISOString(),
+  };
+}
+
+function getRevision_() {
+  return {
+    ok: true,
+    revision: getDataRevision_(),
     serverTime: new Date().toISOString(),
   };
 }
@@ -241,6 +262,7 @@ function export_(rawFilters) {
 function save_(payload) {
   const recordId = cleanText_(payload.recordId, 128);
   const expectedVersion = cleanText_(payload.expectedVersion, 128);
+  const requestedRowNumber = Number(payload.rowNumber);
   const values = payload.values || {};
   if (!recordId) throw apiError_('RECORD_ID_REQUIRED', '저장할 학생 정보가 없습니다.');
   if (!expectedVersion) {
@@ -255,49 +277,101 @@ function save_(payload) {
     const lastRow = sheet.getLastRow();
     if (lastRow < CONFIG.firstDataRow) throw apiError_('NOT_FOUND', '저장할 행을 찾지 못했습니다.');
 
-    const range = sheet.getRange(CONFIG.firstDataRow, 1, lastRow - CONFIG.headerRow, CONFIG.totalColumns);
-    const rows = range.getDisplayValues();
     let rowIndex = -1;
-    for (let i = 0; i < rows.length; i += 1) {
-      if (makeRecordId_(rows[i]) === recordId) {
-        if (rowIndex !== -1) {
-          throw apiError_('DUPLICATE_RECORD', '동일한 학생·대학·전형·수험번호 자료가 중복되어 저장하지 않았습니다.');
+    let current = null;
+    if (Number.isInteger(requestedRowNumber) && requestedRowNumber >= CONFIG.firstDataRow && requestedRowNumber <= lastRow) {
+      const candidate = sheet.getRange(requestedRowNumber, 1, 1, CONFIG.totalColumns).getDisplayValues()[0];
+      if (makeRecordId_(candidate) === recordId) {
+        rowIndex = requestedRowNumber - CONFIG.firstDataRow;
+        current = candidate;
+      }
+    }
+
+    if (!current) {
+      const rows = sheet
+        .getRange(CONFIG.firstDataRow, 1, lastRow - CONFIG.headerRow, CONFIG.totalColumns)
+        .getDisplayValues();
+      for (let i = 0; i < rows.length; i += 1) {
+        if (makeRecordId_(rows[i]) === recordId) {
+          if (rowIndex !== -1) {
+            throw apiError_('DUPLICATE_RECORD', '동일한 학생·대학·전형·수험번호 자료가 중복되어 저장하지 않았습니다.');
+          }
+          rowIndex = i;
+          current = rows[i];
         }
-        rowIndex = i;
       }
     }
     if (rowIndex === -1) throw apiError_('NOT_FOUND', '자료가 변경되었거나 해당 행을 찾지 못했습니다. 다시 검색해 주세요.');
 
-    const current = rows[rowIndex];
     const currentVersion = makeVersion_(current);
-    if (currentVersion !== expectedVersion) {
+    const lockedStage1 = normalize_(current[COL.selectionType]) === '일괄합산' ||
+      normalize_(current[COL.stage1]) === '일괄합산';
+    const requested = {
+      stage1: lockedStage1 ? '일괄합산' : validateEnum_(values.stage1, ALLOWED.stage1, '1단계 합격'),
+      finalResult: validateEnum_(values.finalResult, ALLOWED.finalResult, '최종 합격'),
+      failureReason: validateEnum_(values.failureReason, ALLOWED.failureReason, '불합격 사유'),
+      firstWait: validateRank_(values.firstWait, '최초 충원번호'),
+      finalWait: validateRank_(values.finalWait, '최종 충원번호'),
+    };
+    const currentValues = resultValuesFromRow_(current, lockedStage1);
+    const mergeRequest = normalizeMergeRequest_(payload, currentValues, requested, lockedStage1);
+    const changedKeys = mergeRequest.changedKeys;
+    const baseValues = mergeRequest.baseValues;
+
+    if (currentVersion !== expectedVersion && mergeRequest.supportsFieldMerge) {
+      const conflictingFields = changedKeys.filter(key => (
+        currentValues[key] !== baseValues[key] && currentValues[key] !== requested[key]
+      ));
+      if (conflictingFields.length) {
+        const conflict = apiError_(
+          'FIELD_CONFLICT',
+          '같은 항목을 다른 사용자가 먼저 저장했습니다. 먼저 반영된 값을 유지했습니다.'
+        );
+        conflict.details = {
+          current: toRecord_(current, CONFIG.firstDataRow + rowIndex),
+          conflictingFields,
+        };
+        throw conflict;
+      }
+    } else if (currentVersion !== expectedVersion) {
       const conflict = apiError_('CONFLICT', '다른 사용자가 먼저 수정했습니다. 최신 값을 불러왔습니다.');
-      conflict.details = { current: toRecord_(current) };
+      conflict.details = { current: toRecord_(current, CONFIG.firstDataRow + rowIndex) };
       throw conflict;
     }
 
-    const lockedStage1 = normalize_(current[COL.selectionType]) === '일괄합산' ||
-      normalize_(current[COL.stage1]) === '일괄합산';
-    const stage1 = lockedStage1 ? '일괄합산' : validateEnum_(values.stage1, ALLOWED.stage1, '1단계 합격');
-    const finalResult = validateEnum_(values.finalResult, ALLOWED.finalResult, '최종 합격');
-    const failureReason = validateEnum_(values.failureReason, ALLOWED.failureReason, '불합격 사유');
-    const firstWait = validateRank_(values.firstWait, '최초 충원번호');
-    const finalWait = validateRank_(values.finalWait, '최종 충원번호');
+    const merged = { ...currentValues };
+    changedKeys.forEach(key => { merged[key] = requested[key]; });
+    const cascaded = cascadeStageResult_(
+      current[COL.selectionType],
+      merged.stage1,
+      merged.finalResult,
+      merged.failureReason
+    );
+    merged.finalResult = cascaded.finalResult;
+    merged.failureReason = cascaded.failureReason;
 
     const sheetRow = CONFIG.firstDataRow + rowIndex;
     sheet.getRange(sheetRow, COL.stage1 + 1, 1, 5)
-      .setValues([[stage1, finalResult, failureReason, firstWait, finalWait]]);
+      .setValues([[
+        merged.stage1,
+        merged.finalResult,
+        merged.failureReason,
+        merged.firstWait,
+        merged.finalWait,
+      ]]);
     SpreadsheetApp.flush();
+    const revision = bumpDataRevision_();
 
-    current[COL.stage1] = stage1;
-    current[COL.finalResult] = finalResult;
-    current[COL.failureReason] = failureReason;
-    current[COL.firstWait] = firstWait;
-    current[COL.finalWait] = finalWait;
+    current[COL.stage1] = merged.stage1;
+    current[COL.finalResult] = merged.finalResult;
+    current[COL.failureReason] = merged.failureReason;
+    current[COL.firstWait] = merged.firstWait;
+    current[COL.finalWait] = merged.finalWait;
 
     return {
       ok: true,
-      record: toRecord_(current),
+      record: toRecord_(current, sheetRow),
+      revision,
       serverTime: new Date().toISOString(),
     };
   } finally {
@@ -306,13 +380,92 @@ function save_(payload) {
 }
 
 function getAllRows_() {
+  return getRowsSnapshot_().rows;
+}
+
+function getRowsSnapshot_() {
+  const revision = getDataRevision_();
+  const cachedRows = readRowsCache_(revision);
+  if (cachedRows) return { rows: cachedRows, revision };
+
   const sheet = getSheet_();
   assertSchema_(sheet);
   const lastRow = sheet.getLastRow();
-  if (lastRow < CONFIG.firstDataRow) return [];
-  return sheet
-    .getRange(CONFIG.firstDataRow, 1, lastRow - CONFIG.headerRow, CONFIG.totalColumns)
-    .getDisplayValues();
+  const rows = lastRow < CONFIG.firstDataRow
+    ? []
+    : sheet
+      .getRange(CONFIG.firstDataRow, 1, lastRow - CONFIG.headerRow, CONFIG.totalColumns)
+      .getDisplayValues();
+
+  if (getDataRevision_() === revision) writeRowsCache_(rows, revision);
+  return { rows, revision };
+}
+
+function getDataRevision_() {
+  return PropertiesService.getScriptProperties().getProperty(CONFIG.dataRevisionProperty) || '0';
+}
+
+function bumpDataRevision_() {
+  const revision = String(Date.now()) + '-' + Utilities.getUuid();
+  PropertiesService.getScriptProperties().setProperty(CONFIG.dataRevisionProperty, revision);
+  return revision;
+}
+
+function rowsCacheKey_(revision, suffix) {
+  return CONFIG.rowsCachePrefix + ':' + revision + ':' + suffix;
+}
+
+function readRowsCache_(revision) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const metaRaw = cache.get(rowsCacheKey_(revision, 'meta'));
+    if (!metaRaw) return null;
+    const meta = JSON.parse(metaRaw);
+    const chunkCount = Number(meta.chunks);
+    if (!Number.isInteger(chunkCount) || chunkCount < 1 || chunkCount > CONFIG.rowsCacheMaxChunks) return null;
+
+    const keys = [];
+    for (let index = 0; index < chunkCount; index += 1) {
+      keys.push(rowsCacheKey_(revision, String(index)));
+    }
+    const stored = cache.getAll(keys);
+    const encoded = keys.map(key => stored[key] || '').join('');
+    if (!encoded || keys.some(key => !stored[key])) return null;
+
+    const zipped = Utilities.base64DecodeWebSafe(encoded);
+    const json = Utilities.ungzip(Utilities.newBlob(zipped)).getDataAsString('UTF-8');
+    const rows = JSON.parse(json);
+    return Array.isArray(rows) ? rows : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeRowsCache_(rows, revision) {
+  try {
+    const json = JSON.stringify(rows);
+    const zipped = Utilities.gzip(Utilities.newBlob(json, 'application/json'));
+    const encoded = Utilities.base64EncodeWebSafe(zipped.getBytes());
+    const chunks = [];
+    for (let offset = 0; offset < encoded.length; offset += CONFIG.rowsCacheChunkChars) {
+      chunks.push(encoded.slice(offset, offset + CONFIG.rowsCacheChunkChars));
+    }
+    if (!chunks.length || chunks.length > CONFIG.rowsCacheMaxChunks) return;
+
+    const cache = CacheService.getScriptCache();
+    const entries = {};
+    chunks.forEach((chunk, index) => {
+      entries[rowsCacheKey_(revision, String(index))] = chunk;
+    });
+    cache.putAll(entries, CONFIG.rowsCacheTtlSeconds);
+    cache.put(
+      rowsCacheKey_(revision, 'meta'),
+      JSON.stringify({ chunks: chunks.length }),
+      CONFIG.rowsCacheTtlSeconds
+    );
+  } catch (_) {
+    // 캐시를 사용할 수 없어도 원본 시트 조회는 정상적으로 계속합니다.
+  }
 }
 
 function getSheet_() {
@@ -382,12 +535,49 @@ function matchesFilters_(row, f) {
   return true;
 }
 
-function toRecord_(row) {
+function resultValuesFromRow_(row, lockedStage1) {
+  return {
+    stage1: lockedStage1 ? '일괄합산' : text_(row[COL.stage1]),
+    finalResult: text_(row[COL.finalResult]),
+    failureReason: text_(row[COL.failureReason]),
+    firstWait: text_(row[COL.firstWait]),
+    finalWait: text_(row[COL.finalWait]),
+  };
+}
+
+function normalizeMergeRequest_(payload, currentValues, requested, lockedStage1) {
+  const supportsFieldMerge = payload.baseValues && typeof payload.baseValues === 'object' &&
+    Array.isArray(payload.changedKeys);
+  const rawKeys = supportsFieldMerge ? payload.changedKeys : RESULT_KEYS;
+  const changedKeys = [...new Set(rawKeys
+    .map(value => String(value || ''))
+    .filter(key => RESULT_KEYS.indexOf(key) !== -1 && !(lockedStage1 && key === 'stage1')))];
+  const rawBase = supportsFieldMerge ? payload.baseValues : currentValues;
+  const baseValues = {
+    stage1: lockedStage1 ? '일괄합산' : text_(rawBase.stage1),
+    finalResult: text_(rawBase.finalResult),
+    failureReason: text_(rawBase.failureReason),
+    firstWait: text_(rawBase.firstWait),
+    finalWait: text_(rawBase.finalWait),
+  };
+  return { supportsFieldMerge, changedKeys, baseValues, requested };
+}
+
+function cascadeStageResult_(selectionType, stage1, finalResult, failureReason) {
+  const stepwise = normalize_(selectionType).replace(/\s+/g, '').includes('단계별');
+  if (stepwise && text_(stage1) === '불합격') {
+    return { finalResult: '불합격', failureReason: '1단계 불합격' };
+  }
+  return { finalResult: text_(finalResult), failureReason: text_(failureReason) };
+}
+
+function toRecord_(row, rowNumber) {
   const stage1Locked = normalize_(row[COL.selectionType]) === '일괄합산' ||
     normalize_(row[COL.stage1]) === '일괄합산';
   return {
     id: makeRecordId_(row),
     version: makeVersion_(row),
+    rowNumber: Number(rowNumber) || 0,
     universityType: text_(row[COL.universityType]),
     enrollment: text_(row[COL.enrollment]),
     classNo: text_(row[COL.classNo]),

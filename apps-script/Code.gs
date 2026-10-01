@@ -317,10 +317,17 @@ function save_(payload) {
     const mergeRequest = normalizeMergeRequest_(payload, currentValues, requested, lockedStage1);
     const changedKeys = mergeRequest.changedKeys;
     const baseValues = mergeRequest.baseValues;
+    const effectiveMerge = effectiveMergeRequest_(
+      current[COL.selectionType],
+      currentValues,
+      mergeRequest
+    );
+    const effectiveChangedKeys = effectiveMerge.changedKeys;
+    const effectiveRequested = effectiveMerge.requested;
 
     if (currentVersion !== expectedVersion && mergeRequest.supportsFieldMerge) {
-      const conflictingFields = changedKeys.filter(key => (
-        currentValues[key] !== baseValues[key] && currentValues[key] !== requested[key]
+      const conflictingFields = effectiveChangedKeys.filter(key => (
+        currentValues[key] !== baseValues[key] && currentValues[key] !== effectiveRequested[key]
       ));
       if (conflictingFields.length) {
         const conflict = apiError_(
@@ -563,9 +570,38 @@ function normalizeMergeRequest_(payload, currentValues, requested, lockedStage1)
   return { supportsFieldMerge, changedKeys, baseValues, requested };
 }
 
+function effectiveMergeRequest_(selectionType, currentValues, mergeRequest) {
+  const preview = { ...currentValues };
+  mergeRequest.changedKeys.forEach(key => { preview[key] = mergeRequest.requested[key]; });
+  const cascaded = cascadeStageResult_(
+    selectionType,
+    preview.stage1,
+    preview.finalResult,
+    preview.failureReason
+  );
+  const changedKeys = mergeRequest.changedKeys.slice();
+  if (isStepwiseStageFailure_(selectionType, preview.stage1)) {
+    ['finalResult', 'failureReason'].forEach(key => {
+      if (changedKeys.indexOf(key) === -1) changedKeys.push(key);
+    });
+  }
+  return {
+    changedKeys,
+    requested: {
+      ...mergeRequest.requested,
+      finalResult: cascaded.finalResult,
+      failureReason: cascaded.failureReason,
+    },
+  };
+}
+
+function isStepwiseStageFailure_(selectionType, stage1) {
+  return normalize_(selectionType).replace(/\s+/g, '').includes('단계별') &&
+    text_(stage1) === '불합격';
+}
+
 function cascadeStageResult_(selectionType, stage1, finalResult, failureReason) {
-  const stepwise = normalize_(selectionType).replace(/\s+/g, '').includes('단계별');
-  if (stepwise && text_(stage1) === '불합격') {
+  if (isStepwiseStageFailure_(selectionType, stage1)) {
     return { finalResult: '불합격', failureReason: '1단계 불합격' };
   }
   return { finalResult: text_(finalResult), failureReason: text_(failureReason) };

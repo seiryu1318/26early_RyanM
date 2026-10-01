@@ -1549,6 +1549,11 @@
     const FULL_SYNC_INTERVAL_MS = 45000;
     const INITIAL_PAGE_SIZE = EDITION === 'mobile' ? 10 : 15;
     const MORE_PAGE_SIZE = 10;
+    const PENDING_DRAFTS_KEY = `admissionsPendingDraftsV1:${EDITION}`;
+    const PENDING_DRAFT_TTL_MS = 3 * 60 * 60 * 1000;
+    const SAVE_RETRY_BASE_MS = 1000;
+    const SAVE_RETRY_MAX_MS = 15000;
+    const SAVE_RETRY_MAX_ATTEMPTS = 5;
     const DEMO_HOST = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
     const DEMO_MODE = DEMO_HOST && new URLSearchParams(location.search).get('demo') === '1';
 
@@ -1577,6 +1582,11 @@
       firstWait: { label: '최초 충원번호', type: 'rank' },
       finalWait: { label: '최종 충원번호', type: 'rank' },
     });
+    const RESULT_KEYS = Object.freeze(Object.keys(RESULT_DEFINITIONS));
+    const FILTER_KEYS = Object.freeze([
+      'university', 'name', 'admissionName', 'universityType', 'enrollment', 'classNo',
+      'detailName', 'detailUniversity', 'track', 'admissionType', 'detailAdmissionName',
+    ]);
 
     const state = {
       records: [],
@@ -1601,6 +1611,11 @@
       installPrompt: null,
       drafts: new Map(),
       inFlightDrafts: new Map(),
+      recoveredDrafts: new Map(),
+      recoveryFilters: null,
+      recoveryToastShown: false,
+      retryTimers: new Map(),
+      retryAttempts: new Map(),
       saving: new Set(),
     };
 
@@ -1779,6 +1794,7 @@
           return;
         }
         state.records = nextRecords;
+        adoptRecoveredDrafts(nextRecords);
         state.recordsSignature = nextSignature;
         state.lastTotalMatches = Number(data.totalMatches) || 0;
         state.lastTruncated = Boolean(data.truncated);
@@ -2402,6 +2418,177 @@
       };
     }
 
+    function normalizeFilterSnapshot(filters) {
+      const normalized = {};
+      FILTER_KEYS.forEach(key => { normalized[key] = String(filters && filters[key] || ''); });
+      return normalized;
+    }
+
+    function normalizePendingDraft(raw) {
+      if (!raw || typeof raw !== 'object') return null;
+      const recordId = String(raw.recordId || '').slice(0, 128);
+      const expectedVersion = String(raw.expectedVersion || '').slice(0, 128);
+      const updatedAt = Number(raw.updatedAt) || Date.now();
+      if (!recordId || !expectedVersion || Date.now() - updatedAt > PENDING_DRAFT_TTL_MS) return null;
+
+      const values = {};
+      const baseValues = {};
+      RESULT_KEYS.forEach(key => {
+        values[key] = String(raw.values && raw.values[key] || '');
+        baseValues[key] = String(raw.baseValues && raw.baseValues[key] || '');
+      });
+      if (!/^\d{0,6}$/.test(values.firstWait) || !/^\d{0,6}$/.test(values.finalWait)) return null;
+      if (![...RESULT_DEFINITIONS.stage1.options, '일괄합산'].includes(values.stage1)
+        || !RESULT_DEFINITIONS.finalResult.options.includes(values.finalResult)
+        || !RESULT_DEFINITIONS.failureReason.options.includes(values.failureReason)) return null;
+
+      const changedKeys = [...new Set((Array.isArray(raw.changedKeys) ? raw.changedKeys : [])
+        .map(key => String(key || ''))
+        .filter(key => RESULT_KEYS.includes(key)))];
+      if (!changedKeys.length) return null;
+      return { recordId, values, baseValues, changedKeys, expectedVersion, updatedAt };
+    }
+
+    function persistPendingDrafts() {
+      try {
+        const pending = new Map(state.recoveredDrafts);
+        state.inFlightDrafts.forEach((draft, recordId) => pending.set(recordId, draft));
+        state.drafts.forEach((draft, recordId) => pending.set(recordId, draft));
+        if (!pending.size) {
+          localStorage.removeItem(PENDING_DRAFTS_KEY);
+          return;
+        }
+        const filters = normalizeFilterSnapshot(
+          state.lastFilters || state.recoveryFilters || (elements.searchForm ? collectFilters() : {})
+        );
+        const drafts = [...pending.entries()].map(([recordId, draft]) => ({
+          recordId,
+          values: { ...draft.values },
+          baseValues: { ...draft.baseValues },
+          changedKeys: [...draft.changedKeys],
+          expectedVersion: draft.expectedVersion,
+          updatedAt: Number(draft.updatedAt) || Date.now(),
+        }));
+        localStorage.setItem(PENDING_DRAFTS_KEY, JSON.stringify({ version: 1, filters, drafts }));
+      } catch (_) {
+        // localStorage를 사용할 수 없어도 현재 세션의 자동 저장은 계속합니다.
+      }
+    }
+
+    function restorePendingDrafts() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(PENDING_DRAFTS_KEY) || 'null');
+        if (!stored || stored.version !== 1 || !Array.isArray(stored.drafts)) {
+          localStorage.removeItem(PENDING_DRAFTS_KEY);
+          return;
+        }
+        stored.drafts.forEach(raw => {
+          const normalized = normalizePendingDraft(raw);
+          if (normalized) {
+            const { recordId, ...draft } = normalized;
+            state.recoveredDrafts.set(recordId, draft);
+          }
+        });
+        state.recoveryFilters = normalizeFilterSnapshot(stored.filters || {});
+        persistPendingDrafts();
+      } catch (_) {
+        localStorage.removeItem(PENDING_DRAFTS_KEY);
+      }
+    }
+
+    function applyFilterSnapshot(filters) {
+      const values = normalizeFilterSnapshot(filters);
+      elements.universityInput.value = values.university;
+      elements.nameInput.value = values.name;
+      elements.admissionInput.value = values.admissionName;
+      elements.universityTypeSelect.value = values.universityType;
+      elements.enrollmentSelect.value = values.enrollment;
+      elements.classSelect.value = values.classNo;
+      elements.detailNameInput.value = values.detailName;
+      elements.detailUniversityInput.value = values.detailUniversity;
+      elements.trackSelect.value = values.track;
+      elements.admissionTypeSelect.value = values.admissionType;
+      elements.detailAdmissionInput.value = values.detailAdmissionName;
+    }
+
+    function resumeRecoveredDrafts() {
+      if (!state.recoveredDrafts.size || state.searching || state.lastFilters
+        || !hasFilter(state.recoveryFilters || {}) || !navigator.onLine
+        || (!DEMO_MODE && !currentSessionToken())) return;
+      applyFilterSnapshot(state.recoveryFilters);
+      performSearch({ silent: false });
+    }
+
+    function adoptRecoveredDrafts(records) {
+      let adopted = 0;
+      records.forEach(record => {
+        const recovered = state.recoveredDrafts.get(record.id);
+        if (!recovered || state.drafts.has(record.id) || state.inFlightDrafts.has(record.id)) return;
+        const changedKeys = recovered.changedKeys.filter(key => !(record.stage1Locked && key === 'stage1'));
+        state.recoveredDrafts.delete(record.id);
+        if (!changedKeys.length) return;
+
+        const values = resultValues(record);
+        changedKeys.forEach(key => { values[key] = recovered.values[key]; });
+        if (changedKeys.includes('stage1')) {
+          applyStage1Cascade(record, values, 'stage1', resultValues(record).stage1);
+        }
+        if (record.stage1Locked) values.stage1 = '일괄합산';
+        state.drafts.set(record.id, {
+          values,
+          baseValues: { ...recovered.baseValues },
+          changedKeys,
+          expectedVersion: recovered.expectedVersion,
+          updatedAt: recovered.updatedAt,
+        });
+        adopted += 1;
+      });
+      persistPendingDrafts();
+      if (adopted) {
+        if (!state.recoveryToastShown) {
+          toast(`임시 저장된 입력 ${adopted}건을 복구했습니다.`, 'success', 4200);
+          state.recoveryToastShown = true;
+        }
+        queueMicrotask(() => retryAllDrafts({ immediate: true }));
+      }
+      return adopted;
+    }
+
+    function clearDraftRetry(recordId, resetAttempts = false) {
+      const timer = state.retryTimers.get(recordId);
+      if (timer) clearTimeout(timer);
+      state.retryTimers.delete(recordId);
+      if (resetAttempts) state.retryAttempts.delete(recordId);
+    }
+
+    function scheduleDraftRetry(recordId, { immediate = false } = {}) {
+      if (!state.drafts.has(recordId) || state.saving.has(recordId)) return;
+      clearDraftRetry(recordId);
+      const attempts = state.retryAttempts.get(recordId) || 0;
+      if (!immediate && attempts >= SAVE_RETRY_MAX_ATTEMPTS) return;
+      const delay = immediate ? 0 : Math.min(SAVE_RETRY_MAX_MS, SAVE_RETRY_BASE_MS * (2 ** attempts));
+      if (!immediate) state.retryAttempts.set(recordId, attempts + 1);
+      const timer = setTimeout(() => {
+        state.retryTimers.delete(recordId);
+        if (!state.drafts.has(recordId) || state.saving.has(recordId)) return;
+        if (!navigator.onLine || (!DEMO_MODE && !currentSessionToken())) return;
+        saveInlineResult(recordId);
+      }, delay);
+      state.retryTimers.set(recordId, timer);
+    }
+
+    function retryAllDrafts({ immediate = false } = {}) {
+      state.drafts.forEach((_, recordId) => {
+        if (immediate) clearDraftRetry(recordId, true);
+        scheduleDraftRetry(recordId, { immediate });
+      });
+    }
+
+    function hasPendingResultWork() {
+      return state.drafts.size > 0 || state.inFlightDrafts.size > 0
+        || state.recoveredDrafts.size > 0 || state.saving.size > 0;
+    }
+
     function currentResultValues(record) {
       const draft = state.drafts.get(record.id);
       const inFlight = state.inFlightDrafts.get(record.id);
@@ -2519,7 +2706,9 @@
         baseValues: existing ? existing.baseValues : (inFlight ? inFlight.baseValues : resultValues(record)),
         changedKeys: [...changedKeys],
         expectedVersion: existing ? existing.expectedVersion : (inFlight ? inFlight.expectedVersion : record.version),
+        updatedAt: Date.now(),
       });
+      persistPendingDrafts();
       syncDraftControls(recordId, values, record);
       setExportBusy(state.exporting);
     }
@@ -2531,7 +2720,7 @@
         if (!key || !(key in values)) return;
         if (control.value !== values[key]) control.value = values[key];
         control.classList.toggle('is-filled', Boolean(values[key]));
-        const field = control.closest('.result-field');
+        const field = control.closest('.result-input-wrap, .card-result-field');
         if (field) syncResultFieldFilledState(field, Boolean(values[key]));
         control.disabled = isStepwiseSelection(record) && values.stage1 === '불합격' &&
           (key === 'finalResult' || key === 'failureReason');
@@ -2562,14 +2751,31 @@
       queued.expectedVersion = currentRecord.version;
     }
 
+    function discardConflictingQueuedFields(recordId, currentRecord, conflictingFields) {
+      const queued = state.drafts.get(recordId);
+      if (!queued) return false;
+      const conflicts = new Set((Array.isArray(conflictingFields) ? conflictingFields : [])
+        .filter(key => RESULT_KEYS.includes(key)));
+      queued.changedKeys = queued.changedKeys.filter(key => !conflicts.has(key));
+      if (!queued.changedKeys.length) {
+        state.drafts.delete(recordId);
+        return false;
+      }
+      rebaseQueuedDraft(recordId, currentRecord);
+      return true;
+    }
+
     async function saveInlineResult(recordId) {
       if (state.saving.has(recordId)) return;
       const record = state.records.find(item => item.id === recordId);
       const draft = state.drafts.get(recordId);
       if (!record || !draft) return;
+      clearDraftRetry(recordId);
       const values = { ...draft.values };
       if (!/^\d{0,6}$/.test(values.firstWait) || !/^\d{0,6}$/.test(values.finalWait)) {
         state.drafts.delete(recordId);
+        clearDraftRetry(recordId, true);
+        persistPendingDrafts();
         renderResults();
         toast('충원번호는 숫자만 입력해 주세요.', 'error');
         return;
@@ -2577,10 +2783,12 @@
       state.drafts.delete(recordId);
       state.inFlightDrafts.set(recordId, draft);
       state.saving.add(recordId);
+      persistPendingDrafts();
       syncSavingOverlay();
       setRecordControlsBusy(recordId, true);
       setSyncState('busy', '반영 중');
       let saved = false;
+      let shouldRetry = false;
       try {
         const data = await api('save', {
           recordId: record.id,
@@ -2603,27 +2811,49 @@
       } catch (error) {
         if ((error.code === 'CONFLICT' || error.code === 'FIELD_CONFLICT') && error.details && error.details.current) {
           replaceRecord(error.details.current);
-          rebaseQueuedDraft(recordId, error.details.current);
+          if (error.code === 'FIELD_CONFLICT') {
+            shouldRetry = discardConflictingQueuedFields(
+              recordId,
+              error.details.current,
+              error.details.conflictingFields
+            );
+          } else {
+            rebaseQueuedDraft(recordId, error.details.current);
+            shouldRetry = state.drafts.has(recordId);
+          }
         } else {
           const queued = state.drafts.get(recordId);
           if (queued) {
             queued.changedKeys = [...new Set([...draft.changedKeys, ...queued.changedKeys])];
             queued.baseValues = draft.baseValues;
             queued.expectedVersion = draft.expectedVersion;
+            queued.updatedAt = Math.max(Number(queued.updatedAt) || 0, Number(draft.updatedAt) || 0);
           } else {
             state.drafts.set(recordId, draft);
           }
+          shouldRetry = true;
         }
         setSyncState('error', '저장 실패');
-        toast(error.message, 'error');
+        if (!state.retryAttempts.has(recordId)
+          || error.code === 'CONFLICT' || error.code === 'FIELD_CONFLICT') {
+          toast(error.message, 'error');
+        }
       } finally {
         state.inFlightDrafts.delete(recordId);
         state.saving.delete(recordId);
         renderResults();
-        if (saved && state.drafts.has(recordId)) {
-          queueMicrotask(() => saveInlineResult(recordId));
-        }
         syncSavingOverlay();
+        persistPendingDrafts();
+        if (saved && state.drafts.has(recordId)) {
+          clearDraftRetry(recordId, true);
+          queueMicrotask(() => saveInlineResult(recordId));
+        } else if (saved) {
+          clearDraftRetry(recordId, true);
+        } else if (shouldRetry && state.drafts.has(recordId)) {
+          scheduleDraftRetry(recordId);
+        } else {
+          clearDraftRetry(recordId, true);
+        }
       }
     }
 
@@ -2703,11 +2933,19 @@
     }
 
     function resetSearch() {
+      if (hasPendingResultWork()) {
+        persistPendingDrafts();
+        toast('입력값 반영이 끝난 뒤 초기화해 주세요.', 'error', 4200);
+        return;
+      }
       elements.searchForm.reset();
       state.records = [];
       state.drafts.clear();
       state.inFlightDrafts.clear();
       state.saving.clear();
+      state.retryTimers.forEach(timer => clearTimeout(timer));
+      state.retryTimers.clear();
+      state.retryAttempts.clear();
       syncSavingOverlay();
       state.lastFilters = null;
       state.dataRevision = '';
@@ -2717,6 +2955,7 @@
       state.lastTruncated = false;
       state.visibleCount = INITIAL_PAGE_SIZE;
       clearInterval(state.pollingTimer);
+      persistPendingDrafts();
       setSearchLayout(false);
       renderResults(0, false);
       setSyncState(currentApiUrl() && currentSessionToken() ? 'online' : 'idle', currentApiUrl() && currentSessionToken() ? '연결됨' : '연결 필요');
@@ -2731,6 +2970,8 @@
         state.universities = Array.isArray(data.options.universities) ? data.options.universities : [];
         state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
         setSyncState('online', timeLabel(data.serverTime));
+        resumeRecoveredDrafts();
+        retryAllDrafts({ immediate: true });
       } catch (error) {
         if (error.code !== 'CONFIG_REQUIRED') {
           setSyncState('error', '연결 오류');
@@ -2994,12 +3235,24 @@
       elements.passwordForm.addEventListener('submit', event => { event.preventDefault(); loginWithPassword(); });
       elements.passwordDialog.addEventListener('cancel', event => event.preventDefault());
       document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && state.lastFilters) pollForChanges();
+        if (document.hidden) {
+          persistPendingDrafts();
+          return;
+        }
+        resumeRecoveredDrafts();
+        retryAllDrafts({ immediate: true });
+        if (state.lastFilters) pollForChanges();
       });
+      window.addEventListener('online', () => {
+        resumeRecoveredDrafts();
+        retryAllDrafts({ immediate: true });
+      });
+      window.addEventListener('pagehide', persistPendingDrafts);
+      window.addEventListener('beforeunload', persistPendingDrafts);
     }
 
     function demoApi(action, payload) {
-      return new Promise(resolve => {
+      return new Promise((resolve, reject) => {
         setTimeout(() => {
           if (!window.__demoRows) window.__demoRows = demoRows();
           if (!window.__demoRevision) window.__demoRevision = 'demo-0';
@@ -3028,6 +3281,17 @@
           });
           else if (action === 'save') {
             const row = window.__demoRows.find(item => item.id === payload.recordId);
+            if (Number(window.__demoSaveFailures) > 0) {
+              window.__demoSaveFailures = Number(window.__demoSaveFailures) - 1;
+              window.__demoSaveFailureEvents = Number(window.__demoSaveFailureEvents || 0) + 1;
+              const failure = window.__demoSaveFailure || {};
+              const code = String(failure.code || 'DEMO_SAVE_FAILED');
+              const details = code === 'FIELD_CONFLICT'
+                ? { current: { ...row }, conflictingFields: failure.conflictingFields || [] }
+                : failure.details;
+              reject(new ApiError(code, failure.message || '데모 저장 실패', details));
+              return;
+            }
             Object.assign(row, payload.values, { version: String(Date.now()) });
             if (isStepwiseSelection(row) && row.stage1 === '불합격') {
               row.finalResult = '불합격';
@@ -3036,7 +3300,7 @@
             window.__demoRevision = `demo-${Date.now()}`;
             resolve({ ok: true, record: { ...row }, revision: window.__demoRevision, serverTime: new Date().toISOString() });
           }
-        }, 260);
+        }, Number(window.__demoApiDelayMs) || 260);
       });
     }
 
@@ -3049,6 +3313,7 @@
     }
 
     function init() {
+      restorePendingDrafts();
       configureSortControls();
       wireEvents();
       setupInstall();

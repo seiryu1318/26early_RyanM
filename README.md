@@ -10,6 +10,7 @@ Google Sheets `편집` 탭의 지원자 정보를 검색하고 Q:U 결과를 입
 - `일괄합산` 1단계 결과는 수정 불가
 - 15초 간격으로 열린 검색 결과 동기화
 - 배경 이미지가 `index.html`에 내장됨
+- 시트 일괄 갱신 뒤 `publishAdmissionsDataRevision()`을 실행해 열린 화면에 새 데이터 리비전을 즉시 알림
 
 웹 주소: https://seiryu1318.github.io/26early_RyanM/
 

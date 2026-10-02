@@ -468,6 +468,30 @@ function bumpDataRevision_() {
   return revision;
 }
 
+/**
+ * Google Sheet를 직접 일괄 갱신한 뒤 관리자가 한 번 실행하는 발행 함수입니다.
+ * 공개 웹 API에는 노출하지 않으며 Apps Script 편집기 또는 Execution API에서만
+ * 실행해 열린 PC·모바일 화면이 새 데이터 세대를 즉시 감지하게 합니다.
+ */
+function publishAdmissionsDataRevision() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(CONFIG.lockWaitMs);
+  try {
+    const sheet = getSheet_();
+    assertSchema_(sheet);
+    SpreadsheetApp.flush();
+    const revision = bumpDataRevision_();
+    return {
+      ok: true,
+      revision,
+      rowCount: Math.max(0, sheet.getLastRow() - CONFIG.headerRow),
+      serverTime: new Date().toISOString(),
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function rowsCacheKey_(revision, suffix) {
   return CONFIG.rowsCachePrefix + ':' + revision + ':' + suffix;
 }

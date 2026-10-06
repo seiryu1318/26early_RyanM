@@ -1451,15 +1451,11 @@ function normalizeAdmissionType_(value) {
 }
 
 function normalizeAdmissionTypeForRow_(row) {
-  const normalized = normalizeAdmissionType_(row[COL.admissionType]);
-  if (normalized !== '면접') return normalized;
-
-  // 전문대의 I열 "면접위주" 중 학생부 성적이나 출결을 함께 반영하는 전형은
-  // 화면에서 교과(면접)으로 묶습니다. 서류·순수 면접 중심 전형만
-  // 공식 전형방법을 존중해 면접으로 남깁니다.
-  const university = normalize_(row[COL.university]);
-  if (university.includes('명지전문대')) return '면접';
-  return '교과(면접)';
+  // 전형명이나 대학 종류만으로 분류를 추정하지 않습니다.
+  // `교과(면접)`은 공식 모집요강에서 교과 성적을 정량 반영하면서
+  // 어느 선발 단계에서든 면접을 함께 실시하는 행에 I열로 명시합니다.
+  // 반영비율이나 일괄/단계별 여부만으로 다른 유형으로 바꾸지 않습니다.
+  return normalizeAdmissionType_(row[COL.admissionType]);
 }
 
 function normalizeAdmissionName_(value, admissionType) {

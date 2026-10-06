@@ -1802,6 +1802,10 @@
     const REQUEST_TIMEOUT_MS = 30000;
     const META_REQUEST_TIMEOUT_MS = 45000;
     const SAVE_REQUEST_TIMEOUT_MS = 35000;
+    const READ_RETRY_BACKOFF_MS = 300;
+    const READ_RETRY_ACTIONS = new Set([
+      'health', 'revision', 'meta', 'universities', 'suggest', 'search', 'export',
+    ]);
     const META_REFRESH_MIN_INTERVAL_MS = 60000;
     const SEARCH_CACHE_LIMIT = 12;
     const SEARCH_CACHE_TTL_MS = 30000;
@@ -1965,21 +1969,8 @@
       }
     }
 
-    async function api(action, payload = {}, options = {}) {
-      if (DEMO_MODE) return demoApi(action, payload);
-      const url = currentApiUrl();
-      if (!url) {
-        openSettings();
-        throw new ApiError('CONFIG_REQUIRED', '연결 설정이 필요합니다.');
-      }
-      const sessionToken = currentSessionToken();
-      if (action !== 'login' && !sessionToken) {
-        openPassword();
-        throw new ApiError('AUTH_REQUIRED', '비밀번호를 입력해 주세요.');
-      }
-
+    async function apiRequestAttempt(action, payload, url, sessionToken, externalSignal, timeoutMs) {
       const requestController = new AbortController();
-      const externalSignal = options.signal;
       const abortFromOutside = () => requestController.abort();
       let timedOut = false;
       if (externalSignal) {
@@ -1989,9 +1980,7 @@
       const timeout = setTimeout(() => {
         timedOut = true;
         requestController.abort();
-      }, action === 'meta'
-        ? META_REQUEST_TIMEOUT_MS
-        : (action === 'save' ? SAVE_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS));
+      }, timeoutMs);
       try {
         const response = await fetch(url, {
           method: 'POST',
@@ -2014,14 +2003,91 @@
         }
         return data;
       } catch (error) {
+        if (externalSignal && externalSignal.aborted) throw abortError();
         if (timedOut) {
-          throw new ApiError('REQUEST_TIMEOUT', '서버 응답이 지연되고 있습니다. 자동으로 다시 시도합니다.');
+          throw new ApiError('REQUEST_TIMEOUT', '서버 응답이 지연되고 있습니다.');
         }
         throw error;
       } finally {
         clearTimeout(timeout);
         if (externalSignal) externalSignal.removeEventListener('abort', abortFromOutside);
       }
+    }
+
+    function isRetryableReadFailure(error) {
+      if (!error || error.name === 'AbortError') return false;
+      return error.code === 'REQUEST_TIMEOUT'
+        || error.name === 'TypeError'
+        || error.name === 'NetworkError';
+    }
+
+    function waitForRetryDelay(delayMs, signal) {
+      if (signal && signal.aborted) return Promise.reject(abortError());
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(finish, delayMs);
+        function finish() {
+          if (signal) signal.removeEventListener('abort', cancel);
+          resolve();
+        }
+        function cancel() {
+          clearTimeout(timer);
+          if (signal) signal.removeEventListener('abort', cancel);
+          reject(abortError());
+        }
+        if (signal) signal.addEventListener('abort', cancel, { once: true });
+      });
+    }
+
+    async function api(action, payload = {}, options = {}) {
+      if (DEMO_MODE) return demoApi(action, payload);
+      const url = currentApiUrl();
+      if (!url) {
+        openSettings();
+        throw new ApiError('CONFIG_REQUIRED', '연결 설정이 필요합니다.');
+      }
+      const sessionToken = currentSessionToken();
+      if (action !== 'login' && !sessionToken) {
+        openPassword();
+        throw new ApiError('AUTH_REQUIRED', '비밀번호를 입력해 주세요.');
+      }
+
+      const externalSignal = options.signal;
+      const defaultTimeoutMs = action === 'meta'
+        ? META_REQUEST_TIMEOUT_MS
+        : (action === 'save' ? SAVE_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
+      const timeoutMs = Number.isFinite(options.timeoutMs)
+        ? Math.max(1, Number(options.timeoutMs))
+        : defaultTimeoutMs;
+      const retryBackoffMs = Number.isFinite(options.retryBackoffMs)
+        ? Math.max(0, Number(options.retryBackoffMs))
+        : READ_RETRY_BACKOFF_MS;
+      // Authentication and mutations are deliberately excluded. The save flow
+      // owns its conflict-aware queue; transport retries here are reads only.
+      const maxAttempts = READ_RETRY_ACTIONS.has(action) ? 2 : 1;
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        if (externalSignal && externalSignal.aborted) throw abortError();
+        try {
+          return await apiRequestAttempt(
+            action,
+            payload,
+            url,
+            sessionToken,
+            externalSignal,
+            timeoutMs
+          );
+        } catch (error) {
+          if (externalSignal && externalSignal.aborted) throw abortError();
+          const willRetry = attempt + 1 < maxAttempts && isRetryableReadFailure(error);
+          if (!willRetry) {
+            if (attempt > 0 && error && error.code === 'REQUEST_TIMEOUT') {
+              error.message = '자동 재시도 후에도 서버 응답이 지연되고 있습니다.';
+            }
+            throw error;
+          }
+          await waitForRetryDelay(retryBackoffMs, externalSignal);
+        }
+      }
+      throw new ApiError('API_ERROR', '요청에 실패했습니다.');
     }
 
     function collectFilters() {

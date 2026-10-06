@@ -246,7 +246,7 @@
     }
     .primary-search {
       display: grid;
-      grid-template-columns: minmax(120px, .58fr) minmax(96px, .42fr) minmax(130px, .62fr) minmax(175px, 1fr) minmax(190px, 1.08fr) 112px;
+      grid-template-columns: minmax(96px, .58fr) minmax(78px, .42fr) minmax(110px, .62fr) minmax(145px, 1fr) minmax(155px, 1.08fr) minmax(155px, 1fr) 112px;
       align-items: end;
       gap: 7px;
       padding: 0;
@@ -320,7 +320,7 @@
 
     .search-utility {
       display: grid;
-      grid-template-columns: minmax(120px, .58fr) minmax(96px, .42fr) minmax(130px, .62fr) minmax(175px, 1fr) minmax(190px, 1.08fr) auto;
+      grid-template-columns: minmax(96px, .58fr) minmax(78px, .42fr) minmax(110px, .62fr) minmax(145px, 1fr) minmax(155px, 1.08fr) minmax(155px, 1fr) auto;
       gap: 7px;
       align-items: center;
       min-height: 36px;
@@ -345,12 +345,12 @@
     .detail-toggle { padding: 0 12px; }
     .detail-toggle::after { content: none; }
     #detailToggle { grid-column: 4; justify-self: start; }
-    #clearButton { grid-column: 6; justify-self: end; }
+    #clearButton { grid-column: 7; justify-self: end; }
     .clear-button { padding: 0 13px; color: var(--muted); background: transparent; border-color: transparent; }
 
     .detail-filters {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 9px;
       margin-top: 4px;
       padding: 12px;
@@ -818,12 +818,12 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     @media (max-width: 960px) {
-      .primary-search { grid-template-columns: 1fr 1fr; }
-      .primary-search .search-button { width: 100%; }
-      .search-utility { grid-template-columns: 1fr 1fr; }
-      #detailToggle { grid-column: 2; grid-row: 1; justify-self: start; }
+      .primary-search { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .primary-search .search-button { width: 100%; grid-column: span 2; }
+      .search-utility { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      #detailToggle { grid-column: 4; grid-row: 1; justify-self: start; }
       #clearButton { grid-column: 1; grid-row: 1; justify-self: start; }
-      .detail-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .detail-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
 
     body.mobile-edition {
@@ -843,14 +843,23 @@
     body.mobile-edition .glass-panel { border-radius: 23px; }
     body.mobile-edition .search-panel { padding: 12px; }
     body.mobile-edition .primary-search { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-    body.mobile-edition .primary-search .field:nth-child(5) { grid-column: 1 / -1; }
     body.mobile-edition .field label { margin-left: 3px; }
     body.mobile-edition .field input, body.mobile-edition .field select { height: 50px; background: rgba(255,255,255,.88); }
     body.mobile-edition .primary-search .search-button { display: none; }
     body.mobile-edition .search-utility { min-height: 44px; display: flex; padding: 3px 0 0; }
     body.mobile-edition #detailToggle { display: none; }
     body.mobile-edition .search-utility { justify-content: flex-end; }
-    body.mobile-edition .detail-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px; }
+    body.mobile-edition .detail-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; padding: 10px; }
+    @media (max-width: 599px) {
+      body.mobile-edition .primary-search .autocomplete-field .suggestions {
+        width: calc(200% + 8px);
+        right: auto;
+      }
+      body.mobile-edition .primary-search .autocomplete-field:nth-child(even) .suggestions {
+        right: 0;
+        left: auto;
+      }
+    }
     body.mobile-edition .results-section { margin-top: 13px; overflow: visible; }
     body.mobile-edition .results-bar { min-height: 54px; padding: 9px 13px; }
     body.mobile-edition .results-actions { display: none; }
@@ -1016,6 +1025,10 @@
       body.pc-edition { --topbar-height: 60px; }
       body.pc-edition main { width: calc(100% - 20px); padding-top: calc(var(--topbar-height) + 18px); }
       body.pc-edition .primary-search { grid-template-columns: 1fr; }
+      body.pc-edition .primary-search .search-button { grid-column: 1; }
+      body.pc-edition .search-utility { grid-template-columns: 1fr 1fr; }
+      body.pc-edition #detailToggle { grid-column: 2; }
+      body.pc-edition #clearButton { grid-column: 1; }
       body.pc-edition .detail-filters { grid-template-columns: 1fr; }
       body.pc-edition .sync-pill span:last-child { display: none; }
     }
@@ -1177,8 +1190,6 @@
     @media (min-width: 600px) {
       body.mobile-edition .primary-search,
       body.mobile-edition.has-searched .primary-search { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-      body.mobile-edition .primary-search .field:nth-child(4) { grid-column: span 2; }
-      body.mobile-edition .primary-search .field:nth-child(5) { grid-column: auto; }
       body.mobile-edition .detail-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       body.mobile-edition .card-primary { grid-template-columns: minmax(170px, .7fr) minmax(0, 1.3fr); }
       body.mobile-edition .card-meta { grid-template-columns: minmax(80px, .72fr) minmax(0, 1.14fr) minmax(0, 1.14fr); }
@@ -1232,7 +1243,7 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 6px;
       }
-      body.mobile-edition .primary-search .field:nth-child(5) { grid-column: 1 / -1; }
+      body.mobile-edition .primary-search .autocomplete-field .suggestions { width: calc(200% + 6px); }
       body.mobile-edition .field label {
         margin: 0 0 4px 3px;
         font-size: 13.5px;
@@ -1557,18 +1568,25 @@
               <option value="10">10반</option><option value="11">11반</option>
             </select>
           </div>
-          <div class="field">
+          <div class="field autocomplete-field">
             <label for="nameInput">성명</label>
-            <input id="nameInput" name="name" type="search" autocomplete="off" placeholder="성명">
+            <input id="nameInput" name="name" type="search" autocomplete="off" placeholder="성명" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="nameSuggestions">
+            <div id="nameSuggestions" class="suggestions" role="listbox" hidden></div>
           </div>
           <div class="field autocomplete-field">
             <label for="universityInput">대학명</label>
             <input id="universityInput" name="university" type="search" autocomplete="off" placeholder="대학명" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="universitySuggestions">
             <div id="universitySuggestions" class="suggestions" role="listbox" hidden></div>
           </div>
-          <div class="field">
+          <div class="field autocomplete-field">
             <label for="admissionInput">전형명</label>
-            <input id="admissionInput" name="admissionName" type="search" autocomplete="off" placeholder="전형명">
+            <input id="admissionInput" name="admissionName" type="search" autocomplete="off" placeholder="전형명" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="admissionSuggestions">
+            <div id="admissionSuggestions" class="suggestions" role="listbox" hidden></div>
+          </div>
+          <div class="field autocomplete-field">
+            <label for="recruitmentUnitInput">모집단위</label>
+            <input id="recruitmentUnitInput" name="recruitmentUnit" type="search" autocomplete="off" placeholder="모집단위" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="recruitmentUnitSuggestions">
+            <div id="recruitmentUnitSuggestions" class="suggestions" role="listbox" hidden></div>
           </div>
           <button class="search-button" id="desktopSearchButton" type="submit">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
@@ -1579,7 +1597,7 @@
         <div class="search-utility">
           <button id="detailToggle" class="detail-toggle" type="button" aria-expanded="false" aria-controls="detailFilters">
             <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7M15 6h5M4 12h3M11 12h9M4 18h10M18 18h2"/><circle cx="13" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>
-            <span>세부 필터</span>
+            <span>추가 옵션</span>
           </button>
           <button id="clearButton" class="ghost-button clear-button" type="button">
             <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6"/><path d="M5.5 15a7 7 0 1 0 1-7"/></svg>
@@ -1592,34 +1610,17 @@
             <label for="universityTypeSelect">대학구분</label>
             <select id="universityTypeSelect"><option value="">전체</option></select>
           </div>
-          <div class="field">
-            <label for="detailNameInput">성명</label>
-            <input id="detailNameInput" type="search" autocomplete="off" placeholder="성명">
-          </div>
-          <div class="field autocomplete-field">
-            <label for="detailUniversityInput">대학명</label>
-            <input id="detailUniversityInput" type="search" autocomplete="off" placeholder="대학명" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="detailUniversitySuggestions">
-            <div id="detailUniversitySuggestions" class="suggestions" role="listbox" hidden></div>
-          </div>
-          <div class="campus-toggle-field">
-            <span id="campusToggleLabel" class="filter-option-label">대학명 범위</span>
-            <label class="campus-toggle" for="includeCampusesToggle">
-              <input id="includeCampusesToggle" type="checkbox" aria-labelledby="campusToggleLabel campusToggleText">
-              <span class="campus-toggle-control" aria-hidden="true"></span>
-              <span id="campusToggleText" class="campus-toggle-text">캠퍼스 포함</span>
-            </label>
-          </div>
-          <div class="field select-wrap">
-            <label for="trackSelect">계열</label>
-            <select id="trackSelect"><option value="">전체</option></select>
-          </div>
           <div class="field select-wrap">
             <label for="admissionTypeSelect">전형유형</label>
             <select id="admissionTypeSelect"><option value="">전체</option></select>
           </div>
-          <div class="field">
-            <label for="detailAdmissionInput">전형명</label>
-            <input id="detailAdmissionInput" type="search" autocomplete="off" placeholder="전형명">
+          <div class="campus-toggle-field">
+            <span id="campusToggleLabel" class="filter-option-label">캠퍼스 포함</span>
+            <label class="campus-toggle" for="includeCampusesToggle">
+              <input id="includeCampusesToggle" type="checkbox" aria-labelledby="campusToggleLabel">
+              <span class="campus-toggle-control" aria-hidden="true"></span>
+              <span id="campusToggleText" class="campus-toggle-text" aria-hidden="true">포함</span>
+            </label>
           </div>
         </div>
       </form>
@@ -1672,7 +1673,7 @@
   <div class="mobile-actionbar">
     <button id="mobileDetailButton" class="detail-toggle" type="button" aria-expanded="false" aria-controls="detailFilters">
       <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7M15 6h5M4 12h3M11 12h9M4 18h10M18 18h2"/><circle cx="13" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>
-      <span>세부 필터</span>
+      <span>추가 옵션</span>
     </button>
     <button id="mobileSearchButton" class="search-button" type="button">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
@@ -1774,8 +1775,8 @@
     });
     const RESULT_KEYS = Object.freeze(Object.keys(RESULT_DEFINITIONS));
     const FILTER_KEYS = Object.freeze([
-      'university', 'name', 'admissionName', 'universityType', 'enrollment', 'classNo',
-      'detailName', 'detailUniversity', 'track', 'admissionType', 'detailAdmissionName', 'includeCampuses',
+      'university', 'name', 'admissionName', 'recruitmentUnit', 'universityType',
+      'enrollment', 'classNo', 'admissionType', 'includeCampuses',
     ]);
 
     const state = {
@@ -1803,6 +1804,7 @@
       universitySearchIndex: [],
       universitySuggestionCache: new Map(),
       universitySuggestionRequests: new Map(),
+      textSuggestionIndexes: Object.create(null),
       metaPromise: null,
       installPrompt: null,
       drafts: new Map(),
@@ -1824,6 +1826,7 @@
       universityInput: $('universityInput'),
       nameInput: $('nameInput'),
       admissionInput: $('admissionInput'),
+      recruitmentUnitInput: $('recruitmentUnitInput'),
       detailToggle: $('detailToggle'),
       detailFilters: $('detailFilters'),
       clearButton: $('clearButton'),
@@ -1834,12 +1837,8 @@
       universityTypeSelect: $('universityTypeSelect'),
       enrollmentSelect: $('enrollmentSelect'),
       classSelect: $('classSelect'),
-      detailNameInput: $('detailNameInput'),
-      detailUniversityInput: $('detailUniversityInput'),
       includeCampusesToggle: $('includeCampusesToggle'),
-      trackSelect: $('trackSelect'),
       admissionTypeSelect: $('admissionTypeSelect'),
-      detailAdmissionInput: $('detailAdmissionInput'),
       resultsCount: $('resultsCount'),
       resultsSection: $('resultsSection'),
       emptyState: $('emptyState'),
@@ -1941,22 +1940,13 @@
         university,
         name,
         admissionName,
+        recruitmentUnit: elements.recruitmentUnitInput.value.trim(),
         universityType: elements.universityTypeSelect.value,
         enrollment: elements.enrollmentSelect.value,
         classNo: elements.classSelect.value,
-        detailName: name ? '' : elements.detailNameInput.value.trim(),
-        detailUniversity: university ? '' : elements.detailUniversityInput.value.trim(),
-        track: elements.trackSelect.value,
         admissionType: elements.admissionTypeSelect.value,
-        detailAdmissionName: admissionName ? '' : elements.detailAdmissionInput.value.trim(),
         includeCampuses: Boolean(elements.includeCampusesToggle.checked),
       };
-    }
-
-    function clearShadowedDetailFilters() {
-      if (elements.universityInput.value.trim()) elements.detailUniversityInput.value = '';
-      if (elements.nameInput.value.trim()) elements.detailNameInput.value = '';
-      if (elements.admissionInput.value.trim()) elements.detailAdmissionInput.value = '';
     }
 
     function hasFilter(filters) {
@@ -1974,6 +1964,37 @@
         .normalize('NFKC')
         .toLocaleLowerCase('ko')
         .replace(/\s+/g, '');
+    }
+
+    function setTextSuggestionOptions(key, values) {
+      const unique = [...new Set((Array.isArray(values) ? values : [])
+        .map(value => String(value || '').trim())
+        .filter(Boolean))];
+      state.textSuggestionIndexes[key] = unique.map(value => ({
+        value,
+        normalized: normalizeUniversityTerm(value),
+      }));
+    }
+
+    function localTextSuggestions(key, query, limit = 12) {
+      const normalizedQuery = normalizeUniversityTerm(query);
+      if (!normalizedQuery) return [];
+      let exact = '';
+      const prefixes = [];
+      const contains = [];
+      for (const item of state.textSuggestionIndexes[key] || []) {
+        if (item.normalized === normalizedQuery) exact = item.value;
+        else if (item.normalized.startsWith(normalizedQuery) && prefixes.length < limit) prefixes.push(item.value);
+        else if (item.normalized.includes(normalizedQuery) && contains.length < limit) contains.push(item.value);
+      }
+      return [exact, ...prefixes, ...contains].filter(Boolean).slice(0, limit);
+    }
+
+    async function textSuggestions(key, query) {
+      if (!(state.textSuggestionIndexes[key] || []).length && state.metaPromise) {
+        try { await state.metaPromise; } catch (_) { /* 빈 후보로 계속합니다. */ }
+      }
+      return localTextSuggestions(key, query);
     }
 
     function setUniversityOptions(values) {
@@ -2070,31 +2091,29 @@
     }
 
     async function canonicalizeUniversityInputs(signal) {
+      const input = elements.universityInput;
+      const typedValue = input.value.trim();
+      if (!typedValue) return;
       if (state.metaPromise && !state.universitySearchIndex.length) {
-        try { await waitForSharedPromise(state.metaPromise, signal); }
-        catch (error) {
-          if (error && error.name === 'AbortError') throw error;
-          /* Search can still use the typed value. */
-        }
+        void state.metaPromise.then(() => {
+          if (input.value.trim() !== typedValue) return;
+          const canonical = canonicalUniversityName(typedValue, state.universities);
+          if (canonical) input.value = canonical;
+        }).catch(() => {});
+        return;
       }
       if (signal && signal.aborted) throw abortError();
-      const primaryValue = elements.universityInput.value.trim();
-      const inputs = primaryValue ? [elements.universityInput] : [elements.detailUniversityInput];
-      await Promise.all(inputs.map(async input => {
-        const query = input.value.trim();
-        if (!query) return;
-        let candidates = state.universities;
-        if (!candidates.length) {
-          try { candidates = await waitForSharedPromise(universitySuggestions(query), signal); }
-          catch (error) {
-            if (error && error.name === 'AbortError') throw error;
-            candidates = [];
-          }
+      let candidates = state.universities;
+      if (!candidates.length) {
+        try { candidates = await waitForSharedPromise(universitySuggestions(typedValue), signal); }
+        catch (error) {
+          if (error && error.name === 'AbortError') throw error;
+          candidates = [];
         }
-        if ((signal && signal.aborted) || input.value.trim() !== query) return;
-        const canonical = canonicalUniversityName(query, candidates);
-        if (canonical) input.value = canonical;
-      }));
+      }
+      if ((signal && signal.aborted) || input.value.trim() !== typedValue) return;
+      const canonical = canonicalUniversityName(typedValue, candidates);
+      if (canonical) input.value = canonical;
     }
 
     function cloneSearchResponse(data) {
@@ -2168,7 +2187,6 @@
         if (!silent) toast('입력값 저장이 끝난 뒤 다시 검색해 주세요.', 'error');
         return;
       }
-      if (!silent) clearShadowedDetailFilters();
       const initialFilters = silent && state.lastFilters ? state.lastFilters : collectFilters();
       if (!hasFilter(initialFilters)) {
         if (!silent) toast('검색 조건을 한 가지 이상 입력해 주세요.', 'error');
@@ -2834,11 +2852,18 @@
     }
 
     function normalizeFilterSnapshot(filters) {
+      const source = filters && typeof filters === 'object' ? filters : {};
+      const migrated = {
+        ...source,
+        name: source.name || source.detailName || '',
+        university: source.university || source.detailUniversity || '',
+        admissionName: source.admissionName || source.detailAdmissionName || '',
+      };
       const normalized = {};
       FILTER_KEYS.forEach(key => {
         normalized[key] = key === 'includeCampuses'
-          ? Boolean(filters && filters[key])
-          : String(filters && filters[key] || '');
+          ? Boolean(migrated[key])
+          : String(migrated[key] || '');
       });
       return normalized;
     }
@@ -2920,14 +2945,11 @@
       elements.universityInput.value = values.university;
       elements.nameInput.value = values.name;
       elements.admissionInput.value = values.admissionName;
+      elements.recruitmentUnitInput.value = values.recruitmentUnit;
       elements.universityTypeSelect.value = values.universityType;
       elements.enrollmentSelect.value = values.enrollment;
       elements.classSelect.value = values.classNo;
-      elements.detailNameInput.value = values.detailName;
-      elements.detailUniversityInput.value = values.detailUniversity;
-      elements.trackSelect.value = values.track;
       elements.admissionTypeSelect.value = values.admissionType;
-      elements.detailAdmissionInput.value = values.detailAdmissionName;
       elements.includeCampusesToggle.checked = Boolean(values.includeCampuses);
     }
 
@@ -3317,11 +3339,11 @@
       };
       add(filters.enrollment);
       add(filters.classNo ? `${filters.classNo}반` : '');
-      add(filters.name || filters.detailName);
-      add(filters.university || filters.detailUniversity);
-      add(filters.admissionName || filters.detailAdmissionName);
+      add(filters.name);
+      add(filters.university);
+      add(filters.admissionName);
+      add(filters.recruitmentUnit);
       add(filters.universityType);
-      add(filters.track);
       add(filters.admissionType);
       add(filters.includeCampuses ? '캠퍼스 포함' : '');
       elements.mobileSearchSummaryText.textContent = parts.join(' · ') || '검색 조건';
@@ -3399,9 +3421,11 @@
         try {
           const data = await api('meta');
           populateSelect(elements.universityTypeSelect, data.options.universityTypes);
-          populateSelect(elements.trackSelect, data.options.tracks);
           populateSelect(elements.admissionTypeSelect, data.options.admissionTypes);
           setUniversityOptions(data.options.universities);
+          setTextSuggestionOptions('name', data.options.names);
+          setTextSuggestionOptions('admissionName', data.options.admissionNames);
+          setTextSuggestionOptions('recruitmentUnit', data.options.recruitmentUnits);
           state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
           setSyncState('online', timeLabel(data.serverTime));
           resumeRecoveredDrafts();
@@ -3434,26 +3458,33 @@
       return option;
     }
 
-    function setupAutocomplete(input, panel) {
+    function setupAutocomplete(input, panel, {
+      normalizeQuery = normalizeUniversityTerm,
+      minimumLength = 2,
+      provideSuggestions = universitySuggestions,
+      debounceMs = null,
+    } = {}) {
       let timer = null;
       let activeIndex = -1;
       let suggestions = [];
       let requestSequence = 0;
+      let composing = false;
 
       function close() {
         requestSequence += 1;
         panel.hidden = true;
         panel.replaceChildren();
         input.setAttribute('aria-expanded', 'false');
+        input.removeAttribute('aria-activedescendant');
         activeIndex = -1;
       }
 
       async function update() {
         const query = input.value.trim();
-        if ([...normalizeUniversityTerm(query)].length < 2) { close(); return; }
+        if ([...normalizeQuery(query)].length < minimumLength) { close(); return; }
         const sequence = ++requestSequence;
         try {
-          const nextSuggestions = await universitySuggestions(query);
+          const nextSuggestions = await provideSuggestions(query);
           if (sequence !== requestSequence) return;
           if (document.activeElement !== input) { close(); return; }
           suggestions = nextSuggestions;
@@ -3481,8 +3512,22 @@
       }
 
       input.addEventListener('input', () => {
+        if (composing) return;
         clearTimeout(timer);
-        timer = setTimeout(update, EDITION === 'mobile' ? 90 : 140);
+        timer = setTimeout(update, debounceMs == null ? (EDITION === 'mobile' ? 90 : 140) : debounceMs);
+      });
+      input.addEventListener('compositionstart', () => {
+        composing = true;
+        clearTimeout(timer);
+      });
+      input.addEventListener('compositionend', () => {
+        composing = false;
+        clearTimeout(timer);
+        timer = setTimeout(update, 0);
+      });
+      input.addEventListener('focus', () => {
+        clearTimeout(timer);
+        timer = setTimeout(update, 0);
       });
       input.addEventListener('keydown', event => {
         if (panel.hidden) return;
@@ -3699,7 +3744,14 @@
           else if (action === 'revision') resolve({ ok: true, revision: window.__demoRevision, serverTime: new Date().toISOString() });
           else if (action === 'meta') resolve({
             ok: true,
-            options: { universityTypes: ['일반대학'], enrollments: ['재학생', '졸업생'], classes: ['1', '2', '3'], tracks: ['인문', '자연'], admissionTypes: ['교과', '종합', '논술'], universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)'] },
+            options: {
+              universityTypes: ['일반대학'], enrollments: ['재학생', '졸업생'], classes: ['1', '2', '3'],
+              tracks: ['인문', '자연'], admissionTypes: ['교과', '종합', '논술'],
+              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)'],
+              names: ['강승민', '김민준', '이서연', '박도윤'],
+              admissionNames: ['활동우수형', '학교추천', '논술우수'],
+              recruitmentUnits: ['경영학과', '정치외교학과', '전자전기공학부'],
+            },
             revision: window.__demoRevision,
             serverTime: new Date().toISOString(),
           });
@@ -3782,7 +3834,19 @@
       }
       window.addEventListener('resize', updateStickySearchMetrics, { passive: true });
       setupAutocomplete(elements.universityInput, $('universitySuggestions'));
-      setupAutocomplete(elements.detailUniversityInput, $('detailUniversitySuggestions'));
+      setupAutocomplete(elements.nameInput, $('nameSuggestions'), {
+        minimumLength: 1,
+        debounceMs: 35,
+        provideSuggestions: query => textSuggestions('name', query),
+      });
+      setupAutocomplete(elements.admissionInput, $('admissionSuggestions'), {
+        debounceMs: 35,
+        provideSuggestions: query => textSuggestions('admissionName', query),
+      });
+      setupAutocomplete(elements.recruitmentUnitInput, $('recruitmentUnitSuggestions'), {
+        debounceMs: 35,
+        provideSuggestions: query => textSuggestions('recruitmentUnit', query),
+      });
       renderResults(0, false);
       if (DEMO_MODE) {
         setSyncState('online', '데모');

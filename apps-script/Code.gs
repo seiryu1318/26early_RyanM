@@ -20,8 +20,8 @@ const CONFIG = Object.freeze({
   rowsCacheChunkChars: 80000,
   rowsCacheMaxChunks: 24,
   searchIndexCachePrefix: 'admissions-search-index-v3',
-  searchMatchCachePrefix: 'admissions-search-match-v3',
-  metaCachePrefix: 'admissions-meta-v2',
+  searchMatchCachePrefix: 'admissions-search-match-v4',
+  metaCachePrefix: 'admissions-meta-v3',
   searchMatchCacheTtlSeconds: 45,
   searchCacheMaxValueBytes: 90000,
   dataRevisionProperty: 'DATA_REVISION',
@@ -68,7 +68,7 @@ const ALLOWED = Object.freeze({
 });
 const RESULT_KEYS = Object.freeze(['stage1', 'finalResult', 'failureReason', 'firstWait', 'finalWait']);
 const SEARCH_FILTER_KEYS = Object.freeze([
-  'university', 'name', 'admissionName', 'universityType', 'enrollment', 'classNo',
+  'university', 'name', 'admissionName', 'recruitmentUnit', 'universityType', 'enrollment', 'classNo',
   'detailName', 'detailUniversity', 'track', 'admissionType', 'detailAdmissionName',
   'includeCampuses',
 ]);
@@ -205,14 +205,7 @@ function getMeta_() {
   }
 
   const rows = snapshot.rows;
-  const options = {
-    universityTypes: uniqueSorted_(rows.map(r => r[COL.universityType])),
-    enrollments: uniqueSorted_(rows.map(r => r[COL.enrollment])),
-    classes: uniqueSorted_(rows.map(r => r[COL.classNo]), true),
-    tracks: uniqueSorted_(rows.map(r => r[COL.track])),
-    admissionTypes: uniqueSorted_(rows.map(r => normalizeAdmissionType_(r[COL.admissionType]))),
-    universities: uniqueSorted_(rows.map(r => r[COL.university])),
-  };
+  const options = buildMetaOptions_(rows);
 
   // 메타데이터를 만들 때 이미 모든 행을 훑으므로 다음 검색을 위한
   // exact 후보 맵도 함께 준비합니다. 대학 맵은 ScriptCache에도 저장되어
@@ -231,6 +224,47 @@ function getMeta_() {
     ...result,
     revision: snapshot.revision,
     serverTime: new Date().toISOString(),
+  };
+}
+
+function buildMetaOptions_(rows) {
+  const buckets = {
+    universityTypes: new Set(),
+    enrollments: new Set(),
+    classes: new Set(),
+    tracks: new Set(),
+    admissionTypes: new Set(),
+    universities: new Set(),
+    names: new Set(),
+    admissionNames: new Set(),
+    recruitmentUnits: new Set(),
+  };
+  const add = (bucket, value) => {
+    const cleaned = text_(value).trim();
+    if (cleaned) bucket.add(cleaned);
+  };
+  rows.forEach(row => {
+    add(buckets.universityTypes, row[COL.universityType]);
+    add(buckets.enrollments, row[COL.enrollment]);
+    add(buckets.classes, row[COL.classNo]);
+    add(buckets.tracks, row[COL.track]);
+    add(buckets.admissionTypes, normalizeAdmissionType_(row[COL.admissionType]));
+    add(buckets.universities, row[COL.university]);
+    add(buckets.names, row[COL.name]);
+    add(buckets.admissionNames, resolveAdmissionName_(row));
+    add(buckets.recruitmentUnits, row[COL.department]);
+  });
+  const sorted = bucket => Array.from(bucket).sort((a, b) => a.localeCompare(b, 'ko'));
+  return {
+    universityTypes: sorted(buckets.universityTypes),
+    enrollments: sorted(buckets.enrollments),
+    classes: Array.from(buckets.classes).sort((a, b) => Number(a) - Number(b)),
+    tracks: sorted(buckets.tracks),
+    admissionTypes: sorted(buckets.admissionTypes),
+    universities: sorted(buckets.universities),
+    names: sorted(buckets.names),
+    admissionNames: sorted(buckets.admissionNames),
+    recruitmentUnits: sorted(buckets.recruitmentUnits),
   };
 }
 
@@ -586,7 +620,9 @@ function readMetaCache_(revision, snapshotToken) {
   try {
     const raw = CacheService.getScriptCache().get(metaCacheKey_(revision, snapshotToken));
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
+    const zipped = Utilities.base64DecodeWebSafe(raw);
+    const json = Utilities.ungzip(Utilities.newBlob(zipped)).getDataAsString('UTF-8');
+    const parsed = JSON.parse(json);
     if (!parsed || typeof parsed !== 'object' || !parsed.options || !Number.isInteger(parsed.rowCount)) {
       return null;
     }
@@ -597,9 +633,12 @@ function readMetaCache_(revision, snapshotToken) {
 }
 
 function writeMetaCache_(revision, snapshotToken, value) {
+  const json = JSON.stringify(value);
+  const zipped = Utilities.gzip(Utilities.newBlob(json, 'application/json'));
+  const encoded = Utilities.base64EncodeWebSafe(zipped.getBytes());
   putCacheSafely_(
     metaCacheKey_(revision, snapshotToken),
-    JSON.stringify(value),
+    encoded,
     CONFIG.rowsCacheTtlSeconds
   );
 }
@@ -908,6 +947,7 @@ function getNormalizedSearchRow_(searchIndex, rowIndex) {
   const normalized = {
     university: normalizeUniversity_(row[COL.university]),
     name: normalize_(row[COL.name]),
+    recruitmentUnit: normalize_(row[COL.department]),
     universityType: normalize_(row[COL.universityType]),
     enrollment: normalize_(row[COL.enrollment]),
     classNo: normalize_(row[COL.classNo]),
@@ -928,6 +968,7 @@ function matchesNormalizedFilters_(searchIndex, rowIndex, filters) {
     filters.includeCampuses
   )) return false;
   if (filters.name && !row.name.includes(filters.name)) return false;
+  if (filters.recruitmentUnit && !row.recruitmentUnit.includes(filters.recruitmentUnit)) return false;
   if (filters.universityType && row.universityType !== filters.universityType) return false;
   if (filters.enrollment && row.enrollment !== filters.enrollment) return false;
   if (filters.classNo && row.classNo !== filters.classNo) return false;
@@ -1019,6 +1060,7 @@ function sanitizeFilters_(filters) {
     university: cleanText_(source.university, 80),
     name: cleanText_(source.name, 40),
     admissionName: cleanText_(source.admissionName, 100),
+    recruitmentUnit: cleanText_(source.recruitmentUnit, 120),
     universityType: cleanText_(source.universityType, 40),
     enrollment: cleanText_(source.enrollment, 40),
     classNo: cleanText_(source.classNo, 20),
@@ -1039,6 +1081,7 @@ function matchesFilters_(row, f) {
   if (!universityMatchesQuery_(row[COL.university], f.university, f.includeCampuses)) return false;
   if (!includes_(row[COL.name], f.name)) return false;
   if (!includesAdmissionNameRow_(row, f.admissionName)) return false;
+  if (!includes_(row[COL.department], f.recruitmentUnit)) return false;
   if (!equals_(row[COL.universityType], f.universityType)) return false;
   if (!equals_(row[COL.enrollment], f.enrollment)) return false;
   if (!equals_(row[COL.classNo], f.classNo)) return false;

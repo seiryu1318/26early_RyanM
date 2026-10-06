@@ -4142,21 +4142,17 @@
       if (submitLabel) submitLabel.textContent = '로그인 중';
       setSyncState('busy', '확인 중');
       try {
-        const storedMeta = readStoredMeta();
-        const data = await api('login', { password, includeMeta: !storedMeta });
+        // Keep first-time sign-in fast: authenticate first, then refresh the
+        // larger autocomplete index independently in the background.
+        const data = await api('login', { password, includeMeta: false });
         localStorage.setItem('admissionsSession', JSON.stringify({ token: data.sessionToken, expiresAt: data.expiresAt }));
         elements.passwordInput.value = '';
         elements.passwordDialog.close();
-        if (data.meta && validMetaOptions(data.meta.options)) {
-          applyMetaResponse(data.meta, { persist: true });
-          setSyncState('online', timeLabel(data.meta.serverTime || data.serverTime));
-        } else {
-          setSyncState('online', '연결됨');
-          await initializeAuthenticatedMeta({
-            knownRevision: data.revision,
-            serverTime: data.serverTime,
-          });
-        }
+        setSyncState('online', '연결됨');
+        void initializeAuthenticatedMeta({
+          knownRevision: data.revision,
+          serverTime: data.serverTime,
+        });
       } catch (error) {
         setSyncState('error', '로그인 오류');
         toast(error.message, 'error');

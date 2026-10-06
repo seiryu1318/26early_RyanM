@@ -16,13 +16,13 @@ const CONFIG = Object.freeze({
   maxSuggestions: 12,
   lockWaitMs: 20000,
   rowsCachePrefix: 'admissions-rows-v3',
-  rowsCacheTtlSeconds: 60,
+  rowsCacheTtlSeconds: 300,
   rowsCacheChunkChars: 80000,
   rowsCacheMaxChunks: 24,
   searchIndexCachePrefix: 'admissions-search-index-v3',
   searchMatchCachePrefix: 'admissions-search-match-v4',
-  metaCachePrefix: 'admissions-meta-v3',
-  searchMatchCacheTtlSeconds: 45,
+  metaCachePrefix: 'admissions-meta-v4',
+  searchMatchCacheTtlSeconds: 300,
   searchCacheMaxValueBytes: 90000,
   dataRevisionProperty: 'DATA_REVISION',
   passwordProperty: 'ACCESS_PASSWORD',
@@ -239,6 +239,7 @@ function buildMetaOptions_(rows) {
     admissionNames: new Set(),
     recruitmentUnits: new Set(),
   };
+  const universityContexts = Object.create(null);
   const add = (bucket, value) => {
     const cleaned = text_(value).trim();
     if (cleaned) bucket.add(cleaned);
@@ -253,18 +254,46 @@ function buildMetaOptions_(rows) {
     add(buckets.names, row[COL.name]);
     add(buckets.admissionNames, resolveAdmissionName_(row));
     add(buckets.recruitmentUnits, row[COL.department]);
+    const university = text_(row[COL.university]).trim();
+    if (university) {
+      if (!universityContexts[university]) {
+        universityContexts[university] = {
+          admissionNames: new Set(),
+          recruitmentUnits: new Set(),
+        };
+      }
+      add(universityContexts[university].admissionNames, resolveAdmissionName_(row));
+      add(universityContexts[university].recruitmentUnits, row[COL.department]);
+    }
   });
   const sorted = bucket => Array.from(bucket).sort((a, b) => a.localeCompare(b, 'ko'));
+  const universities = sorted(buckets.universities);
+  const admissionNames = sorted(buckets.admissionNames);
+  const recruitmentUnits = sorted(buckets.recruitmentUnits);
+  const admissionNameIndexes = new Map(admissionNames.map((value, index) => [value, index]));
+  const recruitmentUnitIndexes = new Map(recruitmentUnits.map((value, index) => [value, index]));
+  const admissionNameIndexesByUniversity = universities.map(university => (
+    sorted(universityContexts[university] && universityContexts[university].admissionNames || [])
+      .map(value => admissionNameIndexes.get(value))
+      .filter(index => Number.isInteger(index))
+  ));
+  const recruitmentUnitIndexesByUniversity = universities.map(university => (
+    sorted(universityContexts[university] && universityContexts[university].recruitmentUnits || [])
+      .map(value => recruitmentUnitIndexes.get(value))
+      .filter(index => Number.isInteger(index))
+  ));
   return {
     universityTypes: sorted(buckets.universityTypes),
     enrollments: sorted(buckets.enrollments),
     classes: Array.from(buckets.classes).sort((a, b) => Number(a) - Number(b)),
     tracks: sorted(buckets.tracks),
     admissionTypes: sorted(buckets.admissionTypes),
-    universities: sorted(buckets.universities),
+    universities,
     names: sorted(buckets.names),
-    admissionNames: sorted(buckets.admissionNames),
-    recruitmentUnits: sorted(buckets.recruitmentUnits),
+    admissionNames,
+    recruitmentUnits,
+    admissionNameIndexesByUniversity,
+    recruitmentUnitIndexesByUniversity,
   };
 }
 
@@ -524,6 +553,16 @@ function publishAdmissionsDataRevision() {
   } finally {
     lock.releaseLock();
   }
+}
+
+function handleAdmissionsSheetEdit(event) {
+  const range = event && event.range;
+  if (!range) return;
+  const sheet = range.getSheet();
+  if (!sheet || sheet.getName() !== CONFIG.sheetName) return;
+  if (range.getLastRow() < CONFIG.firstDataRow) return;
+  if (range.getColumn() > CONFIG.totalColumns || range.getLastColumn() < 1) return;
+  bumpDataRevision_();
 }
 
 function rowsCacheKey_(revision, suffix) {

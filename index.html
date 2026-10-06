@@ -246,7 +246,7 @@
     }
     .primary-search {
       display: grid;
-      grid-template-columns: minmax(96px, .58fr) minmax(78px, .42fr) minmax(110px, .62fr) minmax(145px, 1fr) minmax(155px, 1.08fr) minmax(155px, 1fr) 112px;
+      grid-template-columns: repeat(6, minmax(0, 1fr)) 112px;
       align-items: end;
       gap: 7px;
       padding: 0;
@@ -320,7 +320,7 @@
 
     .search-utility {
       display: grid;
-      grid-template-columns: minmax(96px, .58fr) minmax(78px, .42fr) minmax(110px, .62fr) minmax(145px, 1fr) minmax(155px, 1.08fr) minmax(155px, 1fr) auto;
+      grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
       gap: 7px;
       align-items: center;
       min-height: 36px;
@@ -1743,6 +1743,9 @@
     const SAVE_RETRY_BASE_MS = 1000;
     const SAVE_RETRY_MAX_MS = 15000;
     const SAVE_RETRY_MAX_ATTEMPTS = 5;
+    const REQUEST_TIMEOUT_MS = 20000;
+    const SAVE_REQUEST_TIMEOUT_MS = 30000;
+    const META_REFRESH_MIN_INTERVAL_MS = 60000;
     const SEARCH_CACHE_LIMIT = 12;
     const SEARCH_CACHE_TTL_MS = 30000;
     const DEMO_HOST = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
@@ -1796,6 +1799,10 @@
       exporting: false,
       searchPanelObserver: null,
       dataRevision: '',
+      metaRevision: '',
+      lastMetaRefreshAt: 0,
+      metaRefreshTimer: null,
+      reconcileTimer: null,
       lastFullSyncAt: 0,
       recordsSignature: '',
       lastTotalMatches: 0,
@@ -1805,6 +1812,7 @@
       universitySuggestionCache: new Map(),
       universitySuggestionRequests: new Map(),
       textSuggestionIndexes: Object.create(null),
+      universityContextIndexes: [],
       metaPromise: null,
       installPrompt: null,
       drafts: new Map(),
@@ -1910,26 +1918,48 @@
         throw new ApiError('AUTH_REQUIRED', '비밀번호를 입력해 주세요.');
       }
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action, sessionToken, ...payload }),
-        cache: 'no-store',
-        redirect: 'follow',
-        signal: options.signal,
-      });
-      const raw = await response.text();
-      let data;
-      try { data = JSON.parse(raw); }
-      catch (_) { throw new ApiError('INVALID_RESPONSE', '서버 응답을 확인할 수 없습니다.'); }
-      if (!data.ok) {
-        if (data.code === 'UNAUTHORIZED' || data.code === 'SESSION_EXPIRED') {
-          localStorage.removeItem('admissionsSession');
-          openPassword();
-        }
-        throw new ApiError(data.code || 'API_ERROR', data.message || '요청에 실패했습니다.', data.details);
+      const requestController = new AbortController();
+      const externalSignal = options.signal;
+      const abortFromOutside = () => requestController.abort();
+      let timedOut = false;
+      if (externalSignal) {
+        if (externalSignal.aborted) throw abortError();
+        externalSignal.addEventListener('abort', abortFromOutside, { once: true });
       }
-      return data;
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        requestController.abort();
+      }, action === 'save' ? SAVE_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action, sessionToken, ...payload }),
+          cache: 'no-store',
+          redirect: 'follow',
+          signal: requestController.signal,
+        });
+        const raw = await response.text();
+        let data;
+        try { data = JSON.parse(raw); }
+        catch (_) { throw new ApiError('INVALID_RESPONSE', '서버 응답을 확인할 수 없습니다.'); }
+        if (!data.ok) {
+          if (data.code === 'UNAUTHORIZED' || data.code === 'SESSION_EXPIRED') {
+            localStorage.removeItem('admissionsSession');
+            openPassword();
+          }
+          throw new ApiError(data.code || 'API_ERROR', data.message || '요청에 실패했습니다.', data.details);
+        }
+        return data;
+      } catch (error) {
+        if (timedOut) {
+          throw new ApiError('REQUEST_TIMEOUT', '서버 응답이 지연되고 있습니다. 자동으로 다시 시도합니다.');
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+        if (externalSignal) externalSignal.removeEventListener('abort', abortFromOutside);
+      }
     }
 
     function collectFilters() {
@@ -1963,17 +1993,81 @@
       return String(value || '')
         .normalize('NFKC')
         .toLocaleLowerCase('ko')
-        .replace(/\s+/g, '');
+        .replace(/\s+/g, '')
+        .replace(/[（]/g, '(')
+        .replace(/[）]/g, ')');
     }
 
-    function setTextSuggestionOptions(key, values) {
+    function makeTextSuggestionIndex(values) {
       const unique = [...new Set((Array.isArray(values) ? values : [])
         .map(value => String(value || '').trim())
         .filter(Boolean))];
-      state.textSuggestionIndexes[key] = unique.map(value => ({
+      return unique.map(value => ({
         value,
         normalized: normalizeUniversityTerm(value),
       }));
+    }
+
+    function setTextSuggestionOptions(key, values) {
+      state.textSuggestionIndexes[key] = makeTextSuggestionIndex(values);
+    }
+
+    function universityFamilyKey(value) {
+      let normalized = normalizeUniversityTerm(value);
+      const parenthesized = normalized.match(/^(.+?)\([^()]+\)$/);
+      if (parenthesized) normalized = parenthesized[1];
+      const namedCampus = normalized.match(/^(.+?대학교).+캠퍼스$/);
+      if (namedCampus) normalized = namedCampus[1];
+      return normalized.replace(/대학교$/, '').replace(/대학$/, '').replace(/대$/, '');
+    }
+
+    function universityIsCampus(value) {
+      const normalized = normalizeUniversityTerm(value);
+      return /\([^()]+\)$/.test(normalized) || /^.+?대학교.+캠퍼스$/.test(normalized);
+    }
+
+    function setUniversityContextOptions(universities, admissionRelations, recruitmentRelations) {
+      const admissionIndex = state.textSuggestionIndexes.admissionName || [];
+      const recruitmentIndex = state.textSuggestionIndexes.recruitmentUnit || [];
+      const pick = (index, relation) => (Array.isArray(relation && relation[index])
+        ? relation[index]
+          .map(valueIndex => Number.isInteger(valueIndex) ? valueIndex : Number(valueIndex))
+          .filter(valueIndex => Number.isInteger(valueIndex))
+        : []);
+      state.universityContextIndexes = (Array.isArray(universities) ? universities : []).map((university, index) => ({
+        university,
+        normalized: normalizeUniversityTerm(university),
+        family: universityFamilyKey(university),
+        admissionName: pick(index, admissionRelations).map(valueIndex => admissionIndex[valueIndex]).filter(Boolean),
+        recruitmentUnit: pick(index, recruitmentRelations).map(valueIndex => recruitmentIndex[valueIndex]).filter(Boolean),
+      }));
+    }
+
+    function contextualTextSuggestionIndex(key) {
+      const globalIndex = state.textSuggestionIndexes[key] || [];
+      if (key !== 'admissionName' && key !== 'recruitmentUnit') return globalIndex;
+      const typedUniversity = elements.universityInput.value.trim();
+      if (!typedUniversity || !state.universityContextIndexes.length) return globalIndex;
+
+      const canonical = canonicalUniversityName(typedUniversity, state.universities);
+      const normalized = normalizeUniversityTerm(canonical);
+      const exact = state.universityContextIndexes.find(item => item.normalized === normalized);
+      if (!exact) return globalIndex;
+
+      let contexts = [exact];
+      if (elements.includeCampusesToggle.checked && !universityIsCampus(exact.university)) {
+        contexts = state.universityContextIndexes.filter(item => item.family === exact.family);
+      }
+      const seen = new Set();
+      const combined = [];
+      contexts.forEach(context => {
+        (context[key] || []).forEach(item => {
+          if (seen.has(item.normalized)) return;
+          seen.add(item.normalized);
+          combined.push(item);
+        });
+      });
+      return combined;
     }
 
     function localTextSuggestions(key, query, limit = 12) {
@@ -1982,7 +2076,7 @@
       let exact = '';
       const prefixes = [];
       const contains = [];
-      for (const item of state.textSuggestionIndexes[key] || []) {
+      for (const item of contextualTextSuggestionIndex(key)) {
         if (item.normalized === normalizedQuery) exact = item.value;
         else if (item.normalized.startsWith(normalizedQuery) && prefixes.length < limit) prefixes.push(item.value);
         else if (item.normalized.includes(normalizedQuery) && contains.length < limit) contains.push(item.value);
@@ -2157,6 +2251,7 @@
       const nextSignature = makeRecordsSignature(nextRecords, data.totalMatches, data.truncated);
       const unchanged = silent && nextSignature === state.recordsSignature;
       state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
+      scheduleMetaRefresh(state.dataRevision);
       if (verified) state.lastFullSyncAt = Date.now();
       if (unchanged) return false;
 
@@ -2292,15 +2387,11 @@
     }
 
     function hasActiveInlineWork() {
-      if (state.drafts.size > 0 || state.saving.size > 0) return true;
-      const active = document.activeElement;
-      return Boolean(active && active.classList && active.classList.contains('inline-result-control'));
+      return state.drafts.size > 0 || state.inFlightDrafts.size > 0 || state.saving.size > 0;
     }
 
     function hasActiveUserInput() {
-      if (hasActiveInlineWork()) return true;
-      const active = document.activeElement;
-      return Boolean(active && elements.searchForm && elements.searchForm.contains(active));
+      return hasActiveInlineWork();
     }
 
     function renderResults(
@@ -3007,16 +3098,32 @@
       if (!state.drafts.has(recordId) || state.saving.has(recordId)) return;
       clearDraftRetry(recordId);
       const attempts = state.retryAttempts.get(recordId) || 0;
-      if (!immediate && attempts >= SAVE_RETRY_MAX_ATTEMPTS) return;
-      const delay = immediate ? 0 : Math.min(SAVE_RETRY_MAX_MS, SAVE_RETRY_BASE_MS * (2 ** attempts));
-      if (!immediate) state.retryAttempts.set(recordId, attempts + 1);
+      const retryExponent = Math.min(attempts, SAVE_RETRY_MAX_ATTEMPTS);
+      const delay = immediate ? 0 : Math.min(SAVE_RETRY_MAX_MS, SAVE_RETRY_BASE_MS * (2 ** retryExponent));
+      if (!immediate) state.retryAttempts.set(recordId, Math.min(attempts + 1, SAVE_RETRY_MAX_ATTEMPTS));
       const timer = setTimeout(() => {
         state.retryTimers.delete(recordId);
         if (!state.drafts.has(recordId) || state.saving.has(recordId)) return;
-        if (!navigator.onLine || (!DEMO_MODE && !currentSessionToken())) return;
+        if (!navigator.onLine || (!DEMO_MODE && !currentSessionToken())) {
+          scheduleDraftRetry(recordId);
+          return;
+        }
         saveInlineResult(recordId);
       }, delay);
       state.retryTimers.set(recordId, timer);
+    }
+
+    function scheduleResultReconciliation(delay = 250) {
+      clearTimeout(state.reconcileTimer);
+      state.reconcileTimer = setTimeout(() => {
+        state.reconcileTimer = null;
+        if (!state.lastFilters) return;
+        if (hasActiveInlineWork() || state.searching) {
+          scheduleResultReconciliation(350);
+          return;
+        }
+        performSearch({ silent: true, manual: false });
+      }, delay);
     }
 
     function retryAllDrafts({ immediate = false } = {}) {
@@ -3241,7 +3348,7 @@
           changedKeys: draft.changedKeys,
         });
         replaceRecord(data.record);
-        state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
+        state.searchCache.clear();
         state.recordsSignature = makeRecordsSignature(
           state.records,
           state.lastTotalMatches,
@@ -3296,6 +3403,7 @@
         } else {
           clearDraftRetry(recordId, true);
         }
+        if (saved) scheduleResultReconciliation();
       }
     }
 
@@ -3400,6 +3508,8 @@
       state.retryTimers.forEach(timer => clearTimeout(timer));
       state.retryTimers.clear();
       state.retryAttempts.clear();
+      clearTimeout(state.reconcileTimer);
+      state.reconcileTimer = null;
       syncSavingOverlay();
       state.lastFilters = null;
       state.dataRevision = '';
@@ -3415,7 +3525,19 @@
       setSyncState(currentApiUrl() && currentSessionToken() ? 'online' : 'idle', currentApiUrl() && currentSessionToken() ? '연결됨' : '연결 필요');
     }
 
-    function loadMeta() {
+    function scheduleMetaRefresh(revision) {
+      const targetRevision = String(revision || '');
+      if (!targetRevision || targetRevision === state.metaRevision) return;
+      const elapsed = Date.now() - state.lastMetaRefreshAt;
+      const delay = Math.max(0, META_REFRESH_MIN_INTERVAL_MS - elapsed);
+      clearTimeout(state.metaRefreshTimer);
+      state.metaRefreshTimer = setTimeout(() => {
+        state.metaRefreshTimer = null;
+        loadMeta({ force: true });
+      }, delay);
+    }
+
+    function loadMeta({ force = false } = {}) {
       if (state.metaPromise) return state.metaPromise;
       const request = (async () => {
         try {
@@ -3426,7 +3548,13 @@
           setTextSuggestionOptions('name', data.options.names);
           setTextSuggestionOptions('admissionName', data.options.admissionNames);
           setTextSuggestionOptions('recruitmentUnit', data.options.recruitmentUnits);
-          state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
+          setUniversityContextOptions(
+            data.options.universities,
+            data.options.admissionNameIndexesByUniversity,
+            data.options.recruitmentUnitIndexesByUniversity
+          );
+          state.metaRevision = String(data.revision == null ? state.metaRevision : data.revision);
+          state.lastMetaRefreshAt = Date.now();
           setSyncState('online', timeLabel(data.serverTime));
           resumeRecoveredDrafts();
           retryAllDrafts({ immediate: true });
@@ -3747,10 +3875,12 @@
             options: {
               universityTypes: ['일반대학'], enrollments: ['재학생', '졸업생'], classes: ['1', '2', '3'],
               tracks: ['인문', '자연'], admissionTypes: ['교과', '종합', '논술'],
-              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)'],
+              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '성균관대학교'],
               names: ['강승민', '김민준', '이서연', '박도윤'],
-              admissionNames: ['활동우수형', '학교추천', '논술우수'],
-              recruitmentUnits: ['경영학과', '정치외교학과', '전자전기공학부'],
+              admissionNames: ['활동우수형', '미래인재', '학교추천', '세종추천', 'KU자기추천', 'KU글로컬추천', '논술우수'],
+              recruitmentUnits: ['경영학과', '의공학부', '정치외교학과', '약학과', '컴퓨터공학부', '글로컬공학부', '전자전기공학부'],
+              admissionNameIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [6]],
+              recruitmentUnitIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [6]],
             },
             revision: window.__demoRevision,
             serverTime: new Date().toISOString(),
@@ -3775,7 +3905,7 @@
               reject(new ApiError('DEMO_SEARCH_FAILED', '데모 검색 실패'));
               return;
             }
-            resolve({ ok: true, records: window.__demoRows, totalMatches: window.__demoRows.length, truncated: false, revision: window.__demoRevision, serverTime: new Date().toISOString() });
+            resolve({ ok: true, records: window.__demoRows.map(record => ({ ...record })), totalMatches: window.__demoRows.length, truncated: false, revision: window.__demoRevision, serverTime: new Date().toISOString() });
           }
           else if (action === 'export') resolve({
             ok: true,

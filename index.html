@@ -1879,8 +1879,8 @@
     const META_STORAGE_MAX_TOTAL_ITEMS = 50000;
     const META_STORAGE_MAX_CONTEXT_INDEXES = 200000;
     const META_STORAGE_MAX_VALUE_LENGTH = 240;
-    const SEARCH_CACHE_LIMIT = 12;
-    const SEARCH_CACHE_TTL_MS = 30000;
+    const SEARCH_CACHE_LIMIT = 24;
+    const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
     const DEMO_HOST = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
     const DEMO_MODE = DEMO_HOST && new URLSearchParams(location.search).get('demo') === '1';
 

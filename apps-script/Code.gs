@@ -16,13 +16,13 @@ const CONFIG = Object.freeze({
   maxSuggestions: 12,
   lockWaitMs: 20000,
   rowsCacheLockWaitMs: 12000,
-  rowsCachePrefix: 'admissions-rows-v3',
+  rowsCachePrefix: 'admissions-rows-v4',
   rowsCacheTtlSeconds: 21600,
   rowsCacheChunkChars: 80000,
   rowsCacheMaxChunks: 24,
-  searchIndexCachePrefix: 'admissions-search-index-v3',
-  searchMatchCachePrefix: 'admissions-search-match-v5',
-  metaCachePrefix: 'admissions-meta-v5',
+  searchIndexCachePrefix: 'admissions-search-index-v4',
+  searchMatchCachePrefix: 'admissions-search-match-v6',
+  metaCachePrefix: 'admissions-meta-v6',
   searchMatchCacheTtlSeconds: 21600,
   searchCacheMaxValueBytes: 90000,
   dataRevisionProperty: 'DATA_REVISION',
@@ -958,6 +958,13 @@ function universityIdentity_(value) {
     글로컬: '글',
     미: '미',
     미래: '미',
+    w: 'w',
+    wise: 'w',
+    경: 'w',
+    경주: 'w',
+    e: 'e',
+    erica: 'e',
+    에: 'e',
   };
   const campusAlias = campusAliases[normalizedCampusName] || normalizedCampusName;
   return { key, baseKey, alias, isCampus, campusAlias };
@@ -1332,11 +1339,11 @@ function normalizeAdmissionTypeForRow_(row) {
   const normalized = normalizeAdmissionType_(row[COL.admissionType]);
   if (normalized !== '면접') return normalized;
 
-  // 전문대의 I열 "면접위주" 중 학생부 교과 성적을 함께 반영하는 전형만
-  // 화면에서 교과(면접)으로 묶습니다. 출결·서류·순수 면접 중심 전형은
+  // 전문대의 I열 "면접위주" 중 학생부 성적이나 출결을 함께 반영하는 전형은
+  // 화면에서 교과(면접)으로 묶습니다. 서류·순수 면접 중심 전형만
   // 공식 전형방법을 존중해 면접으로 남깁니다.
   const university = normalize_(row[COL.university]);
-  if (university.includes('구미대') || university.includes('명지전문대')) return '면접';
+  if (university.includes('명지전문대')) return '면접';
   return '교과(면접)';
 }
 

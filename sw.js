@@ -1,5 +1,5 @@
 const CACHE_NAMESPACE = 'admissions-result-sync';
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const SCOPE_URL = new URL(self.registration.scope);
 const SCOPE_PATH = SCOPE_URL.pathname.endsWith('/')
   ? SCOPE_URL.pathname

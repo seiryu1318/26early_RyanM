@@ -2387,9 +2387,24 @@
         .replace(/\s+/g, '')
         .replace(/[（]/g, '(')
         .replace(/[）]/g, ')')
+        .replace(/\((?:서울)\)$/, '(서)')
+        .replace(/\((?:세종)\)$/, '(세)')
+        .replace(/\((?:국제)\)$/, '(국)')
+        .replace(/\((?:천안)\)$/, '(천)')
+        .replace(/\((?:예산)\)$/, '(예)')
+        .replace(/\((?:증평)\)$/, '(증)')
+        .replace(/\((?:의왕)\)$/, '(의)')
+        .replace(/\((?:여수)\)$/, '(여)')
+        .replace(/\((?:자연)\)$/, '(자)')
+        .replace(/\((?:다빈치)\)$/, '(다)')
+        .replace(/\((?:글로컬|글로벌)\)$/, '(글)')
         .replace(/\((?:wise|경주|경)\)$/, '(w)')
         .replace(/\((?:erica|에)\)$/, '(e)');
     }
+
+    const PRIMARY_CAMPUS_ALIASES = Object.freeze({
+      홍익: '서',
+    });
 
     function makeTextSuggestionIndex(values) {
       const unique = [...new Set((Array.isArray(values) ? values : [])
@@ -2417,6 +2432,18 @@
     function universityIsCampus(value) {
       const normalized = normalizeUniversityTerm(value);
       return /\([^()]+\)$/.test(normalized) || /^.+?대학교.+캠퍼스$/.test(normalized);
+    }
+
+    function universityCampusAlias(value) {
+      const normalized = normalizeUniversityTerm(value);
+      const parenthesized = normalized.match(/^.+?\(([^()]+)\)$/);
+      if (parenthesized) return parenthesized[1];
+      const namedCampus = normalized.match(/^(.+?대학교)(.+)캠퍼스$/);
+      return namedCampus ? namedCampus[2] : '';
+    }
+
+    function primaryCampusAliasForFamily(family) {
+      return PRIMARY_CAMPUS_ALIASES[family] || '';
     }
 
     function setUniversityContextOptions(universities, admissionRelations, recruitmentRelations) {
@@ -2453,12 +2480,22 @@
       const canonical = canonicalUniversityName(typedUniversity, state.universities);
       const normalized = normalizeUniversityTerm(canonical);
       const exact = state.universityContextByNormalized.get(normalized);
-      if (!exact) return globalIndex;
-
-      let contexts = [exact];
-      if (elements.includeCampusesToggle.checked && !universityIsCampus(exact.university)) {
-        contexts = state.universityContextsByFamily.get(exact.family) || contexts;
+      let contexts = exact ? [exact] : [];
+      const family = exact ? exact.family : universityFamilyKey(canonical);
+      const familyContexts = state.universityContextsByFamily.get(family) || [];
+      if (exact && elements.includeCampusesToggle.checked && !universityIsCampus(exact.university)) {
+        contexts = familyContexts.length ? familyContexts : contexts;
+      } else if (!exact && !universityIsCampus(canonical)) {
+        if (elements.includeCampusesToggle.checked) {
+          contexts = familyContexts;
+        } else {
+          const primaryAlias = primaryCampusAliasForFamily(family);
+          const primary = familyContexts.find(context => !universityIsCampus(context.university)) ||
+            familyContexts.find(context => universityCampusAlias(context.university) === primaryAlias);
+          if (primary) contexts = [primary];
+        }
       }
+      if (!contexts.length) return globalIndex;
       const seen = new Set();
       const combined = [];
       contexts.forEach(context => {
@@ -2504,13 +2541,17 @@
     function localUniversitySuggestions(query, limit = 12) {
       const normalizedQuery = normalizeUniversityTerm(query);
       if (!normalizedQuery) return [];
+      const queryFamily = universityFamilyKey(query);
+      const primaryAlias = primaryCampusAliasForFamily(queryFamily);
       return state.universitySearchIndex
         .filter(item => item.normalized.includes(normalizedQuery))
         .sort((left, right) => {
           const leftExact = left.normalized === normalizedQuery ? 0 : (left.normalized.startsWith(normalizedQuery) ? 1 : 2);
           const rightExact = right.normalized === normalizedQuery ? 0 : (right.normalized.startsWith(normalizedQuery) ? 1 : 2);
-          const leftCampus = /[（(]|캠퍼스/.test(left.name) ? 1 : 0;
-          const rightCampus = /[（(]|캠퍼스/.test(right.name) ? 1 : 0;
+          const leftCampus = !universityIsCampus(left.name) ? 0
+            : (universityFamilyKey(left.name) === queryFamily && universityCampusAlias(left.name) === primaryAlias ? 1 : 2);
+          const rightCampus = !universityIsCampus(right.name) ? 0
+            : (universityFamilyKey(right.name) === queryFamily && universityCampusAlias(right.name) === primaryAlias ? 1 : 2);
           return leftExact - rightExact || leftCampus - rightCampus || left.name.localeCompare(right.name, 'ko');
         })
         .slice(0, limit)
@@ -2694,6 +2735,7 @@
 
         if (cached) {
           const validation = await api('revision', {}, { signal: controller.signal });
+          if (controller.signal.aborted) return;
           const nextRevision = String(validation.revision == null ? '' : validation.revision);
           if (nextRevision && nextRevision === cached.revision) {
             state.dataRevision = nextRevision;
@@ -2705,6 +2747,7 @@
         }
 
         const data = await api('search', { filters }, { signal: controller.signal });
+        if (controller.signal.aborted) return;
         if (silent && hasActiveInlineWork()) {
           setSyncState('online', timeLabel(data.serverTime));
           return;
@@ -3901,6 +3944,9 @@
         toast('입력값 반영이 끝난 뒤 초기화해 주세요.', 'error', 4200);
         return;
       }
+      state.pendingManualSearch = false;
+      if (state.searchController) state.searchController.abort();
+      setSearchBusy(false);
       elements.searchForm.reset();
       state.records = [];
       state.drafts.clear();
@@ -4567,12 +4613,12 @@
             options: {
               universityTypes: ['일반대학'], enrollments: ['재학생', '졸업생'], classes: ['1', '2', '3'],
               tracks: ['인문', '자연'], admissionTypes: ['교과(학생부)', '교과(면접)', '종합', '논술'],
-              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '성균관대학교', '홍익대학교'],
+              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '성균관대학교', '홍익대학교(서)', '홍익대학교(세)'],
               names: ['강승민', '김민준', '이서연', '박도윤'],
-              admissionNames: ['활동우수형', '미래인재', '학교추천', '세종추천', 'KU자기추천', 'KU글로컬추천', '논술우수', '학교생활우수자'],
-              recruitmentUnits: ['경영학과', '의공학부', '정치외교학과', '약학과', '컴퓨터공학부', '글로컬공학부', '전자전기공학부'],
-              admissionNameIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7]],
-              recruitmentUnitIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], []],
+              admissionNames: ['활동우수형', '미래인재', '학교추천', '세종추천', 'KU자기추천', 'KU글로컬추천', '논술우수', '학교생활우수자', '교과우수자'],
+              recruitmentUnits: ['경영학과', '의공학부', '정치외교학과', '약학과', '컴퓨터공학부', '글로컬공학부', '전자전기공학부', '건설환경공학과', '게임소프트웨어전공'],
+              admissionNameIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8]],
+              recruitmentUnitIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8]],
             },
             revision: window.__demoRevision,
             serverTime: new Date().toISOString(),
@@ -4582,7 +4628,7 @@
             const query = normalizeUniversityTerm(payload.query);
             resolve({
               ok: true,
-              suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '홍익대학교']
+              suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '홍익대학교(서)', '홍익대학교(세)']
                 .filter(value => normalizeUniversityTerm(value).includes(query)),
               serverTime: new Date().toISOString(),
             });

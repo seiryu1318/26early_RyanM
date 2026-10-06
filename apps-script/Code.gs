@@ -405,9 +405,29 @@ function getUniversitySuggestions_(query) {
 
   const meta = getMeta_();
   const universities = meta.options.universities || [];
+  const requested = universityIdentity_(q);
+  const rank = name => {
+    const source = universityIdentity_(name);
+    if (source.key === requested.key) return 0;
+    if (requested.isCampus && source.alias === requested.alias &&
+      source.campusAlias === requested.campusAlias) return 0;
+    if (!requested.isCampus && source.alias === requested.alias) {
+      if (!source.isCampus) return 0;
+      return source.campusAlias === primaryCampusAlias_(requested.alias) ? 1 : 2;
+    }
+    const normalized = normalizeUniversity_(name);
+    return normalized.startsWith(q) ? 3 : 4;
+  };
 
   const suggestions = universities
-    .filter(name => normalizeUniversity_(name).includes(q))
+    .filter(name => {
+      if (normalizeUniversity_(name).includes(q)) return true;
+      if (!requested.isCampus) return false;
+      const source = universityIdentity_(name);
+      return source.isCampus && source.alias === requested.alias &&
+        source.campusAlias === requested.campusAlias;
+    })
+    .sort((left, right) => rank(left) - rank(right) || left.localeCompare(right, 'ko'))
     .slice(0, CONFIG.maxSuggestions);
 
   return { ok: true, suggestions, serverTime: new Date().toISOString() };
@@ -1067,10 +1087,29 @@ function universityIdentity_(value) {
   const alias = baseKey.replace(/대학교$/, '').replace(/대학$/, '').replace(/대$/, '');
   const normalizedCampusName = campusName.replace(/캠퍼스$/, '');
   const campusAliases = {
+    서: '서',
+    서울: '서',
     세: '세',
     세종: '세',
+    국: '국',
+    국제: '국',
+    천: '천',
+    천안: '천',
+    예: '예',
+    예산: '예',
+    증: '증',
+    증평: '증',
+    의: '의',
+    의왕: '의',
+    여: '여',
+    여수: '여',
+    자: '자',
+    자연: '자',
+    다: '다',
+    다빈치: '다',
     글: '글',
     글로컬: '글',
+    글로벌: '글',
     미: '미',
     미래: '미',
     w: 'w',
@@ -1083,6 +1122,13 @@ function universityIdentity_(value) {
   };
   const campusAlias = campusAliases[normalizedCampusName] || normalizedCampusName;
   return { key, baseKey, alias, isCampus, campusAlias };
+}
+
+function primaryCampusAlias_(universityAlias) {
+  const primaryCampuses = {
+    홍익: '서',
+  };
+  return primaryCampuses[universityAlias] || '';
 }
 
 function universityMatchesQuery_(university, query, includeCampuses) {
@@ -1098,7 +1144,9 @@ function universityMatchesQuery_(university, query, includeCampuses) {
       source.campusAlias === requested.campusAlias;
   }
   if (!requested.alias || source.alias !== requested.alias) return false;
-  return includeCampuses === true || !source.isCampus;
+  if (includeCampuses === true || !source.isCampus) return true;
+  const primaryCampusAlias = primaryCampusAlias_(requested.alias);
+  return Boolean(primaryCampusAlias) && source.campusAlias === primaryCampusAlias;
 }
 
 function universityCandidateIndexes_(map, query, includeCampuses) {

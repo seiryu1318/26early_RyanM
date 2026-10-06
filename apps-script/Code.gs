@@ -15,14 +15,14 @@ const CONFIG = Object.freeze({
   maxSearchResults: 250,
   maxSuggestions: 12,
   lockWaitMs: 20000,
-  rowsCacheLockWaitMs: 12000,
-  rowsCachePrefix: 'admissions-rows-v5',
+  rowsCacheLockWaitMs: 2500,
+  rowsCachePrefix: 'admissions-rows-v6',
   rowsCacheTtlSeconds: 21600,
   rowsCacheChunkChars: 80000,
   rowsCacheMaxChunks: 24,
-  searchIndexCachePrefix: 'admissions-search-index-v5',
-  searchMatchCachePrefix: 'admissions-search-match-v7',
-  metaCachePrefix: 'admissions-meta-v7',
+  searchIndexCachePrefix: 'admissions-search-index-v6',
+  searchMatchCachePrefix: 'admissions-search-match-v8',
+  metaCachePrefix: 'admissions-meta-v8',
   searchMatchCacheTtlSeconds: 21600,
   searchCacheMaxValueBytes: 90000,
   dataRevisionProperty: 'DATA_REVISION',
@@ -91,7 +91,15 @@ const SEARCH_METRICS_ = {
   metaCacheHits: 0,
 };
 
-function doGet() {
+function doGet(e) {
+  if (e && e.parameter && String(e.parameter.bridge || '') === '1') {
+    const parentOrigin = allowedBridgeParentOrigin_(e.parameter.parentOrigin);
+    const bridgeToken = validBridgeToken_(e.parameter.bridgeToken);
+    return HtmlService
+      .createHtmlOutput(apiBridgeHtml_(parentOrigin, bridgeToken))
+      .setTitle('Admissions API Bridge')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
   return json_({
     ok: true,
     service: 'admissions-result-sync',
@@ -103,38 +111,106 @@ function doGet() {
 function doPost(e) {
   try {
     const payload = parsePayload_(e);
-    if (String(payload.action || '') === 'login') {
-      return json_(login_(payload.password, payload.includeMeta === true));
-    }
-    requireSession_(payload.sessionToken);
-
-    switch (String(payload.action || '')) {
-      case 'health':
-        return json_({ ok: true, serverTime: new Date().toISOString() });
-      case 'revision':
-        return json_(getRevision_());
-      case 'meta':
-        return json_(getMeta_());
-      case 'universities':
-        return json_(getUniversitySuggestions_(payload.query));
-      case 'search':
-        return json_(search_(payload.filters || {}));
-      case 'export':
-        return json_(export_(payload.filters || {}));
-      case 'save':
-        return json_(save_(payload));
-      default:
-        throw apiError_('UNKNOWN_ACTION', '지원하지 않는 요청입니다.');
-    }
+    return json_(dispatchApiPayload_(payload));
   } catch (error) {
-    return json_({
-      ok: false,
-      code: error && error.code ? error.code : 'SERVER_ERROR',
-      message: safeErrorMessage_(error),
-      details: error && error.details ? error.details : undefined,
-      serverTime: new Date().toISOString(),
-    });
+    return json_(apiErrorResponse_(error));
   }
+}
+
+/**
+ * HtmlService 브리지의 google.script.run이 호출하는 공개 함수입니다.
+ * 기존 POST API와 같은 인증·검증·저장 경로를 그대로 사용합니다.
+ */
+function bridgeApi(payloadJson) {
+  try {
+    const payload = JSON.parse(String(payloadJson || '{}'));
+    return dispatchApiPayload_(payload);
+  } catch (error) {
+    return apiErrorResponse_(error);
+  }
+}
+
+function dispatchApiPayload_(payload) {
+  if (String(payload.action || '') === 'login') {
+    return login_(payload.password, payload.includeMeta === true);
+  }
+  requireSession_(payload.sessionToken);
+
+  switch (String(payload.action || '')) {
+    case 'health':
+      return { ok: true, serverTime: new Date().toISOString() };
+    case 'revision':
+      return getRevision_();
+    case 'meta':
+      return getMeta_();
+    case 'universities':
+      return getUniversitySuggestions_(payload.query);
+    case 'search':
+      return search_(payload.filters || {});
+    case 'export':
+      return export_(payload.filters || {});
+    case 'save':
+      return save_(payload);
+    default:
+      throw apiError_('UNKNOWN_ACTION', '지원하지 않는 요청입니다.');
+  }
+}
+
+function apiErrorResponse_(error) {
+  return {
+    ok: false,
+    code: error && error.code ? error.code : 'SERVER_ERROR',
+    message: safeErrorMessage_(error),
+    details: error && error.details ? error.details : undefined,
+    serverTime: new Date().toISOString(),
+  };
+}
+
+function allowedBridgeParentOrigin_(value) {
+  const origin = String(value || '').trim();
+  return [
+    'https://seiryu1318.github.io',
+    'http://127.0.0.1:8765',
+    'http://localhost:8765',
+  ].indexOf(origin) >= 0 ? origin : '';
+}
+
+function validBridgeToken_(value) {
+  const token = String(value || '').trim();
+  return /^[A-Za-z0-9_-]{16,128}$/.test(token) ? token : '';
+}
+
+function apiBridgeHtml_(parentOrigin, bridgeToken) {
+  const parentOriginJson = JSON.stringify(String(parentOrigin || ''));
+  const bridgeTokenJson = JSON.stringify(String(bridgeToken || ''));
+  return `<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="robots" content="noindex"></head>
+<body><script>
+(() => {
+  'use strict';
+  const parentOrigin = ${parentOriginJson};
+  const bridgeToken = ${bridgeTokenJson};
+  if (!parentOrigin || !bridgeToken) return;
+
+  const send = (target, message) => target.postMessage({ ...message, bridgeToken }, parentOrigin);
+  window.addEventListener('message', event => {
+    if (event.source !== top || event.origin !== parentOrigin) return;
+    const request = event.data || {};
+    if (request.type !== 'admissions-bridge-request'
+        || request.bridgeToken !== bridgeToken || !request.id) return;
+    google.script.run
+      .withSuccessHandler(result => send(event.source, {
+        type: 'admissions-bridge-response', id: request.id, result
+      }))
+      .withFailureHandler(error => send(event.source, {
+        type: 'admissions-bridge-response', id: request.id,
+        error: error && error.message ? error.message : '서버 요청에 실패했습니다.'
+      }))
+      .bridgeApi(JSON.stringify(request.payload || {}));
+  });
+  send(top, { type: 'admissions-bridge-ready' });
+})();
+</script></body></html>`;
 }
 
 function parsePayload_(e) {
@@ -159,8 +235,8 @@ function login_(providedPassword, includeMeta) {
     throw apiError_('INVALID_PASSWORD', '비밀번호가 올바르지 않습니다.');
   }
 
-  // 첫 기기 로그인에서는 인증 뒤 별도의 meta 요청을 한 번 더 보내지 않고
-  // 같은 실행에서 검색 목록까지 내려 주어 Apps Script 왕복 시간을 줄입니다.
+  // includeMeta=false인 대부분의 로그인은 시트를 읽지 않고 인증만 완료합니다.
+  // 필요한 경우에만 기존과 같이 meta를 함께 반환합니다.
   const meta = includeMeta ? getMeta_() : null;
   const expiresAt = Date.now() + CONFIG.sessionDurationMs;
   const payload = base64UrlEncode_(JSON.stringify({
@@ -172,7 +248,7 @@ function login_(providedPassword, includeMeta) {
     ok: true,
     sessionToken: payload + '.' + signature,
     expiresAt,
-    revision: meta ? meta.revision : getDataRevision_(),
+    revision: meta ? meta.revision : (properties.getProperty(CONFIG.dataRevisionProperty) || '0'),
     meta: meta || undefined,
     serverTime: new Date().toISOString(),
   };
@@ -197,6 +273,24 @@ function requireSession_(token) {
 }
 
 function getMeta_() {
+  // rows cache manifest에는 revision과 같이 사용할 snapshotToken이 있습니다.
+  // meta cache hit인 경우 2,162행 압축 데이터를 풀지 않고 즉시 반환합니다.
+  const revision = getDataRevision_();
+  const descriptor = readRowsCacheDescriptor_(revision);
+  const earlyCached = descriptor
+    ? readMetaCache_(revision, descriptor.snapshotToken)
+    : null;
+  if (earlyCached) {
+    SEARCH_METRICS_.metaCacheHits += 1;
+    return {
+      ok: true,
+      options: earlyCached.options,
+      rowCount: earlyCached.rowCount,
+      revision,
+      serverTime: new Date().toISOString(),
+    };
+  }
+
   const snapshot = getRowsSnapshot_();
   const cached = readMetaCache_(snapshot.revision, snapshot.snapshotToken);
   if (cached) {
@@ -547,30 +641,36 @@ function getRowsSnapshot_() {
       cacheLock.waitLock(CONFIG.rowsCacheLockWaitMs);
       cacheLockAcquired = true;
     }
-    // 대기 중 시트가 갱신되거나 다른 실행이 cache를 채웠을 수 있으므로
-    // revision과 cache를 반드시 다시 확인합니다.
-    revision = getDataRevision_();
-    cached = readRowsCache_(revision);
-    if (cached) {
-      return {
-        rows: cached.rows,
-        revision,
-        snapshotToken: cached.snapshotToken,
-      };
+    // 대기 또는 시트 읽기 중 저장이 끝날 수 있으므로 revision을 읽기 전후로
+    // 대조합니다. 변경이 겹치면 한 번 다시 읽고, 계속 변하는 경우에는
+    // 구 revision 자료를 반환하지 않고 클라이언트 재시도 경로로 넘깁니다.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      revision = getDataRevision_();
+      cached = readRowsCache_(revision);
+      if (cached) {
+        return {
+          rows: cached.rows,
+          revision,
+          snapshotToken: cached.snapshotToken,
+        };
+      }
+
+      const sheet = getSheet_();
+      assertSchema_(sheet);
+      const lastRow = sheet.getLastRow();
+      const rows = lastRow < CONFIG.firstDataRow
+        ? []
+        : sheet
+          .getRange(CONFIG.firstDataRow, 1, lastRow - CONFIG.headerRow, CONFIG.totalColumns)
+          .getDisplayValues();
+      const afterRevision = getDataRevision_();
+      if (afterRevision === revision) {
+        const snapshotToken = createRowsSnapshotToken_(revision);
+        writeRowsCache_(rows, revision, snapshotToken);
+        return { rows, revision, snapshotToken };
+      }
     }
-
-    const sheet = getSheet_();
-    assertSchema_(sheet);
-    const lastRow = sheet.getLastRow();
-    const rows = lastRow < CONFIG.firstDataRow
-      ? []
-      : sheet
-        .getRange(CONFIG.firstDataRow, 1, lastRow - CONFIG.headerRow, CONFIG.totalColumns)
-        .getDisplayValues();
-
-    const snapshotToken = createRowsSnapshotToken_(revision);
-    if (getDataRevision_() === revision) writeRowsCache_(rows, revision, snapshotToken);
-    return { rows, revision, snapshotToken };
+    throw apiError_('DATA_CHANGED', '자료가 갱신되어 최신 상태로 다시 확인하고 있습니다.');
   } finally {
     if (cacheLockAcquired) cacheLock.releaseLock();
   }
@@ -649,7 +749,7 @@ function rowsCacheChunkKey_(revision, snapshotToken, index) {
   return rowsCacheKey_(revision, 'snapshot:' + digestHex_(snapshotToken) + ':' + String(index));
 }
 
-function readRowsCache_(revision) {
+function readRowsCacheDescriptor_(revision) {
   try {
     const cache = CacheService.getScriptCache();
     const metaRaw = cache.get(rowsCacheKey_(revision, 'meta'));
@@ -659,6 +759,19 @@ function readRowsCache_(revision) {
     const snapshotToken = text_(meta.snapshotToken);
     if (!Number.isInteger(chunkCount) || chunkCount < 1 || chunkCount > CONFIG.rowsCacheMaxChunks) return null;
     if (!snapshotToken) return null;
+    return { chunkCount, snapshotToken };
+  } catch (_) {
+    return null;
+  }
+}
+
+function readRowsCache_(revision) {
+  try {
+    const descriptor = readRowsCacheDescriptor_(revision);
+    if (!descriptor) return null;
+    const cache = CacheService.getScriptCache();
+    const chunkCount = descriptor.chunkCount;
+    const snapshotToken = descriptor.snapshotToken;
 
     const keys = [];
     for (let index = 0; index < chunkCount; index += 1) {
@@ -706,9 +819,11 @@ function writeRowsCache_(rows, revision, snapshotToken) {
 }
 
 function cacheValueFits_(value) {
-  // UTF-8에서 한 UTF-16 code unit은 최대 3바이트이며 surrogate pair는
-  // 2 code unit/4바이트이므로 아래 상한은 CacheService 100KB 제한에 보수적입니다.
-  return text_(value).length * 3 <= CONFIG.searchCacheMaxValueBytes;
+  try {
+    return Utilities.newBlob(text_(value)).getBytes().length <= CONFIG.searchCacheMaxValueBytes;
+  } catch (_) {
+    return false;
+  }
 }
 
 function putCacheSafely_(key, value, ttlSeconds) {

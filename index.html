@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="합불 입력">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline'; worker-src 'self'; manifest-src 'self'; connect-src https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'self' 'unsafe-inline'; worker-src 'self'; manifest-src 'self'; connect-src https://script.google.com https://script.googleusercontent.com; frame-src https://script.google.com https://script.googleusercontent.com https://*.script.googleusercontent.com; child-src https://script.google.com https://script.googleusercontent.com https://*.script.googleusercontent.com; base-uri 'none'; form-action 'none'">
   <title>2027 수시모집 합불 입력</title>
   <link rel="dns-prefetch" href="//script.google.com">
   <link rel="dns-prefetch" href="//script.googleusercontent.com">
@@ -1855,7 +1855,7 @@
     'use strict';
 
     const EDITION = 'mobile';
-    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbzYvDkI68sSAAB0bptJtqS_skYXRuy20vu3McmaXVbWvPEsMgttpJq91WjDwM75luDA/exec";
+    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbywmooL0w4mp7qvkb6PJzlPHPWJaGfVpYv2SYezE1jKZz0Sw1XXNH4evPLDxQ5DDvKa/exec";
     const REVISION_POLL_INTERVAL_MS = EDITION === 'mobile' ? 8000 : 7000;
     const FULL_SYNC_INTERVAL_MS = 45000;
     const INITIAL_PAGE_SIZE = EDITION === 'mobile' ? 10 : 15;
@@ -1865,15 +1865,18 @@
     const SAVE_RETRY_BASE_MS = 1000;
     const SAVE_RETRY_MAX_MS = 15000;
     const SAVE_RETRY_MAX_ATTEMPTS = 5;
-    const REQUEST_TIMEOUT_MS = 30000;
-    const INITIAL_READ_TIMEOUT_MS = 15000;
-    const META_REQUEST_TIMEOUT_MS = 45000;
+    const REQUEST_TIMEOUT_MS = 12000;
+    const INITIAL_READ_TIMEOUT_MS = 8000;
+    const LOGIN_INITIAL_TIMEOUT_MS = 7000;
+    const LOGIN_RETRY_TIMEOUT_MS = 12000;
+    const META_REQUEST_TIMEOUT_MS = 20000;
     const SAVE_REQUEST_TIMEOUT_MS = 35000;
     const READ_RETRY_BACKOFF_MS = 300;
     const READ_RETRY_ACTIONS = new Set([
       'health', 'revision', 'meta', 'universities', 'suggest', 'search', 'export',
     ]);
     const META_REFRESH_MIN_INTERVAL_MS = 60000;
+    const META_BOOTSTRAP_DELAY_MS = 10000;
     const META_STORAGE_VERSION = 1;
     const META_STORAGE_PREFIX = 'admissionsMetaCacheV1';
     const META_STORAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -1939,6 +1942,7 @@
       metaRevision: '',
       lastMetaRefreshAt: 0,
       metaRefreshTimer: null,
+      metaBootstrapTimer: null,
       metaRetryAttempts: 0,
       reconcileTimer: null,
       lastFullSyncAt: 0,
@@ -1954,6 +1958,14 @@
       universityContextByNormalized: new Map(),
       universityContextsByFamily: new Map(),
       metaPromise: null,
+      apiBridgeFrame: null,
+      apiBridgeWindow: null,
+      apiBridgeReady: false,
+      apiBridgeOrigin: '',
+      apiBridgeToken: '',
+      apiBridgeSequence: 0,
+      apiBridgeRequests: new Map(),
+      apiBridgeRetryTimer: null,
       installPrompt: null,
       drafts: new Map(),
       inFlightDrafts: new Map(),
@@ -2047,7 +2059,170 @@
       }
     }
 
+    function validateApiResponseData(data) {
+      if (!data || typeof data !== 'object') {
+        throw new ApiError('INVALID_RESPONSE', '서버 응답을 확인할 수 없습니다.');
+      }
+      if (!data.ok) {
+        if (data.code === 'UNAUTHORIZED' || data.code === 'SESSION_EXPIRED') {
+          localStorage.removeItem('admissionsSession');
+          openPassword();
+        }
+        throw new ApiError(data.code || 'API_ERROR', data.message || '요청에 실패했습니다.', data.details);
+      }
+      return data;
+    }
+
+    function apiBridgeUrl() {
+      const url = new URL(currentApiUrl());
+      url.searchParams.set('bridge', '1');
+      url.searchParams.set('v', '25');
+      url.searchParams.set('parentOrigin', location.origin);
+      url.searchParams.set('bridgeToken', state.apiBridgeToken);
+      return url.toString();
+    }
+
+    function isTrustedApiBridgeOrigin(origin) {
+      try {
+        const url = new URL(origin);
+        const host = url.hostname.toLowerCase();
+        return url.protocol === 'https:' && (
+          host === 'script.googleusercontent.com'
+          || host.endsWith('.script.googleusercontent.com')
+          || host.endsWith('-script.googleusercontent.com')
+        );
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function scheduleApiBridgeReload(delayMs = 18000) {
+      if (DEMO_MODE || !state.apiBridgeFrame) return;
+      clearTimeout(state.apiBridgeRetryTimer);
+      state.apiBridgeRetryTimer = setTimeout(() => {
+        state.apiBridgeRetryTimer = null;
+        if (state.apiBridgeReady || !state.apiBridgeFrame) return;
+        const url = new URL(apiBridgeUrl());
+        url.searchParams.set('retry', String(Date.now()));
+        state.apiBridgeFrame.src = url.toString();
+        scheduleApiBridgeReload(Math.min(30000, Math.max(18000, delayMs * 1.5)));
+      }, delayMs);
+    }
+
+    function handleApiBridgeMessage(event) {
+      if (!state.apiBridgeFrame || !isTrustedApiBridgeOrigin(event.origin)) return;
+      const message = event.data || {};
+      if (!state.apiBridgeToken || message.bridgeToken !== state.apiBridgeToken) return;
+      if (message.type === 'admissions-bridge-ready') {
+        state.apiBridgeWindow = event.source;
+        state.apiBridgeReady = true;
+        state.apiBridgeOrigin = event.origin;
+        clearTimeout(state.apiBridgeRetryTimer);
+        state.apiBridgeRetryTimer = null;
+        return;
+      }
+      if (message.type !== 'admissions-bridge-response' || !message.id) return;
+      if (event.source !== state.apiBridgeWindow || event.origin !== state.apiBridgeOrigin) return;
+      const pending = state.apiBridgeRequests.get(message.id);
+      if (!pending) return;
+      state.apiBridgeRequests.delete(message.id);
+      pending.cleanup();
+      if (message.error) pending.reject(new ApiError('BRIDGE_FAILURE', String(message.error)));
+      else pending.resolve(message.result);
+    }
+
+    function setupApiBridge() {
+      if (DEMO_MODE || !currentApiUrl() || state.apiBridgeFrame) return;
+      window.addEventListener('message', handleApiBridgeMessage);
+      const frame = document.createElement('iframe');
+      frame.title = '서버 연결';
+      frame.hidden = true;
+      frame.setAttribute('aria-hidden', 'true');
+      frame.tabIndex = -1;
+      const tokenBytes = new Uint32Array(4);
+      crypto.getRandomValues(tokenBytes);
+      state.apiBridgeToken = Array.from(tokenBytes, value => value.toString(36)).join('-');
+      frame.src = apiBridgeUrl();
+      state.apiBridgeFrame = frame;
+      document.body.append(frame);
+      scheduleApiBridgeReload(18000);
+    }
+
+    async function waitForApiBridge(timeoutMs, signal) {
+      if (state.apiBridgeReady) return true;
+      if (!timeoutMs) return false;
+      if (signal && signal.aborted) throw abortError();
+      const startedAt = Date.now();
+      while (!state.apiBridgeReady && Date.now() - startedAt < timeoutMs) {
+        await waitForRetryDelay(Math.min(50, timeoutMs - (Date.now() - startedAt)), signal);
+      }
+      return state.apiBridgeReady;
+    }
+
+    function apiBridgeRequest(payload, externalSignal, timeoutMs) {
+      if (!state.apiBridgeReady || !state.apiBridgeWindow || !state.apiBridgeOrigin) {
+        return Promise.reject(new ApiError('BRIDGE_NOT_READY', '서버 연결을 준비 중입니다.'));
+      }
+      const id = `bridge-${Date.now()}-${++state.apiBridgeSequence}`;
+      return new Promise((resolve, reject) => {
+        let settled = false;
+        const finish = callback => value => {
+          if (settled) return;
+          settled = true;
+          callback(value);
+        };
+        const cleanup = () => {
+          clearTimeout(timer);
+          if (externalSignal) externalSignal.removeEventListener('abort', abortRequest);
+        };
+        const abortRequest = () => {
+          state.apiBridgeRequests.delete(id);
+          cleanup();
+          finish(reject)(abortError());
+        };
+        const timer = setTimeout(() => {
+          state.apiBridgeRequests.delete(id);
+          cleanup();
+          finish(reject)(new ApiError('BRIDGE_TIMEOUT', '서버 응답이 지연되고 있습니다.'));
+        }, timeoutMs);
+        state.apiBridgeRequests.set(id, {
+          resolve: finish(resolve),
+          reject: finish(reject),
+          cleanup,
+        });
+        if (externalSignal) {
+          externalSignal.addEventListener('abort', abortRequest, { once: true });
+          if (externalSignal.aborted) {
+            abortRequest();
+            return;
+          }
+        }
+        state.apiBridgeWindow.postMessage({
+          type: 'admissions-bridge-request', id, payload, bridgeToken: state.apiBridgeToken,
+        }, state.apiBridgeOrigin);
+      });
+    }
+
     async function apiRequestAttempt(action, payload, url, sessionToken, externalSignal, timeoutMs) {
+      if (!state.apiBridgeReady && action === 'login') {
+        await waitForApiBridge(Math.min(4500, timeoutMs), externalSignal);
+      }
+      if (state.apiBridgeReady) {
+        try {
+          const bridged = await apiBridgeRequest(
+            { action, sessionToken, ...payload }, externalSignal, timeoutMs
+          );
+          return validateApiResponseData(bridged);
+        } catch (error) {
+          if (error && (error.code === 'BRIDGE_TIMEOUT' || error.code === 'BRIDGE_FAILURE')) {
+            state.apiBridgeReady = false;
+            state.apiBridgeWindow = null;
+            state.apiBridgeOrigin = '';
+            scheduleApiBridgeReload(250);
+          }
+          throw error;
+        }
+      }
       const requestController = new AbortController();
       const abortFromOutside = () => requestController.abort();
       let timedOut = false;
@@ -2072,14 +2247,7 @@
         let data;
         try { data = JSON.parse(raw); }
         catch (_) { throw new ApiError('INVALID_RESPONSE', '서버 응답을 확인할 수 없습니다.'); }
-        if (!data.ok) {
-          if (data.code === 'UNAUTHORIZED' || data.code === 'SESSION_EXPIRED') {
-            localStorage.removeItem('admissionsSession');
-            openPassword();
-          }
-          throw new ApiError(data.code || 'API_ERROR', data.message || '요청에 실패했습니다.', data.details);
-        }
-        return data;
+        return validateApiResponseData(data);
       } catch (error) {
         if (externalSignal && externalSignal.aborted) throw abortError();
         if (timedOut) {
@@ -2095,6 +2263,10 @@
     function isRetryableReadFailure(error) {
       if (!error || error.name === 'AbortError') return false;
       return error.code === 'REQUEST_TIMEOUT'
+        || error.code === 'INVALID_RESPONSE'
+        || error.code === 'DATA_CHANGED'
+        || error.code === 'BRIDGE_TIMEOUT'
+        || error.code === 'BRIDGE_FAILURE'
         || error.name === 'TypeError'
         || error.name === 'NetworkError';
     }
@@ -2140,15 +2312,20 @@
       const retryBackoffMs = Number.isFinite(options.retryBackoffMs)
         ? Math.max(0, Number(options.retryBackoffMs))
         : READ_RETRY_BACKOFF_MS;
-      // Authentication and mutations are deliberately excluded. The save flow
-      // owns its conflict-aware queue; transport retries here are reads only.
-      const maxAttempts = READ_RETRY_ACTIONS.has(action) ? 2 : 1;
-      const initialAttemptTimeoutMs = maxAttempts > 1 && !hasTimeoutOverride
-        ? Math.min(INITIAL_READ_TIMEOUT_MS, timeoutMs)
-        : timeoutMs;
-      const retryAttemptTimeoutMs = maxAttempts > 1 && !hasTimeoutOverride
-        ? Math.min(REQUEST_TIMEOUT_MS, timeoutMs)
-        : timeoutMs;
+      // Login only creates a short-lived signed token, so one transport retry is
+      // safe. Mutations remain excluded; the save flow owns conflict-aware retry.
+      const retryableAction = READ_RETRY_ACTIONS.has(action) || action === 'login';
+      const maxAttempts = retryableAction ? 2 : 1;
+      const initialAttemptTimeoutMs = action === 'login' && !hasTimeoutOverride
+        ? LOGIN_INITIAL_TIMEOUT_MS
+        : (maxAttempts > 1 && !hasTimeoutOverride
+          ? Math.min(INITIAL_READ_TIMEOUT_MS, timeoutMs)
+          : timeoutMs);
+      const retryAttemptTimeoutMs = action === 'login' && !hasTimeoutOverride
+        ? LOGIN_RETRY_TIMEOUT_MS
+        : (maxAttempts > 1 && !hasTimeoutOverride
+          ? Math.min(REQUEST_TIMEOUT_MS, timeoutMs)
+          : timeoutMs);
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         if (externalSignal && externalSignal.aborted) throw abortError();
         try {
@@ -2169,6 +2346,7 @@
             }
             throw error;
           }
+          if (typeof options.onRetry === 'function') options.onRetry(attempt + 1, error);
           await waitForRetryDelay(retryBackoffMs, externalSignal);
         }
       }
@@ -2360,9 +2538,13 @@
     }
 
     async function universitySuggestions(query) {
+      const rawQuery = String(query || '').trim();
       const normalizedQuery = normalizeUniversityTerm(query);
       if ([...normalizedQuery].length < 2) return [];
       if (state.universitySearchIndex.length) return localUniversitySuggestions(query);
+      // A fully typed university name is already usable as an exact search key.
+      // Do not start a large metadata request just to echo the same text.
+      if (/대학교(?:\([^)]*\))?$/.test(normalizedQuery)) return [rawQuery];
       if (state.metaPromise) {
         try { await state.metaPromise; } catch (_) { /* Fall through to the focused endpoint. */ }
         if (state.universitySearchIndex.length) return localUniversitySuggestions(query);
@@ -2564,6 +2746,12 @@
       });
       elements.searchForm.setAttribute('aria-busy', String(busy));
       elements.loadingOverlay.hidden = !busy;
+      if (busy && !state.records.length && !elements.resultsSection.hidden) {
+        elements.resultsCount.textContent = '검색 중';
+        elements.emptyState.querySelector('span').textContent = '검색 중';
+      } else if (!busy && !state.records.length && state.lastFilters) {
+        renderResults();
+      }
     }
 
     function schedulePolling() {
@@ -3929,6 +4117,26 @@
       return loadMeta({ force: true });
     }
 
+    function scheduleAuthenticatedMetaInitialization(
+      { knownRevision = '', serverTime = '' } = {},
+      delayMs = META_BOOTSTRAP_DELAY_MS
+    ) {
+      const cached = restoreStoredMeta();
+      if (cached && knownRevision && cached.revision === String(knownRevision)) {
+        setSyncState('online', timeLabel(serverTime));
+        return;
+      }
+      clearTimeout(state.metaBootstrapTimer);
+      state.metaBootstrapTimer = setTimeout(() => {
+        state.metaBootstrapTimer = null;
+        if (state.searching || state.pendingManualSearch) {
+          scheduleAuthenticatedMetaInitialization({ knownRevision, serverTime }, 800);
+          return;
+        }
+        void initializeAuthenticatedMeta({ knownRevision, serverTime });
+      }, Math.max(0, Number(delayMs) || 0));
+    }
+
     function scheduleMetaRefresh(revision) {
       const targetRevision = String(revision || '');
       if (!targetRevision || targetRevision === state.metaRevision) return;
@@ -4144,12 +4352,16 @@
       try {
         // Keep first-time sign-in fast: authenticate first, then refresh the
         // larger autocomplete index independently in the background.
-        const data = await api('login', { password, includeMeta: false });
+        const data = await api('login', { password, includeMeta: false }, {
+          onRetry: () => {
+            if (submitLabel) submitLabel.textContent = '다시 연결 중';
+          },
+        });
         localStorage.setItem('admissionsSession', JSON.stringify({ token: data.sessionToken, expiresAt: data.expiresAt }));
         elements.passwordInput.value = '';
         elements.passwordDialog.close();
         setSyncState('online', '연결됨');
-        void initializeAuthenticatedMeta({
+        scheduleAuthenticatedMetaInitialization({
           knownRevision: data.revision,
           serverTime: data.serverTime,
         });
@@ -4434,6 +4646,7 @@
     }
 
     function init() {
+      setupApiBridge();
       restorePendingDrafts();
       configureSortControls();
       wireEvents();
@@ -4462,7 +4675,7 @@
         setSyncState('online', '데모');
         loadMeta();
       } else if (currentApiUrl() && currentSessionToken()) {
-        initializeAuthenticatedMeta();
+        scheduleAuthenticatedMetaInitialization({}, 800);
       } else if (currentApiUrl()) {
         setSyncState('idle', '로그인 필요');
         openPassword();

@@ -15,14 +15,15 @@ const CONFIG = Object.freeze({
   maxSearchResults: 250,
   maxSuggestions: 12,
   lockWaitMs: 20000,
+  rowsCacheLockWaitMs: 12000,
   rowsCachePrefix: 'admissions-rows-v3',
-  rowsCacheTtlSeconds: 300,
+  rowsCacheTtlSeconds: 21600,
   rowsCacheChunkChars: 80000,
   rowsCacheMaxChunks: 24,
   searchIndexCachePrefix: 'admissions-search-index-v3',
-  searchMatchCachePrefix: 'admissions-search-match-v4',
-  metaCachePrefix: 'admissions-meta-v4',
-  searchMatchCacheTtlSeconds: 300,
+  searchMatchCachePrefix: 'admissions-search-match-v5',
+  metaCachePrefix: 'admissions-meta-v5',
+  searchMatchCacheTtlSeconds: 21600,
   searchCacheMaxValueBytes: 90000,
   dataRevisionProperty: 'DATA_REVISION',
   passwordProperty: 'ACCESS_PASSWORD',
@@ -103,7 +104,7 @@ function doPost(e) {
   try {
     const payload = parsePayload_(e);
     if (String(payload.action || '') === 'login') {
-      return json_(login_(payload.password));
+      return json_(login_(payload.password, payload.includeMeta === true));
     }
     requireSession_(payload.sessionToken);
 
@@ -147,7 +148,7 @@ function parsePayload_(e) {
   }
 }
 
-function login_(providedPassword) {
+function login_(providedPassword, includeMeta) {
   const properties = PropertiesService.getScriptProperties();
   const savedPassword = properties.getProperty(CONFIG.passwordProperty);
   const sessionSecret = properties.getProperty(CONFIG.sessionSecretProperty);
@@ -158,6 +159,9 @@ function login_(providedPassword) {
     throw apiError_('INVALID_PASSWORD', '비밀번호가 올바르지 않습니다.');
   }
 
+  // 첫 기기 로그인에서는 인증 뒤 별도의 meta 요청을 한 번 더 보내지 않고
+  // 같은 실행에서 검색 목록까지 내려 주어 Apps Script 왕복 시간을 줄입니다.
+  const meta = includeMeta ? getMeta_() : null;
   const expiresAt = Date.now() + CONFIG.sessionDurationMs;
   const payload = base64UrlEncode_(JSON.stringify({
     exp: expiresAt,
@@ -168,6 +172,8 @@ function login_(providedPassword) {
     ok: true,
     sessionToken: payload + '.' + signature,
     expiresAt,
+    revision: meta ? meta.revision : getDataRevision_(),
+    meta: meta || undefined,
     serverTime: new Date().toISOString(),
   };
 }
@@ -249,7 +255,7 @@ function buildMetaOptions_(rows) {
     add(buckets.enrollments, row[COL.enrollment]);
     add(buckets.classes, row[COL.classNo]);
     add(buckets.tracks, row[COL.track]);
-    add(buckets.admissionTypes, normalizeAdmissionType_(row[COL.admissionType]));
+    add(buckets.admissionTypes, normalizeAdmissionTypeForRow_(row));
     add(buckets.universities, row[COL.university]);
     add(buckets.names, row[COL.name]);
     add(buckets.admissionNames, resolveAdmissionName_(row));
@@ -382,6 +388,8 @@ function save_(payload) {
     assertSchema_(sheet);
     const lastRow = sheet.getLastRow();
     if (lastRow < CONFIG.firstDataRow) throw apiError_('NOT_FOUND', '저장할 행을 찾지 못했습니다.');
+    const previousRevision = getDataRevision_();
+    const previousSnapshot = readRowsCache_(previousRevision);
 
     let rowIndex = -1;
     let current = null;
@@ -464,6 +472,7 @@ function save_(payload) {
     merged.failureReason = cascaded.failureReason;
 
     const sheetRow = CONFIG.firstDataRow + rowIndex;
+    const canWarmFromPreviousSnapshot = getDataRevision_() === previousRevision;
     sheet.getRange(sheetRow, COL.stage1 + 1, 1, 5)
       .setValues([[
         merged.stage1,
@@ -481,6 +490,23 @@ function save_(payload) {
     current[COL.firstWait] = merged.firstWait;
     current[COL.finalWait] = merged.finalWait;
 
+    // 저장 직후 polling/search가 새 revision 때문에 전행 시트 읽기로 돌아가지
+    // 않도록 기존의 정확한 snapshot에서 해당 행만 갱신해 write-through 합니다.
+    if (
+      previousSnapshot &&
+      Array.isArray(previousSnapshot.rows) &&
+      previousSnapshot.rows.length === lastRow - CONFIG.headerRow &&
+      previousRevision !== revision &&
+      canWarmFromPreviousSnapshot
+    ) {
+      const warmedRows = previousSnapshot.rows.slice();
+      warmedRows[rowIndex] = current.slice();
+      const warmedSnapshotToken = createRowsSnapshotToken_(revision);
+      writeRowsCache_(warmedRows, revision, warmedSnapshotToken);
+      const previousMeta = readMetaCache_(previousRevision, previousSnapshot.snapshotToken);
+      if (previousMeta) writeMetaCache_(revision, warmedSnapshotToken, previousMeta);
+    }
+
     return {
       ok: true,
       record: toRecord_(current, sheetRow),
@@ -497,8 +523,8 @@ function getAllRows_() {
 }
 
 function getRowsSnapshot_() {
-  const revision = getDataRevision_();
-  const cached = readRowsCache_(revision);
+  let revision = getDataRevision_();
+  let cached = readRowsCache_(revision);
   if (cached) {
     return {
       rows: cached.rows,
@@ -507,18 +533,47 @@ function getRowsSnapshot_() {
     };
   }
 
-  const sheet = getSheet_();
-  assertSchema_(sheet);
-  const lastRow = sheet.getLastRow();
-  const rows = lastRow < CONFIG.firstDataRow
-    ? []
-    : sheet
-      .getRange(CONFIG.firstDataRow, 1, lastRow - CONFIG.headerRow, CONFIG.totalColumns)
-      .getDisplayValues();
+  // 여러 사용자의 meta/search 요청이 같은 revision의 cold cache에 동시에
+  // 도착해도 한 실행만 시트 전행을 읽고 압축하도록 단일화합니다. 저장이
+  // 사용하는 ScriptLock과 경합하지 않도록 가능한 경우 UserLock을 사용합니다.
+  const cacheLock = typeof LockService.getUserLock === 'function'
+    ? LockService.getUserLock()
+    : LockService.getScriptLock();
+  let cacheLockAcquired = false;
+  try {
+    if (typeof cacheLock.tryLock === 'function') {
+      cacheLockAcquired = cacheLock.tryLock(CONFIG.rowsCacheLockWaitMs);
+    } else {
+      cacheLock.waitLock(CONFIG.rowsCacheLockWaitMs);
+      cacheLockAcquired = true;
+    }
+    // 대기 중 시트가 갱신되거나 다른 실행이 cache를 채웠을 수 있으므로
+    // revision과 cache를 반드시 다시 확인합니다.
+    revision = getDataRevision_();
+    cached = readRowsCache_(revision);
+    if (cached) {
+      return {
+        rows: cached.rows,
+        revision,
+        snapshotToken: cached.snapshotToken,
+      };
+    }
 
-  const snapshotToken = createRowsSnapshotToken_(revision);
-  if (getDataRevision_() === revision) writeRowsCache_(rows, revision, snapshotToken);
-  return { rows, revision, snapshotToken };
+    const sheet = getSheet_();
+    assertSchema_(sheet);
+    const lastRow = sheet.getLastRow();
+    const rows = lastRow < CONFIG.firstDataRow
+      ? []
+      : sheet
+        .getRange(CONFIG.firstDataRow, 1, lastRow - CONFIG.headerRow, CONFIG.totalColumns)
+        .getDisplayValues();
+
+    const snapshotToken = createRowsSnapshotToken_(revision);
+    if (getDataRevision_() === revision) writeRowsCache_(rows, revision, snapshotToken);
+    return { rows, revision, snapshotToken };
+  } finally {
+    if (cacheLockAcquired) cacheLock.releaseLock();
+  }
 }
 
 function getDataRevision_() {
@@ -553,6 +608,21 @@ function publishAdmissionsDataRevision() {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * 배포 직후 관리자가 한 번 실행해 첫 사용자의 rows/meta cold read를 없앱니다.
+ * 공개 doPost에는 노출하지 않으며 Apps Script 실행 API에서만 호출합니다.
+ */
+function warmAdmissionsCaches() {
+  const snapshot = getRowsSnapshot_();
+  const meta = getMeta_();
+  return {
+    ok: true,
+    revision: snapshot.revision,
+    rowCount: meta.rowCount,
+    serverTime: new Date().toISOString(),
+  };
 }
 
 function handleAdmissionsSheetEdit(event) {
@@ -751,7 +821,7 @@ function candidateValue_(row, field) {
     case 'enrollment': return normalize_(row[COL.enrollment]);
     case 'classNo': return normalize_(row[COL.classNo]);
     case 'track': return normalize_(row[COL.track]);
-    case 'admissionType': return normalize_(normalizeAdmissionType_(row[COL.admissionType]));
+    case 'admissionType': return normalize_(normalizeAdmissionTypeForRow_(row));
     default: return '';
   }
 }
@@ -991,7 +1061,7 @@ function getNormalizedSearchRow_(searchIndex, rowIndex) {
     enrollment: normalize_(row[COL.enrollment]),
     classNo: normalize_(row[COL.classNo]),
     track: normalize_(row[COL.track]),
-    admissionType: normalize_(normalizeAdmissionType_(row[COL.admissionType])),
+    admissionType: normalize_(normalizeAdmissionTypeForRow_(row)),
     admissionNames: null,
   };
   searchIndex.normalizedRows[rowIndex] = normalized;
@@ -1127,7 +1197,7 @@ function matchesFilters_(row, f) {
   if (!includes_(row[COL.name], f.detailName)) return false;
   if (!universityMatchesQuery_(row[COL.university], f.detailUniversity, f.includeCampuses)) return false;
   if (!equals_(row[COL.track], f.track)) return false;
-  if (!equals_(normalizeAdmissionType_(row[COL.admissionType]), f.admissionType)) return false;
+  if (!equals_(normalizeAdmissionTypeForRow_(row), f.admissionType)) return false;
   if (!includesAdmissionNameRow_(row, f.detailAdmissionName)) return false;
   return true;
 }
@@ -1211,7 +1281,7 @@ function toRecord_(row, rowNumber) {
     name: text_(row[COL.name]),
     university: text_(row[COL.university]),
     track: text_(row[COL.track]),
-    admissionType: normalizeAdmissionType_(row[COL.admissionType]),
+    admissionType: normalizeAdmissionTypeForRow_(row),
     admissionName: resolveAdmissionName_(row),
     recruitmentUnit: text_(row[COL.department]),
     birthdate: normalizeBirthdate_(row[COL.birthdate]),
@@ -1248,13 +1318,26 @@ function normalizeAdmissionType_(value) {
   const raw = inlineText_(value);
   const compact = normalize_(raw).replace(/（/g, '(').replace(/）/g, ')');
   const slashless = compact.replace(/[\/·ㆍ]/g, '');
-  if (compact === '교과' || compact.includes('학생부위주(교과)') || compact.includes('학생부교과')) return '교과';
+  if (compact === '교과' || compact === '교과(학생부)' || compact.includes('학생부위주(교과)') || compact.includes('학생부교과')) return '교과(학생부)';
   if (compact === '종합' || compact.includes('학생부위주(종합)') || compact.includes('학생부종합')) return '종합';
   if (compact.includes('논술')) return '논술';
   if (slashless === '실기실적위주' || slashless === '실기실적') return '실기·실적';
-  if (compact === '학생부위주' || compact === '학생부') return '학생부';
+  if (compact === '학생부위주' || compact === '학생부') return '교과(학생부)';
+  if (compact === '교과(면접)') return '교과(면접)';
   if (compact === '면접위주' || compact === '면접') return '면접';
   return raw;
+}
+
+function normalizeAdmissionTypeForRow_(row) {
+  const normalized = normalizeAdmissionType_(row[COL.admissionType]);
+  if (normalized !== '면접') return normalized;
+
+  // 전문대의 I열 "면접위주" 중 학생부 교과 성적을 함께 반영하는 전형만
+  // 화면에서 교과(면접)으로 묶습니다. 출결·서류·순수 면접 중심 전형은
+  // 공식 전형방법을 존중해 면접으로 남깁니다.
+  const university = normalize_(row[COL.university]);
+  if (university.includes('구미대') || university.includes('명지전문대')) return '면접';
+  return '교과(면접)';
 }
 
 function normalizeAdmissionName_(value, admissionType) {
@@ -1271,7 +1354,7 @@ function normalizeAdmissionName_(value, admissionType) {
 
   const type = normalizeAdmissionType_(admissionType);
   const prefixesByType = {
-    '교과': [
+    '교과(학생부)': [
       /^학생부\s*위주\s*[\(（]\s*교과\s*[\)）]/,
       /^학생부\s*교과/,
       /^교과/,
@@ -1293,6 +1376,10 @@ function normalizeAdmissionName_(value, admissionType) {
     '학생부': [
       /^학생부\s*위주/,
       /^학생부/,
+    ],
+    '교과(면접)': [
+      /^면접\s*위주/,
+      /^면접/,
     ],
     '면접': [
       /^면접\s*위주/,

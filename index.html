@@ -412,10 +412,13 @@
       gap: 4px;
     }
     .filter-option-label {
-      margin-left: 3px;
+      display: block;
+      width: 100%;
+      margin-left: 0;
       color: #795361;
       font-size: 13.5px;
       font-weight: 800;
+      text-align: center;
     }
     .campus-toggle {
       position: relative;
@@ -496,7 +499,11 @@
       background: transparent;
       cursor: pointer;
     }
-    .suggestion-item:hover, .suggestion-item[aria-selected="true"] { color: var(--pink-800); background: var(--pink-50); }
+    .suggestion-item:hover, .suggestion-item[aria-selected="true"] {
+      color: var(--pink-900);
+      background: rgba(187,27,102,.13);
+      box-shadow: inset 0 0 0 1px rgba(187,27,102,.12);
+    }
 
     .results-section {
       margin-top: 22px;
@@ -760,6 +767,10 @@
     .list-controls .ghost-button { min-width: 112px; padding: 0 17px; color: var(--pink-800); }
     .list-controls .more-button { color: #fff; border-color: transparent; background: var(--pink-800); }
     .list-controls .more-button:hover { background: var(--pink-900); }
+    .list-controls .top-button { color: #765464; background: rgba(255,255,255,.68); }
+    .list-controls .top-button:hover { color: var(--pink-900); background: rgba(255,255,255,.94); }
+
+    .mobile-top-fab { display: none; }
 
     .mobile-search-summary, .mobile-sortbar, .card-list, .mobile-actionbar { display: none; }
 
@@ -1055,8 +1066,41 @@
     body.mobile-edition .card-result-field { grid-column: span 2; }
     body.mobile-edition .card-result-field:nth-child(4),
     body.mobile-edition .card-result-field:nth-child(5) { grid-column: span 3; }
-    body.mobile-edition .list-controls { padding: 11px; }
+    body.mobile-edition .list-controls { padding: 11px 108px 11px 11px; }
     body.mobile-edition .list-controls button { min-width: 0; flex: 1; }
+    body.mobile-edition .list-controls .top-button { display: none; }
+    body.mobile-edition .mobile-top-fab {
+      position: fixed;
+      right: 12px;
+      bottom: calc(78px + env(safe-area-inset-bottom));
+      z-index: 920;
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 0 13px;
+      border: 1px solid rgba(255,255,255,.86);
+      border-radius: 999px;
+      color: #fff;
+      background: rgba(132, 22, 72, .9);
+      box-shadow: 0 8px 22px rgba(63, 15, 37, .24), inset 0 1px 0 rgba(255,255,255,.28);
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px) scale(.96);
+      transition: opacity .18s ease, transform .18s ease, background .18s ease;
+      backdrop-filter: blur(12px);
+    }
+    body.mobile-edition .mobile-top-fab.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+    body.mobile-edition .mobile-top-fab:active { background: rgba(105, 18, 57, .96); transform: scale(.97); }
+    body.mobile-edition .mobile-top-fab .button-icon { width: 15px; height: 15px; }
     body.mobile-edition .mobile-actionbar {
       position: fixed;
       right: 0;
@@ -1462,7 +1506,7 @@
       }
       body.mobile-edition .list-controls {
         gap: 7px;
-        padding: 8px;
+        padding: 8px 100px 8px 8px;
       }
       body.mobile-edition .list-controls button {
         min-height: 40px;
@@ -1733,6 +1777,9 @@
         <button id="moreButton" class="ghost-button more-button" type="button">
           <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span>더 보기</span>
         </button>
+        <button id="scrollTopButton" class="ghost-button top-button" type="button">
+          <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg><span>맨 위로</span>
+        </button>
       </div>
     </section>
   </main>
@@ -1747,6 +1794,11 @@
       <span>검색</span>
     </button>
   </div>
+
+  <button id="mobileScrollTopButton" class="mobile-top-fab" type="button" aria-label="화면 맨 위로 이동" aria-hidden="true" tabindex="-1">
+    <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+    <span>맨 위로</span>
+  </button>
 
   <dialog id="passwordDialog" aria-labelledby="passwordTitle">
     <form id="passwordForm" method="dialog">
@@ -1811,6 +1863,7 @@
     const SAVE_RETRY_MAX_MS = 15000;
     const SAVE_RETRY_MAX_ATTEMPTS = 5;
     const REQUEST_TIMEOUT_MS = 30000;
+    const INITIAL_READ_TIMEOUT_MS = 15000;
     const META_REQUEST_TIMEOUT_MS = 45000;
     const SAVE_REQUEST_TIMEOUT_MS = 35000;
     const READ_RETRY_BACKOFF_MS = 300;
@@ -1818,6 +1871,14 @@
       'health', 'revision', 'meta', 'universities', 'suggest', 'search', 'export',
     ]);
     const META_REFRESH_MIN_INTERVAL_MS = 60000;
+    const META_STORAGE_VERSION = 1;
+    const META_STORAGE_PREFIX = 'admissionsMetaCacheV1';
+    const META_STORAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+    const META_STORAGE_MAX_BYTES = 1500000;
+    const META_STORAGE_MAX_LIST_ITEMS = 12000;
+    const META_STORAGE_MAX_TOTAL_ITEMS = 50000;
+    const META_STORAGE_MAX_CONTEXT_INDEXES = 200000;
+    const META_STORAGE_MAX_VALUE_LENGTH = 240;
     const SEARCH_CACHE_LIMIT = 12;
     const SEARCH_CACHE_TTL_MS = 30000;
     const DEMO_HOST = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
@@ -1862,6 +1923,7 @@
       lastFilters: null,
       pollingTimer: null,
       pollingBusy: false,
+      pollController: null,
       searching: false,
       searchingSilent: false,
       searchingManual: false,
@@ -1935,6 +1997,8 @@
       listControls: $('listControls'),
       collapseButton: $('collapseButton'),
       moreButton: $('moreButton'),
+      scrollTopButton: $('scrollTopButton'),
+      mobileScrollTopButton: $('mobileScrollTopButton'),
       exportButton: $('exportButton'),
       syncPill: $('syncPill'),
       syncText: $('syncText'),
@@ -2066,7 +2130,8 @@
       const defaultTimeoutMs = action === 'meta'
         ? META_REQUEST_TIMEOUT_MS
         : (action === 'save' ? SAVE_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
-      const timeoutMs = Number.isFinite(options.timeoutMs)
+      const hasTimeoutOverride = Number.isFinite(options.timeoutMs);
+      const timeoutMs = hasTimeoutOverride
         ? Math.max(1, Number(options.timeoutMs))
         : defaultTimeoutMs;
       const retryBackoffMs = Number.isFinite(options.retryBackoffMs)
@@ -2075,6 +2140,12 @@
       // Authentication and mutations are deliberately excluded. The save flow
       // owns its conflict-aware queue; transport retries here are reads only.
       const maxAttempts = READ_RETRY_ACTIONS.has(action) ? 2 : 1;
+      const initialAttemptTimeoutMs = maxAttempts > 1 && !hasTimeoutOverride
+        ? Math.min(INITIAL_READ_TIMEOUT_MS, timeoutMs)
+        : timeoutMs;
+      const retryAttemptTimeoutMs = maxAttempts > 1 && !hasTimeoutOverride
+        ? Math.min(REQUEST_TIMEOUT_MS, timeoutMs)
+        : timeoutMs;
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         if (externalSignal && externalSignal.aborted) throw abortError();
         try {
@@ -2084,7 +2155,7 @@
             url,
             sessionToken,
             externalSignal,
-            timeoutMs
+            attempt === 0 ? initialAttemptTimeoutMs : retryAttemptTimeoutMs
           );
         } catch (error) {
           if (externalSignal && externalSignal.aborted) throw abortError();
@@ -2319,41 +2390,22 @@
       return error;
     }
 
-    function waitForSharedPromise(promise, signal) {
-      if (!signal) return Promise.resolve(promise);
-      if (signal.aborted) return Promise.reject(abortError());
-      return new Promise((resolve, reject) => {
-        const onAbort = () => reject(abortError());
-        signal.addEventListener('abort', onAbort, { once: true });
-        Promise.resolve(promise).then(resolve, reject).finally(() => {
-          signal.removeEventListener('abort', onAbort);
-        });
-      });
-    }
-
     async function canonicalizeUniversityInputs(signal) {
       const input = elements.universityInput;
       const typedValue = input.value.trim();
       if (!typedValue) return;
-      if (state.metaPromise && !state.universitySearchIndex.length) {
-        void state.metaPromise.then(() => {
-          if (input.value.trim() !== typedValue) return;
-          const canonical = canonicalUniversityName(typedValue, state.universities);
-          if (canonical) input.value = canonical;
-        }).catch(() => {});
-        return;
-      }
       if (signal && signal.aborted) throw abortError();
-      let candidates = state.universities;
-      if (!candidates.length) {
-        try { candidates = await waitForSharedPromise(universitySuggestions(typedValue), signal); }
-        catch (error) {
-          if (error && error.name === 'AbortError') throw error;
-          candidates = [];
+      const candidates = state.universities;
+      let canonical = canonicalUniversityName(typedValue, candidates);
+      if (!candidates.length && canonical === typedValue) {
+        const campusMatch = typedValue.match(/^(.*?)(\s*[（(][^）)]*[）)])$/);
+        const base = (campusMatch ? campusMatch[1] : typedValue).trim();
+        const campusSuffix = campusMatch ? campusMatch[2] : '';
+        if ([...base].length >= 3 && base.endsWith('대') && !base.endsWith('대학교')) {
+          canonical = `${base.slice(0, -1)}대학교${campusSuffix}`;
         }
       }
       if ((signal && signal.aborted) || input.value.trim() !== typedValue) return;
-      const canonical = canonicalUniversityName(typedValue, candidates);
       if (canonical) input.value = canonical;
     }
 
@@ -2417,6 +2469,7 @@
     }
 
     async function performSearch({ silent = false, manual = !silent } = {}) {
+      if (manual && state.pollController) state.pollController.abort();
       if (state.searching) {
         if (manual && state.searchController) {
           state.pendingManualSearch = true;
@@ -2446,7 +2499,11 @@
         if (controller.signal.aborted) return;
         const filters = silent && state.lastFilters ? state.lastFilters : collectFilters();
         const cached = manual ? cachedSearchResponse(filters) : null;
-        if (cached) applySearchResponse(cached, filters, { silent: false, verified: false });
+        if (cached) {
+          applySearchResponse(cached, filters, { silent: false, verified: false });
+          setSearchBusy(false);
+          setSyncState('busy', '최신 확인 중');
+        }
 
         if (cached) {
           const validation = await api('revision', {}, { signal: controller.signal });
@@ -2514,9 +2571,11 @@
 
     async function pollForChanges() {
       if (state.pollingBusy || state.searching || !state.lastFilters || hasActiveUserInput()) return;
+      const controller = new AbortController();
       state.pollingBusy = true;
+      state.pollController = controller;
       try {
-        const data = await api('revision');
+        const data = await api('revision', {}, { signal: controller.signal });
         const nextRevision = String(data.revision == null ? '' : data.revision);
         const fallbackDue = Date.now() - state.lastFullSyncAt >= FULL_SYNC_INTERVAL_MS;
         if (!state.dataRevision || nextRevision !== state.dataRevision || fallbackDue) {
@@ -2525,10 +2584,12 @@
           setSyncState('online', timeLabel(data.serverTime));
         }
       } catch (error) {
+        if (error && error.name === 'AbortError') return;
         if (error.code !== 'AUTH_REQUIRED' && error.code !== 'SESSION_EXPIRED') {
           setSyncState('error', '연결 오류');
         }
       } finally {
+        if (state.pollController === controller) state.pollController = null;
         state.pollingBusy = false;
       }
     }
@@ -3666,10 +3727,201 @@
       state.lastTruncated = false;
       state.visibleCount = INITIAL_PAGE_SIZE;
       clearInterval(state.pollingTimer);
+      if (state.pollController) state.pollController.abort();
+      state.pollController = null;
       persistPendingDrafts();
       setSearchLayout(false);
       renderResults(0, false);
       setSyncState(currentApiUrl() && currentSessionToken() ? 'online' : 'idle', currentApiUrl() && currentSessionToken() ? '연결됨' : '연결 필요');
+    }
+
+    const META_STRING_LIST_KEYS = Object.freeze([
+      'universityTypes', 'enrollments', 'classes', 'tracks', 'admissionTypes',
+      'universities', 'names', 'admissionNames', 'recruitmentUnits',
+    ]);
+    const META_CONTEXT_LISTS = Object.freeze([
+      ['admissionNameIndexesByUniversity', 'admissionNames'],
+      ['recruitmentUnitIndexesByUniversity', 'recruitmentUnits'],
+    ]);
+
+    function metaStorageKey(apiUrl = currentApiUrl()) {
+      return `${META_STORAGE_PREFIX}:${encodeURIComponent(String(apiUrl || ''))}`;
+    }
+
+    function metaStorageByteLength(value) {
+      const text = String(value || '');
+      try { return new TextEncoder().encode(text).byteLength; }
+      catch (_) { return text.length * 3; }
+    }
+
+    function validMetaOptions(options) {
+      if (!options || typeof options !== 'object' || Array.isArray(options)) return false;
+      let totalItems = 0;
+      for (const key of META_STRING_LIST_KEYS) {
+        const values = options[key];
+        if (!Array.isArray(values) || values.length > META_STORAGE_MAX_LIST_ITEMS) return false;
+        totalItems += values.length;
+        if (totalItems > META_STORAGE_MAX_TOTAL_ITEMS) return false;
+        if (values.some(value => (
+          typeof value !== 'string' || value.length > META_STORAGE_MAX_VALUE_LENGTH
+        ))) return false;
+      }
+
+      let totalContextIndexes = 0;
+      for (const [relationKey, valuesKey] of META_CONTEXT_LISTS) {
+        const relations = options[relationKey];
+        const valueCount = options[valuesKey].length;
+        if (!Array.isArray(relations) || relations.length !== options.universities.length) return false;
+        for (const indexes of relations) {
+          if (!Array.isArray(indexes) || indexes.length > valueCount) return false;
+          totalContextIndexes += indexes.length;
+          if (totalContextIndexes > META_STORAGE_MAX_CONTEXT_INDEXES) return false;
+          if (indexes.some(index => !Number.isInteger(index) || index < 0 || index >= valueCount)) return false;
+        }
+      }
+      return true;
+    }
+
+    function cloneMetaOptions(options) {
+      const cloned = {};
+      META_STRING_LIST_KEYS.forEach(key => { cloned[key] = options[key].slice(); });
+      META_CONTEXT_LISTS.forEach(([relationKey]) => {
+        cloned[relationKey] = options[relationKey].map(indexes => indexes.slice());
+      });
+      return cloned;
+    }
+
+    function removeStoredMeta(apiUrl = currentApiUrl()) {
+      try { localStorage.removeItem(metaStorageKey(apiUrl)); } catch (_) { /* 저장소 없이 계속합니다. */ }
+    }
+
+    function readStoredMeta(apiUrl = currentApiUrl()) {
+      if (DEMO_MODE || !apiUrl) return null;
+      const key = metaStorageKey(apiUrl);
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        if (metaStorageByteLength(raw) > META_STORAGE_MAX_BYTES) throw new Error('META_CACHE_TOO_LARGE');
+        const cached = JSON.parse(raw);
+        const savedAt = Number(cached && cached.savedAt);
+        const now = Date.now();
+        const revision = String(cached && cached.revision || '');
+        const valid = cached && cached.version === META_STORAGE_VERSION
+          && cached.apiUrl === apiUrl
+          && revision.length > 0 && revision.length <= 256
+          && Number.isFinite(savedAt) && savedAt > 0 && savedAt <= now + 5 * 60 * 1000
+          && now - savedAt <= META_STORAGE_MAX_AGE_MS
+          && validMetaOptions(cached.options);
+        if (!valid) throw new Error('INVALID_META_CACHE');
+        return {
+          revision,
+          savedAt,
+          options: cloneMetaOptions(cached.options),
+        };
+      } catch (_) {
+        try { localStorage.removeItem(key); } catch (_) { /* 저장소 없이 계속합니다. */ }
+        return null;
+      }
+    }
+
+    function storeMetaResponse(data, apiUrl = currentApiUrl()) {
+      if (DEMO_MODE || !apiUrl) return false;
+      const revision = String(data && data.revision || '');
+      const options = data && data.options;
+      if (!revision || revision.length > 256 || !validMetaOptions(options)) return false;
+      const key = metaStorageKey(apiUrl);
+      try {
+        const raw = JSON.stringify({
+          version: META_STORAGE_VERSION,
+          apiUrl,
+          revision,
+          savedAt: Date.now(),
+          options: cloneMetaOptions(options),
+        });
+        if (metaStorageByteLength(raw) > META_STORAGE_MAX_BYTES) {
+          localStorage.removeItem(key);
+          return false;
+        }
+        localStorage.setItem(key, raw);
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    function applyMetaResponse(data, { persist = false, cachedAt = 0 } = {}) {
+      if (!data || !validMetaOptions(data.options)) {
+        throw new ApiError('INVALID_META_RESPONSE', '검색 목록 응답을 확인할 수 없습니다.');
+      }
+      const revision = String(data.revision == null ? '' : data.revision);
+      if (!revision || revision.length > 256) {
+        throw new ApiError('INVALID_META_RESPONSE', '검색 목록 버전을 확인할 수 없습니다.');
+      }
+      populateSelect(elements.universityTypeSelect, data.options.universityTypes);
+      populateSelect(elements.admissionTypeSelect, data.options.admissionTypes);
+      setUniversityOptions(data.options.universities);
+      setTextSuggestionOptions('name', data.options.names);
+      setTextSuggestionOptions('admissionName', data.options.admissionNames);
+      setTextSuggestionOptions('recruitmentUnit', data.options.recruitmentUnits);
+      setUniversityContextOptions(
+        data.options.universities,
+        data.options.admissionNameIndexesByUniversity,
+        data.options.recruitmentUnitIndexesByUniversity
+      );
+      state.metaRevision = revision;
+      state.lastMetaRefreshAt = cachedAt > 0 ? Math.min(cachedAt, Date.now()) : Date.now();
+      state.metaRetryAttempts = 0;
+      clearTimeout(state.metaRefreshTimer);
+      state.metaRefreshTimer = null;
+      if (persist) storeMetaResponse(data);
+      resumeRecoveredDrafts();
+      retryAllDrafts({ immediate: true });
+    }
+
+    function restoreStoredMeta() {
+      const cached = readStoredMeta();
+      if (!cached) return null;
+      try {
+        applyMetaResponse({ options: cached.options, revision: cached.revision }, { cachedAt: cached.savedAt });
+        return cached;
+      } catch (_) {
+        removeStoredMeta();
+        return null;
+      }
+    }
+
+    async function initializeAuthenticatedMeta({ knownRevision = '', serverTime = '' } = {}) {
+      const cached = restoreStoredMeta();
+      if (!cached) return loadMeta();
+
+      const verifiedRevision = String(knownRevision || '');
+      if (verifiedRevision) {
+        if (verifiedRevision === cached.revision) {
+          setSyncState('online', timeLabel(serverTime));
+          return;
+        }
+        setSyncState('busy', '목록 갱신 중');
+        return loadMeta({ force: true });
+      }
+
+      setSyncState('busy', '연결 확인 중');
+      try {
+        const validation = await api('revision');
+        const nextRevision = String(validation.revision == null ? '' : validation.revision);
+        if (nextRevision && nextRevision === cached.revision) {
+          setSyncState('online', timeLabel(validation.serverTime));
+          return;
+        }
+      } catch (error) {
+        if (error.code === 'AUTH_REQUIRED' || error.code === 'UNAUTHORIZED'
+          || error.code === 'SESSION_EXPIRED' || error.code === 'CONFIG_REQUIRED') {
+          setSyncState('error', '연결 오류');
+          return;
+        }
+      }
+
+      setSyncState('busy', '목록 갱신 중');
+      return loadMeta({ force: true });
     }
 
     function scheduleMetaRefresh(revision) {
@@ -3689,25 +3941,8 @@
       const request = (async () => {
         try {
           const data = await api('meta');
-          populateSelect(elements.universityTypeSelect, data.options.universityTypes);
-          populateSelect(elements.admissionTypeSelect, data.options.admissionTypes);
-          setUniversityOptions(data.options.universities);
-          setTextSuggestionOptions('name', data.options.names);
-          setTextSuggestionOptions('admissionName', data.options.admissionNames);
-          setTextSuggestionOptions('recruitmentUnit', data.options.recruitmentUnits);
-          setUniversityContextOptions(
-            data.options.universities,
-            data.options.admissionNameIndexesByUniversity,
-            data.options.recruitmentUnitIndexesByUniversity
-          );
-          state.metaRevision = String(data.revision == null ? state.metaRevision : data.revision);
-          state.lastMetaRefreshAt = Date.now();
-          state.metaRetryAttempts = 0;
-          clearTimeout(state.metaRefreshTimer);
-          state.metaRefreshTimer = null;
+          applyMetaResponse(data, { persist: true });
           setSyncState('online', timeLabel(data.serverTime));
-          resumeRecoveredDrafts();
-          retryAllDrafts({ immediate: true });
         } catch (error) {
           if (error.code !== 'CONFIG_REQUIRED') {
             const mayRetry = error.code !== 'AUTH_REQUIRED' && error.code !== 'SESSION_EXPIRED';
@@ -3793,15 +4028,19 @@
           if (sequence !== requestSequence || normalizeQuery(input.value.trim()) !== normalizedSnapshot) return;
           if (document.activeElement !== input) { close(); return; }
           suggestions = Array.isArray(nextSuggestions) ? nextSuggestions : [];
+          activeIndex = -1;
+          input.removeAttribute('aria-activedescendant');
           panel.replaceChildren();
           suggestions.forEach((name, index) => {
             const button = makeElement('button', name, 'suggestion-item');
             button.type = 'button';
+            button.tabIndex = -1;
             button.id = `${panel.id}-option-${index}`;
             button.setAttribute('role', 'option');
             button.setAttribute('aria-selected', 'false');
             button.addEventListener('mousedown', event => event.preventDefault());
             button.addEventListener('click', () => { input.value = name; close(); input.focus(); });
+            button.addEventListener('pointerenter', () => selectIndex(index, { scroll: false }));
             panel.append(button);
           });
           panel.hidden = suggestions.length === 0;
@@ -3811,11 +4050,15 @@
         }
       }
 
-      function selectIndex(index) {
+      function selectIndex(index, { scroll = true } = {}) {
+        if (!suggestions.length) return;
         activeIndex = Math.max(0, Math.min(index, suggestions.length - 1));
         [...panel.children].forEach((item, idx) => item.setAttribute('aria-selected', String(idx === activeIndex)));
         const active = panel.children[activeIndex];
-        if (active) { input.setAttribute('aria-activedescendant', active.id); active.scrollIntoView({ block: 'nearest' }); }
+        if (active) {
+          input.setAttribute('aria-activedescendant', active.id);
+          if (scroll) active.scrollIntoView({ block: 'nearest' });
+        }
       }
 
       input.addEventListener('input', () => {
@@ -3836,10 +4079,16 @@
       });
       input.addEventListener('keydown', event => {
         if (panel.hidden) return;
-        if (event.key === 'ArrowDown') { event.preventDefault(); selectIndex(activeIndex + 1); }
-        else if (event.key === 'ArrowUp') { event.preventDefault(); selectIndex(activeIndex - 1); }
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          selectIndex(activeIndex >= suggestions.length - 1 ? 0 : activeIndex + 1);
+        }
+        else if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          selectIndex(activeIndex <= 0 ? suggestions.length - 1 : activeIndex - 1);
+        }
         else if (event.key === 'Enter' && activeIndex >= 0) { event.preventDefault(); input.value = suggestions[activeIndex]; close(); }
-        else if (event.key === 'Escape') close();
+        else if (event.key === 'Escape') { event.preventDefault(); close(); }
       });
       input.addEventListener('blur', () => setTimeout(() => {
         if (document.activeElement !== input) close();
@@ -3871,12 +4120,21 @@
       if (submitLabel) submitLabel.textContent = '로그인 중';
       setSyncState('busy', '확인 중');
       try {
-        const data = await api('login', { password });
+        const storedMeta = readStoredMeta();
+        const data = await api('login', { password, includeMeta: !storedMeta });
         localStorage.setItem('admissionsSession', JSON.stringify({ token: data.sessionToken, expiresAt: data.expiresAt }));
         elements.passwordInput.value = '';
         elements.passwordDialog.close();
-        setSyncState('online', '연결됨');
-        await loadMeta();
+        if (data.meta && validMetaOptions(data.meta.options)) {
+          applyMetaResponse(data.meta, { persist: true });
+          setSyncState('online', timeLabel(data.meta.serverTime || data.serverTime));
+        } else {
+          setSyncState('online', '연결됨');
+          await initializeAuthenticatedMeta({
+            knownRevision: data.revision,
+            serverTime: data.serverTime,
+          });
+        }
       } catch (error) {
         setSyncState('error', '로그인 오류');
         toast(error.message, 'error');
@@ -4011,6 +4269,31 @@
         renderResults();
         $('resultsSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
+      const scrollToPageTop = () => {
+        elements.tableWrap.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // 긴 모바일 목록에서도 브라우저의 smooth-scroll 거리에 따라 중간에서
+        // 멈추지 않도록 애니메이션 뒤 최상단 위치를 한 번 확정합니다.
+        setTimeout(() => {
+          elements.tableWrap.scrollTop = 0;
+          if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+          window.scrollTo(0, 0);
+        }, 520);
+      };
+      elements.scrollTopButton.addEventListener('click', scrollToPageTop);
+      elements.mobileScrollTopButton.addEventListener('click', scrollToPageTop);
+      let topFabFrame = 0;
+      const updateMobileTopFab = () => {
+        topFabFrame = 0;
+        const visible = EDITION === 'mobile' && window.scrollY > 320;
+        elements.mobileScrollTopButton.classList.toggle('is-visible', visible);
+        elements.mobileScrollTopButton.setAttribute('aria-hidden', String(!visible));
+        elements.mobileScrollTopButton.tabIndex = visible ? 0 : -1;
+      };
+      window.addEventListener('scroll', () => {
+        if (!topFabFrame) topFabFrame = requestAnimationFrame(updateMobileTopFab);
+      }, { passive: true });
+      updateMobileTopFab();
       if (EDITION === 'pc') elements.exportButton.addEventListener('click', exportCurrentResults);
       else elements.exportButton.hidden = true;
       elements.mobileSortSelect.addEventListener('change', () => { state.sortKey = elements.mobileSortSelect.value; renderResults(); });
@@ -4053,7 +4336,7 @@
             ok: true,
             options: {
               universityTypes: ['일반대학'], enrollments: ['재학생', '졸업생'], classes: ['1', '2', '3'],
-              tracks: ['인문', '자연'], admissionTypes: ['교과', '종합', '논술'],
+              tracks: ['인문', '자연'], admissionTypes: ['교과(학생부)', '교과(면접)', '종합', '논술'],
               universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '성균관대학교', '홍익대학교'],
               names: ['강승민', '김민준', '이서연', '박도윤'],
               admissionNames: ['활동우수형', '미래인재', '학교추천', '세종추천', 'KU자기추천', 'KU글로컬추천', '논술우수', '학교생활우수자'],
@@ -4127,7 +4410,7 @@
     function demoRows() {
       return [
         { id:'demo-1',version:'1',rowNumber:2,universityType:'일반대학',enrollment:'재학생',classNo:'3',studentNo:'12',name:'김민준',university:'연세대학교',track:'자연',admissionType:'종합',admissionName:'활동우수형',recruitmentUnit:'경영학과',birthdate:'080315',examNo:'Y20270018',selectionType:'단계별전형',stage1Locked:false,stage1:'합격',finalResult:'',failureReason:'',firstWait:'',finalWait:'' },
-        { id:'demo-2',version:'1',rowNumber:3,universityType:'일반대학',enrollment:'재학생',classNo:'2',studentNo:'7',name:'이서연',university:'고려대학교',track:'인문',admissionType:'교과',admissionName:'학교추천',recruitmentUnit:'정치외교학과',birthdate:'080921',examNo:'K20270104',selectionType:'일괄합산',stage1Locked:true,stage1:'일괄합산',finalResult:'합격',failureReason:'',firstWait:'',finalWait:'' },
+        { id:'demo-2',version:'1',rowNumber:3,universityType:'일반대학',enrollment:'재학생',classNo:'2',studentNo:'7',name:'이서연',university:'고려대학교',track:'인문',admissionType:'교과(학생부)',admissionName:'학교추천',recruitmentUnit:'정치외교학과',birthdate:'080921',examNo:'K20270104',selectionType:'일괄합산',stage1Locked:true,stage1:'일괄합산',finalResult:'합격',failureReason:'',firstWait:'',finalWait:'' },
         { id:'demo-3',version:'1',rowNumber:4,universityType:'일반대학',enrollment:'졸업생',classNo:'1',studentNo:'3',name:'박도윤',university:'성균관대학교',track:'자연',admissionType:'논술',admissionName:'논술우수',recruitmentUnit:'전자전기공학부',birthdate:'070602',examNo:'S20270077',selectionType:'일괄합산',stage1Locked:true,stage1:'일괄합산',finalResult:'',failureReason:'',firstWait:'12',finalWait:'5' },
       ];
     }
@@ -4161,7 +4444,7 @@
         setSyncState('online', '데모');
         loadMeta();
       } else if (currentApiUrl() && currentSessionToken()) {
-        loadMeta();
+        initializeAuthenticatedMeta();
       } else if (currentApiUrl()) {
         setSyncState('idle', '로그인 필요');
         openPassword();

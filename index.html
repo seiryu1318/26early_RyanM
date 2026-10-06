@@ -327,6 +327,19 @@
       margin-top: 4px;
       padding: 0 2px;
     }
+    .utility-button-group {
+      grid-column: 4 / span 2;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 3px;
+      width: 100%;
+      max-width: 280px;
+      justify-self: start;
+      padding: 3px;
+      border: 1px solid rgba(255,255,255,.5);
+      border-radius: 12px;
+      background: rgba(255,244,249,.38);
+    }
     .detail-toggle, .ghost-button, .small-button {
       min-height: 36px;
       display: inline-flex;
@@ -344,14 +357,26 @@
     .detail-toggle:hover, .ghost-button:hover, .small-button:hover { background: rgba(255,255,255,.9); }
     .detail-toggle { padding: 0 12px; }
     .detail-toggle::after { content: none; }
-    body.pc-edition #detailToggle,
-    body.pc-edition #clearButton {
+    .utility-button-group > #detailToggle,
+    .utility-button-group > #clearButton {
       width: 100%;
+      min-height: 32px;
       justify-self: stretch;
+      padding: 0 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      transition: color .16s ease, background .16s ease, border-color .16s ease, box-shadow .16s ease;
     }
-    #detailToggle { grid-column: 4; background: transparent; }
-    #clearButton { grid-column: 5; }
     .clear-button { padding: 0 13px; color: var(--muted); background: transparent; border-color: transparent; }
+    .utility-button-group > #detailToggle:hover,
+    .utility-button-group > #clearButton:hover,
+    .utility-button-group > #detailToggle:focus-visible,
+    .utility-button-group > #clearButton:focus-visible {
+      color: var(--pink-900);
+      border-color: rgba(187,27,102,.08);
+      background: rgba(255,255,255,.94);
+      box-shadow: 0 3px 10px rgba(91,22,55,.08);
+    }
     .detail-toggle[aria-expanded="true"] {
       color: var(--pink-900);
       background: rgba(255,255,255,.92);
@@ -830,18 +855,20 @@
       .primary-search { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .primary-search .search-button { width: 100%; grid-column: span 2; }
       body.pc-edition .search-utility {
-        display: flex;
-        justify-content: space-between;
-        gap: 8px;
+        display: block;
       }
-      body.pc-edition #detailToggle,
-      body.pc-edition #clearButton {
+      body.pc-edition .utility-button-group {
+        grid-column: auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        max-width: none;
+      }
+      body.pc-edition .utility-button-group > #detailToggle,
+      body.pc-edition .utility-button-group > #clearButton {
         width: auto;
         min-width: 0;
-        grid-column: auto;
-        grid-row: auto;
       }
-      body.pc-edition #clearButton { margin-left: auto; }
       .detail-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
 
@@ -866,7 +893,18 @@
     body.mobile-edition .field input, body.mobile-edition .field select { height: 50px; background: rgba(255,255,255,.88); }
     body.mobile-edition .primary-search .search-button { display: none; }
     body.mobile-edition .search-utility { min-height: 44px; display: flex; padding: 3px 0 0; }
+    body.mobile-edition .utility-button-group {
+      display: flex;
+      justify-content: flex-end;
+      width: auto;
+      max-width: none;
+      margin-left: auto;
+      padding: 0;
+      border: 0;
+      background: transparent;
+    }
     body.mobile-edition #detailToggle { display: none; }
+    body.mobile-edition .utility-button-group > #clearButton { width: auto; }
     body.mobile-edition .search-utility { justify-content: flex-end; }
     body.mobile-edition .detail-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; padding: 10px; }
     @media (max-width: 599px) {
@@ -1045,9 +1083,6 @@
       body.pc-edition main { width: calc(100% - 20px); padding-top: calc(var(--topbar-height) + 18px); }
       body.pc-edition .primary-search { grid-template-columns: 1fr; }
       body.pc-edition .primary-search .search-button { grid-column: 1; }
-      body.pc-edition .search-utility { grid-template-columns: 1fr 1fr; }
-      body.pc-edition #detailToggle { grid-column: 2; }
-      body.pc-edition #clearButton { grid-column: 1; }
       body.pc-edition .detail-filters { grid-template-columns: 1fr; }
       body.pc-edition .sync-pill span:last-child { display: none; }
     }
@@ -1614,14 +1649,16 @@
         </div>
 
         <div class="search-utility">
-          <button id="detailToggle" class="detail-toggle" type="button" aria-expanded="false" aria-controls="detailFilters">
-            <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7M15 6h5M4 12h3M11 12h9M4 18h10M18 18h2"/><circle cx="13" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>
-            <span>추가 옵션</span>
-          </button>
-          <button id="clearButton" class="ghost-button clear-button" type="button">
-            <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6"/><path d="M5.5 15a7 7 0 1 0 1-7"/></svg>
-            <span>초기화</span>
-          </button>
+          <div class="utility-button-group" role="group" aria-label="검색 보조 기능">
+            <button id="detailToggle" class="detail-toggle" type="button" aria-expanded="false" aria-controls="detailFilters">
+              <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h7M15 6h5M4 12h3M11 12h9M4 18h10M18 18h2"/><circle cx="13" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>
+              <span>추가 옵션</span>
+            </button>
+            <button id="clearButton" class="ghost-button clear-button" type="button">
+              <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6"/><path d="M5.5 15a7 7 0 1 0 1-7"/></svg>
+              <span>초기화</span>
+            </button>
+          </div>
         </div>
 
         <div id="detailFilters" class="detail-filters" hidden>
@@ -1634,7 +1671,7 @@
             <select id="admissionTypeSelect"><option value="">전체</option></select>
           </div>
           <div class="campus-toggle-field">
-            <span id="campusToggleLabel" class="filter-option-label">캠퍼스 포함</span>
+            <span id="campusToggleLabel" class="filter-option-label">제2캠퍼스 포함</span>
             <label class="campus-toggle" for="includeCampusesToggle">
               <input id="includeCampusesToggle" type="checkbox" aria-labelledby="campusToggleLabel">
               <span class="campus-toggle-control" aria-hidden="true"></span>
@@ -1834,6 +1871,8 @@
       universitySuggestionRequests: new Map(),
       textSuggestionIndexes: Object.create(null),
       universityContextIndexes: [],
+      universityContextByNormalized: new Map(),
+      universityContextsByFamily: new Map(),
       metaPromise: null,
       installPrompt: null,
       drafts: new Map(),
@@ -2057,13 +2096,21 @@
           .map(valueIndex => Number.isInteger(valueIndex) ? valueIndex : Number(valueIndex))
           .filter(valueIndex => Number.isInteger(valueIndex))
         : []);
-      state.universityContextIndexes = (Array.isArray(universities) ? universities : []).map((university, index) => ({
+      const contexts = (Array.isArray(universities) ? universities : []).map((university, index) => ({
         university,
         normalized: normalizeUniversityTerm(university),
         family: universityFamilyKey(university),
         admissionName: pick(index, admissionRelations).map(valueIndex => admissionIndex[valueIndex]).filter(Boolean),
         recruitmentUnit: pick(index, recruitmentRelations).map(valueIndex => recruitmentIndex[valueIndex]).filter(Boolean),
       }));
+      state.universityContextIndexes = contexts;
+      state.universityContextByNormalized = new Map(contexts.map(context => [context.normalized, context]));
+      const contextsByFamily = new Map();
+      contexts.forEach(context => {
+        if (!contextsByFamily.has(context.family)) contextsByFamily.set(context.family, []);
+        contextsByFamily.get(context.family).push(context);
+      });
+      state.universityContextsByFamily = contextsByFamily;
     }
 
     function contextualTextSuggestionIndex(key) {
@@ -2074,12 +2121,12 @@
 
       const canonical = canonicalUniversityName(typedUniversity, state.universities);
       const normalized = normalizeUniversityTerm(canonical);
-      const exact = state.universityContextIndexes.find(item => item.normalized === normalized);
+      const exact = state.universityContextByNormalized.get(normalized);
       if (!exact) return globalIndex;
 
       let contexts = [exact];
       if (elements.includeCampusesToggle.checked && !universityIsCampus(exact.university)) {
-        contexts = state.universityContextIndexes.filter(item => item.family === exact.family);
+        contexts = state.universityContextsByFamily.get(exact.family) || contexts;
       }
       const seen = new Set();
       const combined = [];
@@ -3476,7 +3523,7 @@
       add(filters.recruitmentUnit);
       add(filters.universityType);
       add(filters.admissionType);
-      add(filters.includeCampuses ? '캠퍼스 포함' : '');
+      add(filters.includeCampuses ? '제2캠퍼스 포함' : '');
       elements.mobileSearchSummaryText.textContent = parts.join(' · ') || '검색 조건';
       elements.mobileSearchSummaryText.title = parts.join(' · ');
     }
@@ -3632,26 +3679,43 @@
       let activeIndex = -1;
       let suggestions = [];
       let requestSequence = 0;
-      let composing = false;
 
-      function close() {
+      function invalidatePending({ preservePanel = false } = {}) {
         requestSequence += 1;
-        panel.hidden = true;
-        panel.replaceChildren();
-        input.setAttribute('aria-expanded', 'false');
-        input.removeAttribute('aria-activedescendant');
-        activeIndex = -1;
+        if (!preservePanel) {
+          panel.hidden = true;
+          input.setAttribute('aria-expanded', 'false');
+          input.removeAttribute('aria-activedescendant');
+          activeIndex = -1;
+        }
+        return requestSequence;
       }
 
-      async function update() {
+      function close() {
+        clearTimeout(timer);
+        invalidatePending();
+        suggestions = [];
+        panel.replaceChildren();
+      }
+
+      function scheduleUpdate(delay, { preservePanel = false } = {}) {
+        clearTimeout(timer);
+        const sequence = invalidatePending({ preservePanel });
+        timer = setTimeout(() => update(sequence), delay);
+      }
+
+      async function update(sequence) {
         const query = input.value.trim();
-        if ([...normalizeQuery(query)].length < minimumLength) { close(); return; }
-        const sequence = ++requestSequence;
+        const normalizedSnapshot = normalizeQuery(query);
+        if ([...normalizedSnapshot].length < minimumLength) {
+          if (sequence === requestSequence) close();
+          return;
+        }
         try {
           const nextSuggestions = await provideSuggestions(query);
-          if (sequence !== requestSequence) return;
+          if (sequence !== requestSequence || normalizeQuery(input.value.trim()) !== normalizedSnapshot) return;
           if (document.activeElement !== input) { close(); return; }
-          suggestions = nextSuggestions;
+          suggestions = Array.isArray(nextSuggestions) ? nextSuggestions : [];
           panel.replaceChildren();
           suggestions.forEach((name, index) => {
             const button = makeElement('button', name, 'suggestion-item');
@@ -3665,7 +3729,9 @@
           });
           panel.hidden = suggestions.length === 0;
           input.setAttribute('aria-expanded', String(suggestions.length > 0));
-        } catch (_) { close(); }
+        } catch (_) {
+          if (sequence === requestSequence && normalizeQuery(input.value.trim()) === normalizedSnapshot) close();
+        }
       }
 
       function selectIndex(index) {
@@ -3676,22 +3742,20 @@
       }
 
       input.addEventListener('input', () => {
-        if (composing) return;
-        clearTimeout(timer);
-        timer = setTimeout(update, debounceMs == null ? (EDITION === 'mobile' ? 90 : 140) : debounceMs);
+        scheduleUpdate(debounceMs == null ? (EDITION === 'mobile' ? 90 : 140) : debounceMs);
       });
       input.addEventListener('compositionstart', () => {
-        composing = true;
         clearTimeout(timer);
+        invalidatePending();
       });
       input.addEventListener('compositionend', () => {
-        composing = false;
-        clearTimeout(timer);
-        timer = setTimeout(update, 0);
+        // The composition input event already rendered the current Korean
+        // candidate list. Keep that list visible while the committed value is
+        // rechecked so compositionend does not cause a distracting blink.
+        scheduleUpdate(0, { preservePanel: true });
       });
       input.addEventListener('focus', () => {
-        clearTimeout(timer);
-        timer = setTimeout(update, 0);
+        scheduleUpdate(0);
       });
       input.addEventListener('keydown', event => {
         if (panel.hidden) return;
@@ -3700,7 +3764,9 @@
         else if (event.key === 'Enter' && activeIndex >= 0) { event.preventDefault(); input.value = suggestions[activeIndex]; close(); }
         else if (event.key === 'Escape') close();
       });
-      input.addEventListener('blur', () => setTimeout(close, 120));
+      input.addEventListener('blur', () => setTimeout(() => {
+        if (document.activeElement !== input) close();
+      }, 120));
     }
 
     function openSettings() {
@@ -3911,12 +3977,12 @@
             options: {
               universityTypes: ['일반대학'], enrollments: ['재학생', '졸업생'], classes: ['1', '2', '3'],
               tracks: ['인문', '자연'], admissionTypes: ['교과', '종합', '논술'],
-              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '성균관대학교'],
+              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '성균관대학교', '홍익대학교'],
               names: ['강승민', '김민준', '이서연', '박도윤'],
-              admissionNames: ['활동우수형', '미래인재', '학교추천', '세종추천', 'KU자기추천', 'KU글로컬추천', '논술우수'],
+              admissionNames: ['활동우수형', '미래인재', '학교추천', '세종추천', 'KU자기추천', 'KU글로컬추천', '논술우수', '학교생활우수자'],
               recruitmentUnits: ['경영학과', '의공학부', '정치외교학과', '약학과', '컴퓨터공학부', '글로컬공학부', '전자전기공학부'],
-              admissionNameIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [6]],
-              recruitmentUnitIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [6]],
+              admissionNameIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [6], [7]],
+              recruitmentUnitIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [6], []],
             },
             revision: window.__demoRevision,
             serverTime: new Date().toISOString(),
@@ -3926,7 +3992,7 @@
             const query = normalizeUniversityTerm(payload.query);
             resolve({
               ok: true,
-              suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)']
+              suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '홍익대학교']
                 .filter(value => normalizeUniversityTerm(value).includes(query)),
               serverTime: new Date().toISOString(),
             });

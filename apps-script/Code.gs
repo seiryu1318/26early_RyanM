@@ -15,7 +15,7 @@ const CONFIG = Object.freeze({
   maxSearchResults: 250,
   maxSuggestions: 12,
   lockWaitMs: 20000,
-  rowsCacheLockWaitMs: 2500,
+  rowsCacheLockWaitMs: 6000,
   rowsCachePrefix: 'admissions-rows-v6',
   rowsCacheTtlSeconds: 21600,
   rowsCacheChunkChars: 80000,
@@ -23,7 +23,10 @@ const CONFIG = Object.freeze({
   searchIndexCachePrefix: 'admissions-search-index-v6',
   searchMatchCachePrefix: 'admissions-search-match-v8',
   metaCachePrefix: 'admissions-meta-v8',
-  searchMatchCacheTtlSeconds: 21600,
+  searchMatchCacheTtlSeconds: 600,
+  searchResponseCachePrefix: 'admissions-search-response-v1',
+  searchResponseCacheTtlSeconds: 600,
+  searchResponseCacheSlots: 64,
   searchCacheMaxValueBytes: 90000,
   dataRevisionProperty: 'DATA_REVISION',
   passwordProperty: 'ACCESS_PASSWORD',
@@ -88,6 +91,8 @@ const SEARCH_METRICS_ = {
   persistentUniversityCacheHits: 0,
   matchCacheHits: 0,
   matchCacheMisses: 0,
+  responseCacheHits: 0,
+  responseCacheMisses: 0,
   metaCacheHits: 0,
 };
 
@@ -134,19 +139,27 @@ function dispatchApiPayload_(payload) {
   if (String(payload.action || '') === 'login') {
     return login_(payload.password, payload.includeMeta === true);
   }
-  requireSession_(payload.sessionToken);
+  const scriptProperties = PropertiesService.getScriptProperties().getProperties();
+  requireSession_(payload.sessionToken, scriptProperties);
 
   switch (String(payload.action || '')) {
     case 'health':
       return { ok: true, serverTime: new Date().toISOString() };
     case 'revision':
-      return getRevision_();
+      return getRevision_(scriptProperties);
     case 'meta':
       return getMeta_();
     case 'universities':
       return getUniversitySuggestions_(payload.query);
     case 'search':
       return search_(payload.filters || {});
+    case 'sync':
+      return syncSearch_(
+        payload.filters || {},
+        payload.knownRevision,
+        payload.force === true,
+        scriptProperties
+      );
     case 'export':
       return export_(payload.filters || {});
     case 'save':
@@ -198,15 +211,20 @@ function apiBridgeHtml_(parentOrigin, bridgeToken) {
     const request = event.data || {};
     if (request.type !== 'admissions-bridge-request'
         || request.bridgeToken !== bridgeToken || !request.id) return;
+    // WebKit may clear even a captured MessageEvent.source WindowProxy before
+    // the asynchronous google.script.run callback. The request was already
+    // verified as coming from top, so resolve top again when sending the reply.
+    const requestId = request.id;
+    const payloadJson = JSON.stringify(request.payload || {});
     google.script.run
-      .withSuccessHandler(result => send(event.source, {
-        type: 'admissions-bridge-response', id: request.id, result
+      .withSuccessHandler(result => send(top, {
+        type: 'admissions-bridge-response', id: requestId, result
       }))
-      .withFailureHandler(error => send(event.source, {
-        type: 'admissions-bridge-response', id: request.id,
+      .withFailureHandler(error => send(top, {
+        type: 'admissions-bridge-response', id: requestId,
         error: error && error.message ? error.message : '서버 요청에 실패했습니다.'
       }))
-      .bridgeApi(JSON.stringify(request.payload || {}));
+      .bridgeApi(payloadJson);
   });
   send(top, { type: 'admissions-bridge-ready' });
 })();
@@ -225,9 +243,9 @@ function parsePayload_(e) {
 }
 
 function login_(providedPassword, includeMeta) {
-  const properties = PropertiesService.getScriptProperties();
-  const savedPassword = properties.getProperty(CONFIG.passwordProperty);
-  const sessionSecret = properties.getProperty(CONFIG.sessionSecretProperty);
+  const properties = PropertiesService.getScriptProperties().getProperties();
+  const savedPassword = properties[CONFIG.passwordProperty];
+  const sessionSecret = properties[CONFIG.sessionSecretProperty];
   if (!savedPassword || !sessionSecret) {
     throw apiError_('AUTH_NOT_CONFIGURED', '관리자가 로그인 설정을 완료하지 않았습니다.');
   }
@@ -248,14 +266,15 @@ function login_(providedPassword, includeMeta) {
     ok: true,
     sessionToken: payload + '.' + signature,
     expiresAt,
-    revision: meta ? meta.revision : (properties.getProperty(CONFIG.dataRevisionProperty) || '0'),
+    revision: meta ? meta.revision : (properties[CONFIG.dataRevisionProperty] || '0'),
     meta: meta || undefined,
     serverTime: new Date().toISOString(),
   };
 }
 
-function requireSession_(token) {
-  const sessionSecret = PropertiesService.getScriptProperties().getProperty(CONFIG.sessionSecretProperty);
+function requireSession_(token, properties) {
+  const source = properties || PropertiesService.getScriptProperties().getProperties();
+  const sessionSecret = source[CONFIG.sessionSecretProperty];
   if (!sessionSecret) throw apiError_('AUTH_NOT_CONFIGURED', '관리자가 로그인 설정을 완료하지 않았습니다.');
   const parts = String(token || '').split('.');
   if (parts.length !== 2 || !constantTimeEqual_(parts[1], sign_(parts[0], sessionSecret))) {
@@ -312,7 +331,6 @@ function getMeta_() {
   // 다음 요청이 다른 Apps Script 인스턴스에 도착해도 재사용됩니다.
   const searchIndex = getRuntimeSearchIndex_(snapshot);
   ensureCandidateMap_(searchIndex, 'university');
-  EXACT_CANDIDATE_FIELDS.forEach(field => ensureCandidateMap_(searchIndex, field));
 
   const result = {
     options,
@@ -439,6 +457,30 @@ function search_(rawFilters) {
     throw apiError_('FILTER_REQUIRED', '검색 조건을 한 가지 이상 입력해 주세요.');
   }
 
+  // Most repeat searches can be answered without downloading and inflating the
+  // full rows snapshot. The cache identity includes both the data revision and
+  // the concrete snapshot generation, so a refreshed sheet can never reuse an
+  // older result even when filters are identical.
+  const initialRevision = getDataRevision_();
+  const descriptor = readRowsCacheDescriptor_(initialRevision);
+  if (descriptor) {
+    const cachedResponse = readSearchResponseCache_(
+      initialRevision,
+      descriptor.snapshotToken,
+      filters
+    );
+    if (cachedResponse && getDataRevision_() === initialRevision) {
+      SEARCH_METRICS_.responseCacheHits += 1;
+      return {
+        ok: true,
+        ...cachedResponse,
+        revision: initialRevision,
+        serverTime: new Date().toISOString(),
+      };
+    }
+  }
+  SEARCH_METRICS_.responseCacheMisses += 1;
+
   const snapshot = getRowsSnapshot_();
   const rows = snapshot.rows;
   const match = findMatchingRowIndexes_(snapshot, filters);
@@ -448,20 +490,43 @@ function search_(rawFilters) {
   ));
   const totalMatches = match.rowIndexes.length;
 
-  return {
-    ok: true,
+  const result = {
     records: matches,
     totalMatches,
     truncated: totalMatches > matches.length,
+  };
+  writeSearchResponseCache_(snapshot.revision, snapshot.snapshotToken, filters, result);
+  return {
+    ok: true,
+    ...result,
     revision: snapshot.revision,
     serverTime: new Date().toISOString(),
   };
 }
 
-function getRevision_() {
+function syncSearch_(rawFilters, knownRevision, force, properties) {
+  const filters = sanitizeFilters_(rawFilters);
+  if (!hasSearchCondition_(filters)) {
+    throw apiError_('FILTER_REQUIRED', '검색 조건을 한 가지 이상 입력해 주세요.');
+  }
+  const source = properties || PropertiesService.getScriptProperties().getProperties();
+  const revision = source[CONFIG.dataRevisionProperty] || '0';
+  if (!force && cleanText_(knownRevision, 256) === revision) {
+    return {
+      ok: true,
+      notModified: true,
+      revision,
+      serverTime: new Date().toISOString(),
+    };
+  }
+  return { ...search_(filters), notModified: false };
+}
+
+function getRevision_(properties) {
+  const source = properties || PropertiesService.getScriptProperties().getProperties();
   return {
     ok: true,
-    revision: getDataRevision_(),
+    revision: source[CONFIG.dataRevisionProperty] || '0',
     serverTime: new Date().toISOString(),
   };
 }
@@ -503,7 +568,6 @@ function save_(payload) {
     const lastRow = sheet.getLastRow();
     if (lastRow < CONFIG.firstDataRow) throw apiError_('NOT_FOUND', '저장할 행을 찾지 못했습니다.');
     const previousRevision = getDataRevision_();
-    const previousSnapshot = readRowsCache_(previousRevision);
 
     let rowIndex = -1;
     let current = null;
@@ -586,6 +650,19 @@ function save_(payload) {
     merged.failureReason = cascaded.failureReason;
 
     const sheetRow = CONFIG.firstDataRow + rowIndex;
+    const noChange = RESULT_KEYS.every(key => merged[key] === currentValues[key]);
+    if (noChange) {
+      return {
+        ok: true,
+        record: toRecord_(current, sheetRow),
+        revision: getDataRevision_(),
+        serverTime: new Date().toISOString(),
+      };
+    }
+
+    // Hydrate the prior snapshot only for a write that survived every
+    // validation/conflict check. Failed and no-op saves avoid full cache unzip.
+    const previousSnapshot = readRowsCache_(previousRevision);
     const canWarmFromPreviousSnapshot = getDataRevision_() === previousRevision;
     sheet.getRange(sheetRow, COL.stage1 + 1, 1, 5)
       .setValues([[
@@ -647,12 +724,10 @@ function getRowsSnapshot_() {
     };
   }
 
-  // 여러 사용자의 meta/search 요청이 같은 revision의 cold cache에 동시에
-  // 도착해도 한 실행만 시트 전행을 읽고 압축하도록 단일화합니다. 저장이
-  // 사용하는 ScriptLock과 경합하지 않도록 가능한 경우 UserLock을 사용합니다.
-  const cacheLock = typeof LockService.getUserLock === 'function'
-    ? LockService.getUserLock()
-    : LockService.getScriptLock();
+  // ScriptLock is shared by every web-app user. A UserLock would allow each
+  // user to perform the same cold full-sheet read, and an unlocked fallback
+  // could race a save between setValues() and the revision bump.
+  const cacheLock = LockService.getScriptLock();
   let cacheLockAcquired = false;
   try {
     if (typeof cacheLock.tryLock === 'function') {
@@ -660,6 +735,21 @@ function getRowsSnapshot_() {
     } else {
       cacheLock.waitLock(CONFIG.rowsCacheLockWaitMs);
       cacheLockAcquired = true;
+    }
+    if (!cacheLockAcquired) {
+      // The lock owner may have finished warming while this execution waited.
+      // Recheck once, but never launch another full-sheet read without the
+      // shared lock. The client treats CACHE_WARMING as a retryable read.
+      revision = getDataRevision_();
+      cached = readRowsCache_(revision);
+      if (cached) {
+        return {
+          rows: cached.rows,
+          revision,
+          snapshotToken: cached.snapshotToken,
+        };
+      }
+      throw apiError_('CACHE_WARMING', '최신 자료를 준비하고 있습니다. 잠시 후 자동으로 다시 시도합니다.');
     }
     // 대기 또는 시트 읽기 중 저장이 끝날 수 있으므로 revision을 읽기 전후로
     // 대조합니다. 변경이 겹치면 한 번 다시 읽고, 계속 변하는 경우에는
@@ -676,13 +766,7 @@ function getRowsSnapshot_() {
       }
 
       const sheet = getSheet_();
-      assertSchema_(sheet);
-      const lastRow = sheet.getLastRow();
-      const rows = lastRow < CONFIG.firstDataRow
-        ? []
-        : sheet
-          .getRange(CONFIG.firstDataRow, 1, lastRow - CONFIG.headerRow, CONFIG.totalColumns)
-          .getDisplayValues();
+      const rows = readValidatedRows_(sheet);
       const afterRevision = getDataRevision_();
       if (afterRevision === revision) {
         const snapshotToken = createRowsSnapshotToken_(revision);
@@ -864,8 +948,11 @@ function readMetaCache_(revision, snapshotToken) {
   try {
     const raw = CacheService.getScriptCache().get(metaCacheKey_(revision, snapshotToken));
     if (!raw) return null;
-    const zipped = Utilities.base64DecodeWebSafe(raw);
-    const json = Utilities.ungzip(Utilities.newBlob(zipped)).getDataAsString('UTF-8');
+    const json = raw.indexOf('j:') === 0
+      ? raw.slice(2)
+      : Utilities.ungzip(
+        Utilities.newBlob(Utilities.base64DecodeWebSafe(raw.indexOf('z:') === 0 ? raw.slice(2) : raw))
+      ).getDataAsString('UTF-8');
     const parsed = JSON.parse(json);
     if (!parsed || typeof parsed !== 'object' || !parsed.options || !Number.isInteger(parsed.rowCount)) {
       return null;
@@ -878,8 +965,17 @@ function readMetaCache_(revision, snapshotToken) {
 
 function writeMetaCache_(revision, snapshotToken, value) {
   const json = JSON.stringify(value);
+  const plain = 'j:' + json;
+  if (cacheValueFits_(plain)) {
+    putCacheSafely_(
+      metaCacheKey_(revision, snapshotToken),
+      plain,
+      CONFIG.rowsCacheTtlSeconds
+    );
+    return;
+  }
   const zipped = Utilities.gzip(Utilities.newBlob(json, 'application/json'));
-  const encoded = Utilities.base64EncodeWebSafe(zipped.getBytes());
+  const encoded = 'z:' + Utilities.base64EncodeWebSafe(zipped.getBytes());
   putCacheSafely_(
     metaCacheKey_(revision, snapshotToken),
     encoded,
@@ -1009,6 +1105,73 @@ function normalizedFilterSignature_(filters) {
   return SEARCH_FILTER_KEYS.map(key => (
     key === 'includeCampuses' ? (filters[key] ? '1' : '0') : (filters[key] || '')
   )).join('\u001f');
+}
+
+function searchResponseCacheLocation_(revision, snapshotToken, filters) {
+  const normalizedFilters = normalizedSearchFilters_(filters);
+  const identity = digestHex_(
+    revision + '\u001e' + snapshotToken + '\u001e' + normalizedFilterSignature_(normalizedFilters)
+  );
+  const slot = parseInt(identity.slice(0, 8), 16) % CONFIG.searchResponseCacheSlots;
+  return {
+    identity,
+    key: CONFIG.searchResponseCachePrefix + ':' + String(slot),
+  };
+}
+
+function readSearchResponseCache_(revision, snapshotToken, filters) {
+  try {
+    const location = searchResponseCacheLocation_(revision, snapshotToken, filters);
+    const raw = CacheService.getScriptCache().get(location.key);
+    if (!raw) return null;
+    const json = raw.indexOf('j:') === 0
+      ? raw.slice(2)
+      : Utilities.ungzip(
+        Utilities.newBlob(Utilities.base64DecodeWebSafe(raw.indexOf('z:') === 0 ? raw.slice(2) : raw))
+      ).getDataAsString('UTF-8');
+    const parsed = JSON.parse(json);
+    if (!parsed || parsed.identity !== location.identity || !Array.isArray(parsed.records)) return null;
+    const totalMatches = Number(parsed.totalMatches);
+    if (!Number.isInteger(totalMatches) || totalMatches < parsed.records.length
+        || parsed.records.length > CONFIG.maxSearchResults) return null;
+    return {
+      records: parsed.records,
+      totalMatches,
+      truncated: Boolean(parsed.truncated),
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+function writeSearchResponseCache_(revision, snapshotToken, filters, result) {
+  try {
+    const location = searchResponseCacheLocation_(revision, snapshotToken, filters);
+    const json = JSON.stringify({
+      identity: location.identity,
+      records: result.records,
+      totalMatches: result.totalMatches,
+      truncated: Boolean(result.truncated),
+    });
+    const plain = 'j:' + json;
+    if (cacheValueFits_(plain)) {
+      putCacheSafely_(
+        location.key,
+        plain,
+        CONFIG.searchResponseCacheTtlSeconds
+      );
+      return;
+    }
+    const zipped = Utilities.gzip(Utilities.newBlob(json, 'application/json'));
+    const encoded = 'z:' + Utilities.base64EncodeWebSafe(zipped.getBytes());
+    putCacheSafely_(
+      location.key,
+      encoded,
+      CONFIG.searchResponseCacheTtlSeconds
+    );
+  } catch (_) {
+    // Oversized or unavailable caches must never block a correct live search.
+  }
 }
 
 function searchMatchCacheKey_(revision, snapshotToken, normalizedFilters) {
@@ -1308,11 +1471,8 @@ function getSheet_() {
   return sheet;
 }
 
-function assertSchema_(sheet) {
-  const actual = sheet
-    .getRange(CONFIG.headerRow, 1, 1, CONFIG.totalColumns)
-    .getDisplayValues()[0]
-    .map(value => text_(value).trim());
+function assertSchemaValues_(headerValues) {
+  const actual = (headerValues || []).map(value => text_(value).trim());
   const mismatch = EXPECTED_HEADERS.findIndex((expected, index) => actual[index] !== expected);
   if (mismatch !== -1) {
     throw apiError_(
@@ -1320,6 +1480,25 @@ function assertSchema_(sheet) {
       `${columnLetter_(mismatch + 1)}열 제목을 확인해 주세요. 저장하지 않았습니다.`
     );
   }
+}
+
+function readValidatedRows_(sheet) {
+  const lastRow = sheet.getLastRow();
+  const rangeLastRow = Math.max(CONFIG.headerRow, lastRow);
+  const values = sheet
+    .getRange(CONFIG.headerRow, 1, rangeLastRow - CONFIG.headerRow + 1, CONFIG.totalColumns)
+    .getDisplayValues();
+  assertSchemaValues_(values[0] || []);
+  return lastRow < CONFIG.firstDataRow
+    ? []
+    : values.slice(CONFIG.firstDataRow - CONFIG.headerRow);
+}
+
+function assertSchema_(sheet) {
+  const header = sheet
+    .getRange(CONFIG.headerRow, 1, 1, CONFIG.totalColumns)
+    .getDisplayValues()[0];
+  assertSchemaValues_(header);
 }
 
 function columnLetter_(column) {

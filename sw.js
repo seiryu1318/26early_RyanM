@@ -1,5 +1,5 @@
 const CACHE_NAMESPACE = 'admissions-result-sync';
-const CACHE_VERSION = 'v7';
+const CACHE_VERSION = 'v8';
 const SCOPE_URL = new URL(self.registration.scope);
 const SCOPE_PATH = SCOPE_URL.pathname.endsWith('/')
   ? SCOPE_URL.pathname
@@ -9,6 +9,7 @@ const SCOPE_KEY = SCOPE_PATH
   .replace(/[^a-zA-Z0-9._-]+/g, '-') || 'root';
 const CACHE_PREFIX = `${CACHE_NAMESPACE}:${SCOPE_KEY}:`;
 const CACHE_NAME = `${CACHE_PREFIX}shell:${CACHE_VERSION}`;
+const LEGACY_CACHE_NAMES = new Set(['admissions-shell-v1']);
 const APP_SHELL = [
   '',
   'index.html',
@@ -30,7 +31,10 @@ self.addEventListener('activate', event => {
     caches.keys()
       .then(keys => Promise.all(
         keys
-          .filter(key => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+          .filter(key => (
+            (key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+            || LEGACY_CACHE_NAMES.has(key)
+          ))
           .map(key => caches.delete(key))
       ))
       .then(() => self.clients.claim())
@@ -42,16 +46,20 @@ self.addEventListener('fetch', event => {
   const isOwnedRequest = requestUrl.origin === SCOPE_URL.origin
     && requestUrl.pathname.startsWith(SCOPE_PATH);
   if (event.request.method !== 'GET' || !isOwnedRequest) return;
-  event.respondWith(
-    fetch(event.request)
-      .then(async response => {
-        if (response.ok) {
-          const copy = response.clone();
-          const cache = await caches.open(CACHE_NAME);
-          await cache.put(event.request, copy);
-        }
-        return response;
+  const networkResponse = fetch(event.request);
+  // A CacheStorage quota/write failure must never turn a successful network
+  // navigation into a stale offline response or delay the page paint.
+  event.waitUntil(
+    networkResponse
+      .then(response => {
+        if (!response.ok) return undefined;
+        const copy = response.clone();
+        return caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
       })
+      .catch(() => {})
+  );
+  event.respondWith(
+    networkResponse
       .catch(async () => {
         const cache = await caches.open(CACHE_NAME);
         return (await cache.match(event.request)) || cache.match(OFFLINE_URL);

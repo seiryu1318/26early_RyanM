@@ -1856,7 +1856,11 @@
 
     const EDITION = 'mobile';
     const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbywmooL0w4mp7qvkb6PJzlPHPWJaGfVpYv2SYezE1jKZz0Sw1XXNH4evPLDxQ5DDvKa/exec";
-    const REVISION_POLL_INTERVAL_MS = EDITION === 'mobile' ? 8000 : 7000;
+    // Keep clients close to the documented 15s mobile / 10s PC cadence and
+    // stagger them so many open screens do not start Apps Script executions at
+    // the same instant.
+    const REVISION_POLL_INTERVAL_MS = (EDITION === 'mobile' ? 15000 : 10000)
+      + Math.floor(Math.random() * 2000);
     const FULL_SYNC_INTERVAL_MS = 45000;
     const INITIAL_PAGE_SIZE = EDITION === 'mobile' ? 10 : 15;
     const MORE_PAGE_SIZE = 10;
@@ -1867,13 +1871,17 @@
     const SAVE_RETRY_MAX_ATTEMPTS = 5;
     const REQUEST_TIMEOUT_MS = 12000;
     const INITIAL_READ_TIMEOUT_MS = 8000;
-    const LOGIN_INITIAL_TIMEOUT_MS = 7000;
-    const LOGIN_RETRY_TIMEOUT_MS = 12000;
+    const LOGIN_TIMEOUT_MS = 12000;
     const META_REQUEST_TIMEOUT_MS = 20000;
     const SAVE_REQUEST_TIMEOUT_MS = 35000;
+    // google.script.run inside a cross-origin iframe can acknowledge ready but
+    // never invoke callbacks in mobile WebKit. Mobile therefore uses the hard-
+    // deadline direct transport; desktop keeps the lower-latency bridge.
+    const API_BRIDGE_ENABLED = EDITION === 'pc';
+    const API_BRIDGE_COOLDOWN_MS = 60000;
     const READ_RETRY_BACKOFF_MS = 300;
     const READ_RETRY_ACTIONS = new Set([
-      'health', 'revision', 'meta', 'universities', 'suggest', 'search', 'export',
+      'health', 'revision', 'meta', 'universities', 'suggest', 'search', 'sync', 'export',
     ]);
     const META_REFRESH_MIN_INTERVAL_MS = 60000;
     const META_BOOTSTRAP_DELAY_MS = 10000;
@@ -1962,6 +1970,7 @@
       apiBridgeWindow: null,
       apiBridgeReady: false,
       apiBridgeOrigin: '',
+      apiBridgeDisabledUntil: 0,
       apiBridgeToken: '',
       apiBridgeSequence: 0,
       apiBridgeRequests: new Map(),
@@ -2076,7 +2085,7 @@
     function apiBridgeUrl() {
       const url = new URL(currentApiUrl());
       url.searchParams.set('bridge', '1');
-      url.searchParams.set('v', '25');
+      url.searchParams.set('v', '29');
       url.searchParams.set('parentOrigin', location.origin);
       url.searchParams.set('bridgeToken', state.apiBridgeToken);
       return url.toString();
@@ -2114,9 +2123,11 @@
       const message = event.data || {};
       if (!state.apiBridgeToken || message.bridgeToken !== state.apiBridgeToken) return;
       if (message.type === 'admissions-bridge-ready') {
+        if (Date.now() < state.apiBridgeDisabledUntil) return;
         state.apiBridgeWindow = event.source;
         state.apiBridgeReady = true;
         state.apiBridgeOrigin = event.origin;
+        state.apiBridgeDisabledUntil = 0;
         clearTimeout(state.apiBridgeRetryTimer);
         state.apiBridgeRetryTimer = null;
         return;
@@ -2132,7 +2143,7 @@
     }
 
     function setupApiBridge() {
-      if (DEMO_MODE || !currentApiUrl() || state.apiBridgeFrame) return;
+      if (!API_BRIDGE_ENABLED || DEMO_MODE || !currentApiUrl() || state.apiBridgeFrame) return;
       window.addEventListener('message', handleApiBridgeMessage);
       const frame = document.createElement('iframe');
       frame.title = '서버 연결';
@@ -2146,17 +2157,6 @@
       state.apiBridgeFrame = frame;
       document.body.append(frame);
       scheduleApiBridgeReload(18000);
-    }
-
-    async function waitForApiBridge(timeoutMs, signal) {
-      if (state.apiBridgeReady) return true;
-      if (!timeoutMs) return false;
-      if (signal && signal.aborted) throw abortError();
-      const startedAt = Date.now();
-      while (!state.apiBridgeReady && Date.now() - startedAt < timeoutMs) {
-        await waitForRetryDelay(Math.min(50, timeoutMs - (Date.now() - startedAt)), signal);
-      }
-      return state.apiBridgeReady;
     }
 
     function apiBridgeRequest(payload, externalSignal, timeoutMs) {
@@ -2204,28 +2204,44 @@
     }
 
     async function apiRequestAttempt(action, payload, url, sessionToken, externalSignal, timeoutMs) {
-      if (!state.apiBridgeReady && action === 'login') {
-        await waitForApiBridge(Math.min(4500, timeoutMs), externalSignal);
-      }
-      if (state.apiBridgeReady) {
+      // Authentication is deliberately sent by direct POST. It was the stable
+      // pre-bridge path and avoids a WebKit failure where google.script.run's
+      // success/failure callbacks never arrive after the bridge says ready.
+      if (API_BRIDGE_ENABLED && action !== 'login' && state.apiBridgeReady
+          && Date.now() >= state.apiBridgeDisabledUntil) {
         try {
           const bridged = await apiBridgeRequest(
             { action, sessionToken, ...payload }, externalSignal, timeoutMs
           );
           return validateApiResponseData(bridged);
         } catch (error) {
-          if (error && (error.code === 'BRIDGE_TIMEOUT' || error.code === 'BRIDGE_FAILURE')) {
-            state.apiBridgeReady = false;
-            state.apiBridgeWindow = null;
-            state.apiBridgeOrigin = '';
-            scheduleApiBridgeReload(250);
-          }
-          throw error;
+          const transportFailure = error && (
+            error.code === 'BRIDGE_TIMEOUT'
+            || error.code === 'BRIDGE_FAILURE'
+            || error.code === 'BRIDGE_NOT_READY'
+          );
+          // Reads are safe to repeat through direct POST. Mutating saves must
+          // not fall through because the bridge may have committed the write
+          // before its response was lost.
+          if (!transportFailure) throw error;
+          state.apiBridgeReady = false;
+          state.apiBridgeWindow = null;
+          state.apiBridgeOrigin = '';
+          state.apiBridgeDisabledUntil = Date.now() + API_BRIDGE_COOLDOWN_MS;
+          scheduleApiBridgeReload(API_BRIDGE_COOLDOWN_MS);
+          if (!READ_RETRY_ACTIONS.has(action)) throw error;
         }
       }
       const requestController = new AbortController();
-      const abortFromOutside = () => requestController.abort();
       let timedOut = false;
+      let rejectDeadline = () => {};
+      const deadlinePromise = new Promise((_, reject) => {
+        rejectDeadline = reject;
+      });
+      const abortFromOutside = () => {
+        requestController.abort();
+        rejectDeadline(abortError());
+      };
       if (externalSignal) {
         if (externalSignal.aborted) throw abortError();
         externalSignal.addEventListener('abort', abortFromOutside, { once: true });
@@ -2233,17 +2249,24 @@
       const timeout = setTimeout(() => {
         timedOut = true;
         requestController.abort();
+        rejectDeadline(new ApiError('REQUEST_TIMEOUT', '서버 응답이 지연되고 있습니다.'));
       }, timeoutMs);
       try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action, sessionToken, ...payload }),
-          cache: 'no-store',
-          redirect: 'follow',
-          signal: requestController.signal,
-        });
-        const raw = await response.text();
+        const requestPromise = (async () => {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action, sessionToken, ...payload }),
+            cache: 'no-store',
+            redirect: 'follow',
+            signal: requestController.signal,
+          });
+          return response.text();
+        })();
+        // Some mobile WebViews leave fetch pending even after aborting a
+        // redirected request or its body. The explicit deadline guarantees UI
+        // cleanup even when AbortController alone does not settle the promise.
+        const raw = await Promise.race([requestPromise, deadlinePromise]);
         let data;
         try { data = JSON.parse(raw); }
         catch (_) { throw new ApiError('INVALID_RESPONSE', '서버 응답을 확인할 수 없습니다.'); }
@@ -2265,6 +2288,7 @@
       return error.code === 'REQUEST_TIMEOUT'
         || error.code === 'INVALID_RESPONSE'
         || error.code === 'DATA_CHANGED'
+        || error.code === 'CACHE_WARMING'
         || error.code === 'BRIDGE_TIMEOUT'
         || error.code === 'BRIDGE_FAILURE'
         || error.name === 'TypeError'
@@ -2312,20 +2336,19 @@
       const retryBackoffMs = Number.isFinite(options.retryBackoffMs)
         ? Math.max(0, Number(options.retryBackoffMs))
         : READ_RETRY_BACKOFF_MS;
-      // Login only creates a short-lived signed token, so one transport retry is
-      // safe. Mutations remain excluded; the save flow owns conflict-aware retry.
-      const retryableAction = READ_RETRY_ACTIONS.has(action) || action === 'login';
+      // Authentication uses one bounded attempt. Retrying a timed-out redirected
+      // POST can overlap the still-running first execution and amplify cold-start
+      // contention; the UI is released at the explicit deadline instead.
+      const retryableAction = READ_RETRY_ACTIONS.has(action);
       const maxAttempts = retryableAction ? 2 : 1;
       const initialAttemptTimeoutMs = action === 'login' && !hasTimeoutOverride
-        ? LOGIN_INITIAL_TIMEOUT_MS
+        ? LOGIN_TIMEOUT_MS
         : (maxAttempts > 1 && !hasTimeoutOverride
           ? Math.min(INITIAL_READ_TIMEOUT_MS, timeoutMs)
           : timeoutMs);
-      const retryAttemptTimeoutMs = action === 'login' && !hasTimeoutOverride
-        ? LOGIN_RETRY_TIMEOUT_MS
-        : (maxAttempts > 1 && !hasTimeoutOverride
-          ? Math.min(REQUEST_TIMEOUT_MS, timeoutMs)
-          : timeoutMs);
+      const retryAttemptTimeoutMs = maxAttempts > 1 && !hasTimeoutOverride
+        ? Math.min(REQUEST_TIMEOUT_MS, timeoutMs)
+        : timeoutMs;
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         if (externalSignal && externalSignal.aborted) throw abortError();
         try {
@@ -2650,7 +2673,10 @@
 
     function rememberSearchResponse(filters, data) {
       const snapshot = cloneSearchResponse(data);
-      if (!snapshot.revision || !snapshot.records.length) return;
+      // An empty result is still an exact, revision-scoped answer. Caching it
+      // avoids a full search when the same zero-result query is repeated; the
+      // conditional sync below always validates its revision before reuse.
+      if (!snapshot.revision) return;
       snapshot.cachedAt = Date.now();
       const key = searchCacheKey(filters);
       state.searchCache.delete(key);
@@ -2733,20 +2759,28 @@
           setSyncState('busy', '최신 확인 중');
         }
 
+        let data = null;
         if (cached) {
-          const validation = await api('revision', {}, { signal: controller.signal });
+          // Validate and, only when changed, fetch the new rows in one Apps
+          // Script execution. This preserves revision accuracy while removing
+          // the former revision -> search double round trip.
+          const validation = await api('sync', {
+            filters,
+            knownRevision: cached.revision,
+            force: false,
+          }, { signal: controller.signal });
           if (controller.signal.aborted) return;
-          const nextRevision = String(validation.revision == null ? '' : validation.revision);
-          if (nextRevision && nextRevision === cached.revision) {
-            state.dataRevision = nextRevision;
+          if (validation.notModified) {
+            state.dataRevision = String(validation.revision == null ? cached.revision : validation.revision);
             state.lastFullSyncAt = Date.now();
             setSyncState('online', timeLabel(validation.serverTime));
             schedulePolling();
             return;
           }
+          data = validation;
         }
 
-        const data = await api('search', { filters }, { signal: controller.signal });
+        if (!data) data = await api('search', { filters }, { signal: controller.signal });
         if (controller.signal.aborted) return;
         if (silent && hasActiveInlineWork()) {
           setSyncState('online', timeLabel(data.serverTime));
@@ -2811,14 +2845,26 @@
       state.pollingBusy = true;
       state.pollController = controller;
       try {
-        const data = await api('revision', {}, { signal: controller.signal });
-        const nextRevision = String(data.revision == null ? '' : data.revision);
         const fallbackDue = Date.now() - state.lastFullSyncAt >= FULL_SYNC_INTERVAL_MS;
-        if (!state.dataRevision || nextRevision !== state.dataRevision || fallbackDue) {
-          await performSearch({ silent: true });
-        } else {
+        const filters = { ...state.lastFilters };
+        const data = await api('sync', {
+          filters,
+          knownRevision: state.dataRevision,
+          force: fallbackDue || !state.dataRevision,
+        }, { signal: controller.signal });
+        if (controller.signal.aborted) return;
+        if (data.notModified) {
+          state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
           setSyncState('online', timeLabel(data.serverTime));
+          return;
         }
+        if (hasActiveInlineWork()) {
+          setSyncState('online', timeLabel(data.serverTime));
+          return;
+        }
+        rememberSearchResponse(filters, data);
+        applySearchResponse(data, filters, { silent: true });
+        setSyncState('online', timeLabel(data.serverTime));
       } catch (error) {
         if (error && error.name === 'AbortError') return;
         if (error.code !== 'AUTH_REQUIRED' && error.code !== 'SESSION_EXPIRED') {
@@ -4167,11 +4213,9 @@
       { knownRevision = '', serverTime = '' } = {},
       delayMs = META_BOOTSTRAP_DELAY_MS
     ) {
-      const cached = restoreStoredMeta();
-      if (cached && knownRevision && cached.revision === String(knownRevision)) {
-        setSyncState('online', timeLabel(serverTime));
-        return;
-      }
+      // Parsing and indexing the persisted metadata can be expensive on older
+      // phones. Keep it outside the password submit task so the dialog and
+      // button always finish updating before background initialization starts.
       clearTimeout(state.metaBootstrapTimer);
       state.metaBootstrapTimer = setTimeout(() => {
         state.metaBootstrapTimer = null;
@@ -4407,6 +4451,10 @@
         elements.passwordInput.value = '';
         elements.passwordDialog.close();
         setSyncState('online', '연결됨');
+        // Start the read bridge only after authentication. Loading its iframe
+        // alongside the direct login POST created avoidable startup contention
+        // on mobile Apps Script/WebKit connections.
+        setupApiBridge();
         scheduleAuthenticatedMetaInitialization({
           knownRevision: data.revision,
           serverTime: data.serverTime,
@@ -4633,7 +4681,16 @@
               serverTime: new Date().toISOString(),
             });
           }
-          else if (action === 'search') {
+          else if (action === 'sync' && !payload.force
+              && String(payload.knownRevision || '') === String(window.__demoRevision)) {
+            resolve({
+              ok: true,
+              notModified: true,
+              revision: window.__demoRevision,
+              serverTime: new Date().toISOString(),
+            });
+          }
+          else if (action === 'search' || action === 'sync') {
             window.__demoSearchRequests = Number(window.__demoSearchRequests || 0) + 1;
             if (!Array.isArray(window.__demoSearchPayloads)) window.__demoSearchPayloads = [];
             window.__demoSearchPayloads.push(JSON.parse(JSON.stringify(payload || {})));
@@ -4643,7 +4700,7 @@
               reject(new ApiError('DEMO_SEARCH_FAILED', '데모 검색 실패'));
               return;
             }
-            resolve({ ok: true, records: window.__demoRows.map(record => ({ ...record })), totalMatches: window.__demoRows.length, truncated: false, revision: window.__demoRevision, serverTime: new Date().toISOString() });
+            resolve({ ok: true, notModified: false, records: window.__demoRows.map(record => ({ ...record })), totalMatches: window.__demoRows.length, truncated: false, revision: window.__demoRevision, serverTime: new Date().toISOString() });
           }
           else if (action === 'export') resolve({
             ok: true,
@@ -4692,7 +4749,6 @@
     }
 
     function init() {
-      setupApiBridge();
       restorePendingDrafts();
       configureSortControls();
       wireEvents();
@@ -4721,6 +4777,7 @@
         setSyncState('online', '데모');
         loadMeta();
       } else if (currentApiUrl() && currentSessionToken()) {
+        setupApiBridge();
         scheduleAuthenticatedMetaInitialization({}, 800);
       } else if (currentApiUrl()) {
         setSyncState('idle', '로그인 필요');

@@ -1074,36 +1074,53 @@
     body.mobile-edition .list-controls .top-button { display: none; }
     body.mobile-edition .mobile-top-fab {
       position: fixed;
-      right: 12px;
+      right: 14px;
       bottom: calc(78px + env(safe-area-inset-bottom));
       z-index: 920;
-      min-height: 42px;
+      width: 48px;
+      min-width: 48px;
+      height: 48px;
+      min-height: 48px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 5px;
-      padding: 0 13px;
-      border: 1px solid rgba(255,255,255,.86);
-      border-radius: 999px;
+      padding: 0;
+      border: 1px solid rgba(255,255,255,.78);
+      border-radius: 50%;
       color: #fff;
-      background: rgba(132, 22, 72, .9);
-      box-shadow: 0 8px 22px rgba(63, 15, 37, .24), inset 0 1px 0 rgba(255,255,255,.28);
-      font-size: 13px;
-      font-weight: 900;
+      background: linear-gradient(145deg, rgba(166, 47, 101, .97), rgba(112, 18, 61, .98));
+      box-shadow: 0 12px 26px rgba(63, 15, 37, .28), 0 3px 8px rgba(63, 15, 37, .16), inset 0 1px 0 rgba(255,255,255,.32);
+      font-size: 0;
+      line-height: 1;
       cursor: pointer;
       opacity: 0;
       pointer-events: none;
       transform: translateY(10px) scale(.96);
-      transition: opacity .18s ease, transform .18s ease, background .18s ease;
+      transition: opacity .18s ease, transform .18s ease, background .18s ease, box-shadow .18s ease;
       backdrop-filter: blur(12px);
+      -webkit-tap-highlight-color: transparent;
     }
     body.mobile-edition .mobile-top-fab.is-visible {
       opacity: 1;
       pointer-events: auto;
       transform: translateY(0) scale(1);
     }
-    body.mobile-edition .mobile-top-fab:active { background: rgba(105, 18, 57, .96); transform: scale(.97); }
-    body.mobile-edition .mobile-top-fab .button-icon { width: 15px; height: 15px; }
+    body.mobile-edition .mobile-top-fab:focus-visible {
+      outline: 3px solid rgba(174, 49, 105, .3);
+      outline-offset: 3px;
+    }
+    body.mobile-edition .mobile-top-fab:active {
+      background: linear-gradient(145deg, rgba(139, 31, 79, .98), rgba(91, 13, 48, .99));
+      box-shadow: 0 6px 16px rgba(63, 15, 37, .25), inset 0 1px 0 rgba(255,255,255,.24);
+      transform: scale(.94);
+    }
+    body.mobile-edition .mobile-top-fab .button-icon {
+      width: 22px;
+      height: 22px;
+      flex-basis: 22px;
+      stroke-width: 2.25;
+      transform: translateY(-1px);
+    }
     body.mobile-edition .mobile-actionbar {
       position: fixed;
       right: 0;
@@ -1799,8 +1816,7 @@
   </div>
 
   <button id="mobileScrollTopButton" class="mobile-top-fab" type="button" aria-label="화면 맨 위로 이동" aria-hidden="true" tabindex="-1">
-    <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
-    <span>맨 위로</span>
+    <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h12M12 19V9M7.5 13.5 12 9l4.5 4.5"/></svg>
   </button>
 
   <dialog id="passwordDialog" aria-labelledby="passwordTitle">

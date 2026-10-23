@@ -1872,11 +1872,10 @@
 
     const EDITION = 'mobile';
     const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbywmooL0w4mp7qvkb6PJzlPHPWJaGfVpYv2SYezE1jKZz0Sw1XXNH4evPLDxQ5DDvKa/exec";
-    // Keep clients close to the documented 15s mobile / 10s PC cadence and
-    // stagger them so many open screens do not start Apps Script executions at
-    // the same instant.
-    const REVISION_POLL_INTERVAL_MS = (EDITION === 'mobile' ? 15000 : 10000)
-      + Math.floor(Math.random() * 2000);
+    // Poll every 7s on PC and 10s on mobile, with up to 1s jitter so many open
+    // screens do not start Apps Script executions at the same instant.
+    const REVISION_POLL_INTERVAL_MS = (EDITION === 'mobile' ? 10000 : 7000)
+      + Math.floor(Math.random() * 1000);
     const FULL_SYNC_INTERVAL_MS = 45000;
     const INITIAL_PAGE_SIZE = EDITION === 'mobile' ? 10 : 15;
     const MORE_PAGE_SIZE = 10;
@@ -1900,7 +1899,7 @@
       'health', 'revision', 'meta', 'universities', 'suggest', 'search', 'sync', 'export',
     ]);
     const META_REFRESH_MIN_INTERVAL_MS = 60000;
-    const META_BOOTSTRAP_DELAY_MS = 10000;
+    const META_BOOTSTRAP_DELAY_MS = EDITION === 'mobile' ? 800 : 350;
     const META_STORAGE_VERSION = 1;
     const META_STORAGE_PREFIX = 'admissionsMetaCacheV1';
     const META_STORAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -2465,7 +2464,11 @@
       if (parenthesized) normalized = parenthesized[1];
       const namedCampus = normalized.match(/^(.+?대학교).+캠퍼스$/);
       if (namedCampus) normalized = namedCampus[1];
-      return normalized.replace(/대학교$/, '').replace(/대학$/, '').replace(/대$/, '');
+      return normalized
+        .replace(/대학교$/, '')
+        .replace(/대학$/, '')
+        .replace(/대$/, '')
+        .replace(/^국립(?=.+)/, '');
     }
 
     function universityIsCampus(value) {
@@ -2614,7 +2617,25 @@
       if (base.endsWith('대')) aliases.add(`${base.slice(0, -1)}대학교${campusSuffix}`);
       else if (!base.endsWith('대학교')) aliases.add(`${base}대학교${campusSuffix}`);
       const aliasMatches = indexed.filter(item => aliases.has(item.normalized));
-      return aliasMatches.length === 1 ? aliasMatches[0].name : raw;
+      if (aliasMatches.length === 1) return aliasMatches[0].name;
+
+      // 정식 명칭에만 "국립"이 붙는 대학은 사용자가 흔히 쓰는 약칭도
+      // 고유하게 대응합니다. 캠퍼스가 여럿이면 입력한 캠퍼스를 우선하고,
+      // 캠퍼스 미지정 검색은 본교 표기 한 건만 자동 선택합니다.
+      const requestedFamily = universityFamilyKey(raw);
+      const requestedCampus = universityCampusAlias(raw);
+      const familyMatches = indexed.filter(item => universityFamilyKey(item.name) === requestedFamily);
+      if (requestedCampus) {
+        const campusMatches = familyMatches.filter(
+          item => universityCampusAlias(item.name) === requestedCampus
+        );
+        if (campusMatches.length === 1) return campusMatches[0].name;
+      } else {
+        const mainMatches = familyMatches.filter(item => !universityIsCampus(item.name));
+        if (mainMatches.length === 1) return mainMatches[0].name;
+        if (familyMatches.length === 1) return familyMatches[0].name;
+      }
+      return raw;
     }
 
     async function universitySuggestions(query) {
@@ -2626,6 +2647,8 @@
       // Do not start a large metadata request just to echo the same text.
       if (/대학교(?:\([^)]*\))?$/.test(normalizedQuery)) return [rawQuery];
       if (state.metaPromise) {
+        // 동일한 cold rows cache를 두 실행이 동시에 만들지 않게 현재 인덱스
+        // 초기화를 공유합니다. 로그인 직후 시작 지연 자체는 짧게 유지합니다.
         try { await state.metaPromise; } catch (_) { /* Fall through to the focused endpoint. */ }
         if (state.universitySearchIndex.length) return localUniversitySuggestions(query);
       }
@@ -4677,12 +4700,12 @@
             options: {
               universityTypes: ['일반대학'], enrollments: ['재학생', '졸업생'], classes: ['1', '2', '3'],
               tracks: ['인문', '자연'], admissionTypes: ['교과(학생부)', '교과(면접)', '종합', '논술'],
-              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '성균관대학교', '홍익대학교(서)', '홍익대학교(세)'],
+              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '성균관대학교', '홍익대학교(서)', '홍익대학교(세)', '국립경국대학교'],
               names: ['강승민', '김민준', '이서연', '박도윤'],
               admissionNames: ['활동우수형', '미래인재', '학교추천', '세종추천', 'KU자기추천', 'KU글로컬추천', '논술우수', '학교생활우수자', '교과우수자'],
               recruitmentUnits: ['경영학과', '의공학부', '정치외교학과', '약학과', '컴퓨터공학부', '글로컬공학부', '전자전기공학부', '건설환경공학과', '게임소프트웨어전공'],
-              admissionNameIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8]],
-              recruitmentUnitIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8]],
+              admissionNameIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8], []],
+              recruitmentUnitIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8], []],
             },
             revision: window.__demoRevision,
             serverTime: new Date().toISOString(),
@@ -4692,7 +4715,7 @@
             const query = normalizeUniversityTerm(payload.query);
             resolve({
               ok: true,
-              suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '홍익대학교(서)', '홍익대학교(세)']
+              suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '홍익대학교(서)', '홍익대학교(세)', '국립경국대학교']
                 .filter(value => normalizeUniversityTerm(value).includes(query)),
               serverTime: new Date().toISOString(),
             });

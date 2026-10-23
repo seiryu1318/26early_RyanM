@@ -16,19 +16,21 @@ const CONFIG = Object.freeze({
   maxSuggestions: 12,
   lockWaitMs: 20000,
   rowsCacheLockWaitMs: 6000,
-  rowsCachePrefix: 'admissions-rows-v6',
+  rowsCachePrefix: 'admissions-rows-v7',
   rowsCacheTtlSeconds: 21600,
   rowsCacheChunkChars: 80000,
   rowsCacheMaxChunks: 24,
-  searchIndexCachePrefix: 'admissions-search-index-v6',
-  searchMatchCachePrefix: 'admissions-search-match-v8',
-  metaCachePrefix: 'admissions-meta-v8',
+  searchIndexCachePrefix: 'admissions-search-index-v7',
+  searchMatchCachePrefix: 'admissions-search-match-v9',
+  metaCachePrefix: 'admissions-meta-v9',
   searchMatchCacheTtlSeconds: 600,
-  searchResponseCachePrefix: 'admissions-search-response-v1',
+  searchResponseCachePrefix: 'admissions-search-response-v2',
   searchResponseCacheTtlSeconds: 600,
   searchResponseCacheSlots: 64,
   searchCacheMaxValueBytes: 90000,
-  dataRevisionProperty: 'DATA_REVISION',
+  // v2 starts a fresh public revision generation so already-open clients
+  // immediately discard the pre-normalization rows snapshot after deployment.
+  dataRevisionProperty: 'DATA_REVISION_V2',
   passwordProperty: 'ACCESS_PASSWORD',
   sessionSecretProperty: 'SESSION_SECRET',
   sessionDurationMs: 3 * 60 * 60 * 1000,
@@ -693,9 +695,20 @@ function save_(payload) {
       const warmedRows = previousSnapshot.rows.slice();
       warmedRows[rowIndex] = current.slice();
       const warmedSnapshotToken = createRowsSnapshotToken_(revision);
+      // Q:U 저장은 A:P 기반 메타/대학 인덱스를 바꾸지 않습니다. 원시 캐시만
+      // 새 snapshot identity로 승계하고, revision 종속 response/match 캐시는
+      // 의도적으로 승계하지 않습니다. Rows descriptor는 마지막에 게시합니다.
+      copyScriptCacheValue_(
+        metaCacheKey_(previousRevision, previousSnapshot.snapshotToken),
+        metaCacheKey_(revision, warmedSnapshotToken),
+        CONFIG.rowsCacheTtlSeconds
+      );
+      copyScriptCacheValue_(
+        universityIndexCacheKey_(previousRevision, previousSnapshot.snapshotToken),
+        universityIndexCacheKey_(revision, warmedSnapshotToken),
+        CONFIG.rowsCacheTtlSeconds
+      );
       writeRowsCache_(warmedRows, revision, warmedSnapshotToken);
-      const previousMeta = readMetaCache_(previousRevision, previousSnapshot.snapshotToken);
-      if (previousMeta) writeMetaCache_(revision, warmedSnapshotToken, previousMeta);
     }
 
     return {
@@ -836,7 +849,15 @@ function handleAdmissionsSheetEdit(event) {
   if (!sheet || sheet.getName() !== CONFIG.sheetName) return;
   if (range.getLastRow() < CONFIG.firstDataRow) return;
   if (range.getColumn() > CONFIG.totalColumns || range.getLastColumn() < 1) return;
-  bumpDataRevision_();
+  // save_와 같은 lock으로 revision bump를 직렬화해야, 편집 직후 save_가
+  // 편집 전 snapshot을 최신 revision 아래에 게시하는 경합을 막을 수 있습니다.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(CONFIG.lockWaitMs);
+  try {
+    bumpDataRevision_();
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function rowsCacheKey_(revision, suffix) {
@@ -934,6 +955,18 @@ function putCacheSafely_(key, value, ttlSeconds) {
   try {
     if (!cacheValueFits_(value)) return false;
     CacheService.getScriptCache().put(key, value, ttlSeconds);
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function copyScriptCacheValue_(sourceKey, targetKey, ttlSeconds) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const raw = cache.get(sourceKey);
+    if (!raw) return false;
+    cache.put(targetKey, raw, ttlSeconds);
     return true;
   } catch (_) {
     return false;
@@ -1247,7 +1280,13 @@ function universityIdentity_(value) {
   }
 
   // "건국", "건국대", "건국대학교"를 같은 본교 별칭으로 취급합니다.
-  const alias = baseKey.replace(/대학교$/, '').replace(/대학$/, '').replace(/대$/, '');
+  // 교명 앞의 "국립"은 정식 명칭에는 보존하되 검색 식별자에서만
+  // 제외해 "경국대"로도 "국립경국대학교"를 바로 찾을 수 있게 합니다.
+  const alias = baseKey
+    .replace(/대학교$/, '')
+    .replace(/대학$/, '')
+    .replace(/대$/, '')
+    .replace(/^국립(?=.+)/, '');
   const normalizedCampusName = campusName.replace(/캠퍼스$/, '');
   const campusAliases = {
     서: '서',

@@ -2609,6 +2609,20 @@
         .map(item => item.name);
     }
 
+    function canonicalUniversityFromFamily(raw, matches) {
+      if (!matches.length) return '';
+      const requestedCampus = universityCampusAlias(raw);
+      if (requestedCampus) {
+        const campusMatches = matches.filter(
+          item => universityCampusAlias(item.name) === requestedCampus
+        );
+        return campusMatches.length === 1 ? campusMatches[0].name : '';
+      }
+      const mainMatches = matches.filter(item => !universityIsCampus(item.name));
+      if (mainMatches.length === 1) return mainMatches[0].name;
+      return matches.length === 1 ? matches[0].name : '';
+    }
+
     function canonicalUniversityName(query, candidates) {
       const raw = String(query || '').trim();
       const normalized = normalizeUniversityTerm(raw);
@@ -2632,17 +2646,26 @@
       // 고유하게 대응합니다. 캠퍼스가 여럿이면 입력한 캠퍼스를 우선하고,
       // 캠퍼스 미지정 검색은 본교 표기 한 건만 자동 선택합니다.
       const requestedFamily = universityFamilyKey(raw);
-      const requestedCampus = universityCampusAlias(raw);
       const familyMatches = indexed.filter(item => universityFamilyKey(item.name) === requestedFamily);
-      if (requestedCampus) {
-        const campusMatches = familyMatches.filter(
-          item => universityCampusAlias(item.name) === requestedCampus
-        );
-        if (campusMatches.length === 1) return campusMatches[0].name;
-      } else {
-        const mainMatches = familyMatches.filter(item => !universityIsCampus(item.name));
-        if (mainMatches.length === 1) return mainMatches[0].name;
-        if (familyMatches.length === 1) return familyMatches[0].name;
+      const directFamily = canonicalUniversityFromFamily(raw, familyMatches);
+      if (directFamily) return directFamily;
+
+      // 자동완성과 같은 후보군 안에서 접미 약칭이 유일한 대학군일 때만
+      // 정식 교명으로 바꿉니다. 여러 대학이 겹치면 입력값을 그대로 두어
+      // 사용자가 목록에서 직접 선택하도록 합니다.
+      if ([...requestedFamily].length >= 2) {
+        const suffixFamilies = new Map();
+        indexed.forEach(item => {
+          const family = universityFamilyKey(item.name);
+          if (!family.endsWith(requestedFamily)) return;
+          if (!suffixFamilies.has(family)) suffixFamilies.set(family, []);
+          suffixFamilies.get(family).push(item);
+        });
+        if (suffixFamilies.size === 1) {
+          const suffixMatches = suffixFamilies.values().next().value;
+          const canonical = canonicalUniversityFromFamily(raw, suffixMatches);
+          if (canonical) return canonical;
+        }
       }
       return raw;
     }

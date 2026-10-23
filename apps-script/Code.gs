@@ -21,10 +21,10 @@ const CONFIG = Object.freeze({
   rowsCacheChunkChars: 80000,
   rowsCacheMaxChunks: 24,
   searchIndexCachePrefix: 'admissions-search-index-v7',
-  searchMatchCachePrefix: 'admissions-search-match-v9',
+  searchMatchCachePrefix: 'admissions-search-match-v10',
   metaCachePrefix: 'admissions-meta-v9',
   searchMatchCacheTtlSeconds: 600,
-  searchResponseCachePrefix: 'admissions-search-response-v2',
+  searchResponseCachePrefix: 'admissions-search-response-v3',
   searchResponseCacheTtlSeconds: 600,
   searchResponseCacheSlots: 64,
   searchCacheMaxValueBytes: 90000,
@@ -1072,6 +1072,7 @@ function getRuntimeSearchIndex_(snapshot) {
     createdAt: now,
     normalizedRows: new Array(snapshot.rows.length),
     candidateMaps: Object.create(null),
+    universityQueryCache: new Map(),
     allRowIndexes: Array.from({ length: snapshot.rows.length }, (_, index) => index),
   };
   SEARCH_METRICS_.runtimeIndexBuilds += 1;
@@ -1333,6 +1334,59 @@ function primaryCampusAlias_(universityAlias) {
   return primaryCampuses[universityAlias] || '';
 }
 
+function resolveUniqueUniversityQuery_(universityMap, query) {
+  const requested = universityIdentity_(query);
+  if (!requested.key || universityMap.has(requested.key)) return requested.key;
+
+  // 기존의 정확 일치, X/X대/X대학교 및 선두 "국립" 생략 규칙을
+  // 우선합니다. 같은 대학의 여러 캠퍼스는 하나의 baseKey로 묶습니다.
+  const directFamilies = new Set();
+  universityMap.forEach((_, university) => {
+    if (!universityMatchesQuery_(university, requested.key, true)) return;
+    directFamilies.add(universityIdentity_(university).baseKey);
+  });
+  if (directFamilies.size) return requested.key;
+
+  // 공식 교명의 접미 약칭이 정확히 한 대학군에만 대응할 때만
+  // 직접검색으로 확장합니다. "해양대", "교육대"처럼 둘 이상이
+  // 겹치는 표현은 절대로 첫 번째 대학으로 임의 연결하지 않습니다.
+  if ([...requested.alias].length < 2) return requested.key;
+  const families = new Map();
+  universityMap.forEach((_, university) => {
+    const source = universityIdentity_(university);
+    if (!source.alias.endsWith(requested.alias)) return;
+    if (!families.has(source.baseKey)) families.set(source.baseKey, []);
+    families.get(source.baseKey).push(source);
+  });
+  if (families.size !== 1) return requested.key;
+
+  const [baseKey, family] = families.entries().next().value;
+  if (!requested.isCampus) return baseKey;
+  const campusMatches = family.filter(source => (
+    source.isCampus && source.campusAlias === requested.campusAlias
+  ));
+  return campusMatches.length === 1 ? campusMatches[0].key : requested.key;
+}
+
+function resolveUniversityFilters_(searchIndex, filters) {
+  const universityMap = ensureCandidateMap_(searchIndex, 'university');
+  const cache = searchIndex.universityQueryCache || new Map();
+  searchIndex.universityQueryCache = cache;
+  const resolve = query => {
+    if (!query) return query;
+    const key = normalizeUniversity_(query);
+    if (!cache.has(key)) {
+      cache.set(key, resolveUniqueUniversityQuery_(universityMap, key));
+    }
+    return cache.get(key);
+  };
+  return {
+    ...filters,
+    university: resolve(filters.university),
+    detailUniversity: resolve(filters.detailUniversity),
+  };
+}
+
 function universityMatchesQuery_(university, query, includeCampuses) {
   const source = universityIdentity_(university);
   const requested = universityIdentity_(query);
@@ -1485,9 +1539,12 @@ function findMatchingRowIndexes_(snapshot, filters) {
 
   SEARCH_METRICS_.matchCacheMisses += 1;
   const searchIndex = getRuntimeSearchIndex_(snapshot);
-  const candidates = candidateRowIndexes_(searchIndex, normalizedFilters);
+  const resolvedFilters = (normalizedFilters.university || normalizedFilters.detailUniversity)
+    ? resolveUniversityFilters_(searchIndex, normalizedFilters)
+    : normalizedFilters;
+  const candidates = candidateRowIndexes_(searchIndex, resolvedFilters);
   const rowIndexes = candidates.filter(rowIndex => (
-    matchesNormalizedFilters_(searchIndex, rowIndex, normalizedFilters)
+    matchesNormalizedFilters_(searchIndex, rowIndex, resolvedFilters)
   ));
   const result = { rowIndexes, candidateCount: candidates.length, cacheHit: false };
   writeMatchCache_(snapshot.revision, snapshot.snapshotToken, normalizedFilters, result);

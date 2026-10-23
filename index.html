@@ -813,6 +813,15 @@
       display: flex;
       justify-content: center;
     }
+    #passwordInput.is-invalid {
+      color: var(--pink-900);
+      background: rgba(255,235,244,.94);
+      box-shadow: 0 0 0 2px rgba(187,27,102,.2);
+    }
+    #passwordInput.is-invalid::placeholder {
+      color: var(--pink-800);
+      opacity: 1;
+    }
     .save-button {
       display: inline-flex;
       align-items: center;
@@ -4462,18 +4471,34 @@
     function openPassword() {
       if (DEMO_MODE || !currentApiUrl()) return;
       elements.passwordInput.value = '';
+      resetPasswordInputFeedback();
       if (!elements.passwordDialog.open) {
         elements.passwordDialog.showModal();
         setTimeout(() => elements.passwordInput.focus(), 30);
       }
     }
 
+    function resetPasswordInputFeedback() {
+      elements.passwordInput.placeholder = '비밀번호';
+      elements.passwordInput.classList.remove('is-invalid');
+      elements.passwordInput.removeAttribute('aria-invalid');
+    }
+
+    function showPasswordInputFeedback(message) {
+      elements.passwordInput.value = '';
+      elements.passwordInput.placeholder = message;
+      elements.passwordInput.classList.add('is-invalid');
+      elements.passwordInput.setAttribute('aria-invalid', 'true');
+      elements.passwordInput.focus();
+    }
+
     async function loginWithPassword() {
       const password = elements.passwordInput.value;
       if (!password) {
-        toast('비밀번호를 입력해 주세요.', 'error');
+        showPasswordInputFeedback('비밀번호를 입력해 주세요.');
         return;
       }
+      resetPasswordInputFeedback();
       elements.passwordSubmitButton.disabled = true;
       const submitLabel = elements.passwordSubmitButton.querySelector('span');
       if (submitLabel) submitLabel.textContent = '로그인 중';
@@ -4499,9 +4524,14 @@
           serverTime: data.serverTime,
         });
       } catch (error) {
-        setSyncState('error', '로그인 오류');
-        toast(error.message, 'error');
-        elements.passwordInput.select();
+        if (error.code === 'INVALID_PASSWORD') {
+          setSyncState('idle', '로그인 필요');
+          showPasswordInputFeedback('비밀번호를 다시 확인하십시오');
+        } else {
+          setSyncState('error', '로그인 오류');
+          toast(error.message, 'error');
+          elements.passwordInput.select();
+        }
       } finally {
         elements.passwordSubmitButton.disabled = false;
         if (submitLabel) submitLabel.textContent = '로그인';
@@ -4670,6 +4700,7 @@
       elements.settingsCancelButton.addEventListener('click', () => elements.settingsDialog.close());
       elements.settingsForm.addEventListener('submit', event => { event.preventDefault(); saveSettings(); });
       elements.passwordForm.addEventListener('submit', event => { event.preventDefault(); loginWithPassword(); });
+      elements.passwordInput.addEventListener('input', resetPasswordInputFeedback);
       elements.passwordDialog.addEventListener('cancel', event => event.preventDefault());
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) {

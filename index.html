@@ -916,6 +916,8 @@
       font-variant-numeric: tabular-nums;
       letter-spacing: .02em;
     }
+    .result-table tbody tr:hover td.cell-dob,
+    .result-table tbody tr:hover td.cell-exam { background: rgba(255,204,229,.82); }
     .result-table .cell-exam { max-width: none; word-break: normal; }
     .result-table .cell-university, .result-table .cell-admission, .result-table .cell-recruitment-unit { text-align: left; }
     .result-table tbody tr td.cell-result {
@@ -2408,9 +2410,10 @@
       'health', 'revision', 'meta', 'universities', 'suggest', 'search', 'sync', 'export',
     ]);
     const META_REFRESH_MIN_INTERVAL_MS = 60000;
-    // Restore the persisted autocomplete index immediately after the login
-    // dialog paints instead of holding every first search for 350~800 ms.
-    const META_BOOTSTRAP_DELAY_MS = EDITION === 'mobile' ? 90 : 35;
+    // Let the login dialog paint once, then restore the persisted autocomplete
+    // index without the former 35~90 ms artificial wait.
+    const META_BOOTSTRAP_DELAY_MS = EDITION === 'mobile' ? 16 : 0;
+    const MAX_CONCURRENT_SAVES = 2;
     const META_STORAGE_VERSION = 1;
     const META_STORAGE_PREFIX = 'admissionsMetaCacheV1';
     const META_STORAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -2937,10 +2940,10 @@
     }
 
     async function apiRequestAttempt(action, payload, url, sessionToken, externalSignal, timeoutMs) {
-      // Authentication is deliberately sent by direct POST. It was the stable
-      // pre-bridge path and avoids a WebKit failure where google.script.run's
-      // success/failure callbacks never arrive after the bridge says ready.
-      if (API_BRIDGE_ENABLED && action !== 'login' && state.apiBridgeReady
+      // Authentication and mutating saves use direct POST. A bridge callback
+      // can be lost after a save has already committed, which otherwise leaves
+      // the UI waiting for the full save timeout with no safe fallback.
+      if (API_BRIDGE_ENABLED && action !== 'login' && action !== 'save' && state.apiBridgeReady
           && Date.now() >= state.apiBridgeDisabledUntil) {
         try {
           const bridged = await apiBridgeRequest(
@@ -4453,8 +4456,21 @@
     function retryAllDrafts({ immediate = false } = {}) {
       state.drafts.forEach((_, recordId) => {
         if (immediate) clearDraftRetry(recordId, true);
-        scheduleDraftRetry(recordId, { immediate });
+        if (immediate) saveInlineResult(recordId);
+        else scheduleDraftRetry(recordId);
       });
+    }
+
+    function drainQueuedSaves() {
+      if (!navigator.onLine || (!DEMO_MODE && !currentSessionToken())) return;
+      for (const recordId of state.drafts.keys()) {
+        if (state.saving.size >= MAX_CONCURRENT_SAVES) break;
+        // A failed save owns a backoff timer. Do not let the queue drain turn
+        // it into an immediate retry storm; the durable draft remains stored.
+        if (!state.saving.has(recordId) && !state.retryTimers.has(recordId)) {
+          saveInlineResult(recordId);
+        }
+      }
     }
 
     function hasPendingResultWork() {
@@ -4640,6 +4656,10 @@
 
     async function saveInlineResult(recordId) {
       if (state.saving.has(recordId)) return;
+      // A single browser can otherwise launch many Apps Script executions at
+      // once. Every save is durable in state.drafts/localStorage; two active
+      // requests keep the UI responsive without building a global lock queue.
+      if (state.saving.size >= MAX_CONCURRENT_SAVES) return;
       const record = state.records.find(item => item.id === recordId);
       const draft = state.drafts.get(recordId);
       if (!record || !draft) return;
@@ -4728,6 +4748,7 @@
           clearDraftRetry(recordId, true);
         }
         if (saved) scheduleResultReconciliation();
+        drainQueuedSaves();
       }
     }
 

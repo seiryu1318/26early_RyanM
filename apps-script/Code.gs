@@ -563,7 +563,9 @@ function save_(payload) {
   }
 
   const lock = LockService.getScriptLock();
+  let lockHeld = false;
   lock.waitLock(CONFIG.lockWaitMs);
+  lockHeld = true;
   try {
     const sheet = getSheet_();
     assertSchema_(sheet);
@@ -662,10 +664,6 @@ function save_(payload) {
       };
     }
 
-    // Hydrate the prior snapshot only for a write that survived every
-    // validation/conflict check. Failed and no-op saves avoid full cache unzip.
-    const previousSnapshot = readRowsCache_(previousRevision);
-    const canWarmFromPreviousSnapshot = getDataRevision_() === previousRevision;
     sheet.getRange(sheetRow, COL.stage1 + 1, 1, 5)
       .setValues([[
         merged.stage1,
@@ -683,42 +681,64 @@ function save_(payload) {
     current[COL.firstWait] = merged.firstWait;
     current[COL.finalWait] = merged.finalWait;
 
-    // 저장 직후 polling/search가 새 revision 때문에 전행 시트 읽기로 돌아가지
-    // 않도록 기존의 정확한 snapshot에서 해당 행만 갱신해 write-through 합니다.
-    if (
-      previousSnapshot &&
-      Array.isArray(previousSnapshot.rows) &&
-      previousSnapshot.rows.length === lastRow - CONFIG.headerRow &&
-      previousRevision !== revision &&
-      canWarmFromPreviousSnapshot
-    ) {
-      const warmedRows = previousSnapshot.rows.slice();
-      warmedRows[rowIndex] = current.slice();
-      const warmedSnapshotToken = createRowsSnapshotToken_(revision);
-      // Q:U 저장은 A:P 기반 메타/대학 인덱스를 바꾸지 않습니다. 원시 캐시만
-      // 새 snapshot identity로 승계하고, revision 종속 response/match 캐시는
-      // 의도적으로 승계하지 않습니다. Rows descriptor는 마지막에 게시합니다.
-      copyScriptCacheValue_(
-        metaCacheKey_(previousRevision, previousSnapshot.snapshotToken),
-        metaCacheKey_(revision, warmedSnapshotToken),
-        CONFIG.rowsCacheTtlSeconds
-      );
-      copyScriptCacheValue_(
-        universityIndexCacheKey_(previousRevision, previousSnapshot.snapshotToken),
-        universityIndexCacheKey_(revision, warmedSnapshotToken),
-        CONFIG.rowsCacheTtlSeconds
-      );
-      writeRowsCache_(warmedRows, revision, warmedSnapshotToken);
-    }
-
-    return {
-      ok: true,
-      record: toRecord_(current, sheetRow),
+    const cacheWarmPlan = {
+      previousRevision,
       revision,
-      serverTime: new Date().toISOString(),
+      rowIndex,
+      row: current.slice(),
+      expectedRowCount: lastRow - CONFIG.headerRow,
+      response: {
+        ok: true,
+        record: toRecord_(current, sheetRow),
+        revision,
+        serverTime: new Date().toISOString(),
+      },
     };
-  } finally {
     lock.releaseLock();
+    lockHeld = false;
+    return warmSavedRowsCacheAfterUnlock_(cacheWarmPlan);
+  } finally {
+    if (lockHeld) lock.releaseLock();
+  }
+}
+
+function warmSavedRowsCacheAfterUnlock_(plan) {
+  // Cache unzip/gzip can take much longer than the five-cell sheet write.
+  // Release the global save lock first so other users can validate and write
+  // their rows instead of waiting behind cache compression.
+  try {
+    if (!plan || getDataRevision_() !== plan.revision) return plan.response;
+    const previousSnapshot = readRowsCache_(plan.previousRevision);
+    if (
+      !previousSnapshot ||
+      !Array.isArray(previousSnapshot.rows) ||
+      previousSnapshot.rows.length !== plan.expectedRowCount ||
+      plan.previousRevision === plan.revision ||
+      getDataRevision_() !== plan.revision
+    ) return plan.response;
+
+    const warmedRows = previousSnapshot.rows.slice();
+    warmedRows[plan.rowIndex] = plan.row;
+    const warmedSnapshotToken = createRowsSnapshotToken_(plan.revision);
+    // Q:U 저장은 A:P 기반 메타/대학 인덱스를 바꾸지 않습니다. 원시 캐시만
+    // 새 snapshot identity로 승계하고, revision 종속 response/match 캐시는
+    // 의도적으로 승계하지 않습니다. Rows descriptor는 마지막에 게시합니다.
+    copyScriptCacheValue_(
+      metaCacheKey_(plan.previousRevision, previousSnapshot.snapshotToken),
+      metaCacheKey_(plan.revision, warmedSnapshotToken),
+      CONFIG.rowsCacheTtlSeconds
+    );
+    copyScriptCacheValue_(
+      universityIndexCacheKey_(plan.previousRevision, previousSnapshot.snapshotToken),
+      universityIndexCacheKey_(plan.revision, warmedSnapshotToken),
+      CONFIG.rowsCacheTtlSeconds
+    );
+    writeRowsCache_(warmedRows, plan.revision, warmedSnapshotToken);
+    return plan.response;
+  } catch (_) {
+    // Cache warming is an optimization only. The sheet write and revision have
+    // already committed, so a cache failure must not turn the save into an error.
+    return plan.response;
   }
 }
 

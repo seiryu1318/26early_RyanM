@@ -238,6 +238,310 @@
       box-shadow: 0 18px 46px rgba(70,22,45,.18), inset 0 1px 0 rgba(255,255,255,.9);
       transition: padding .22s ease, border-radius .22s ease, box-shadow .22s ease;
     }
+    .today-schedule {
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 15px 17px 17px;
+      background:
+        linear-gradient(118deg, rgba(255,255,255,.61) 0%, rgba(255,247,251,.5) 48%, rgba(246,198,221,.46) 100%);
+      box-shadow: 0 18px 46px rgba(70,22,45,.17), inset 0 1px 0 rgba(255,255,255,.92);
+    }
+    .mobile-schedule-open { display: none; }
+    .schedule-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 11px;
+      padding: 0 3px;
+    }
+    .schedule-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      font-size: 17px;
+      font-weight: 950;
+      letter-spacing: -.035em;
+    }
+    .schedule-title svg {
+      width: 19px;
+      height: 19px;
+      color: var(--pink-800);
+    }
+    .schedule-date {
+      display: inline-flex;
+      align-items: center;
+      min-height: 0;
+      padding: 0;
+      border-radius: 0;
+      color: #744356;
+      background: transparent;
+      box-shadow: none;
+      font-size: 12.5px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+    .schedule-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 24px;
+    }
+    .schedule-column {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 5px 3px 2px;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .schedule-column-head {
+      min-height: 28px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin: 0 -5px 8px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, var(--schedule-tint, rgba(204,61,124,.1)), transparent 92%);
+    }
+    .schedule-category-icon {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 18px;
+      padding: 0;
+      border-radius: 0;
+      color: var(--schedule-accent, var(--pink-700));
+      background: transparent;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    :is(.schedule-column, .schedule-dialog-group)[data-schedule-tone="interview"] {
+      --schedule-accent: #cf3e7d;
+      --schedule-tint: rgba(229,92,153,.12);
+    }
+    :is(.schedule-column, .schedule-dialog-group)[data-schedule-tone="stage1"] {
+      --schedule-accent: #a8185b;
+      --schedule-tint: rgba(187,27,102,.12);
+    }
+    :is(.schedule-column, .schedule-dialog-group)[data-schedule-tone="final"] {
+      --schedule-accent: #702046;
+      --schedule-tint: rgba(112,32,70,.11);
+    }
+    .schedule-column h3 {
+      min-width: 0;
+      margin: 0;
+      font-size: 14px;
+      font-weight: 900;
+      letter-spacing: -.025em;
+    }
+    .schedule-count {
+      margin-left: auto;
+      padding: 0;
+      color: var(--schedule-accent, var(--pink-800));
+      background: transparent;
+      font-size: 11.5px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .schedule-list,
+    .schedule-dialog-list {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .schedule-list {
+      flex: 1;
+      align-content: start;
+      grid-auto-rows: max-content;
+    }
+    .schedule-item {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 76px minmax(0, 1fr);
+      align-items: start;
+      gap: 8px;
+      padding: 5px 2px;
+      border-radius: 0;
+      color: #49313c;
+      background: transparent;
+      font-size: 12.5px;
+      line-height: 1.35;
+    }
+    .schedule-item.is-seoul-major {
+      margin: 0;
+      border-radius: 8px;
+      background: rgba(246,190,217,.32);
+    }
+    .schedule-university {
+      color: var(--pink-900);
+      font-weight: 950;
+      line-height: 1.35;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .schedule-detail {
+      min-width: 0;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow-wrap: anywhere;
+      word-break: keep-all;
+      font-weight: 750;
+      text-align: left;
+    }
+    .schedule-empty {
+      min-height: 44px;
+      display: grid;
+      place-items: center;
+      margin: 0;
+      color: #816b75;
+      font-size: 12.5px;
+      font-weight: 750;
+      text-align: center;
+    }
+    .schedule-more-button {
+      min-height: 34px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      margin-top: 5px;
+      padding: 0 2px;
+      border: 0;
+      border-radius: 8px;
+      color: var(--schedule-accent, var(--pink-800));
+      background: transparent;
+      box-shadow: none;
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .schedule-more-button:hover,
+    .schedule-more-button:focus-visible {
+      color: var(--pink-900);
+      background: transparent;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    .schedule-more-button svg { width: 14px; height: 14px; }
+    #scheduleDialog {
+      width: min(720px, calc(100% - 28px));
+      background: rgba(255,250,252,.985);
+    }
+    #scheduleDialog .schedule-dialog-head {
+      min-height: 78px;
+      padding: 15px 18px;
+      border-bottom: 0;
+      background: linear-gradient(118deg, rgba(255,255,255,.98), rgba(251,228,239,.96));
+      box-shadow: 0 8px 24px rgba(91,22,55,.07);
+    }
+    .schedule-dialog-heading {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+    .schedule-dialog-heading-icon {
+      width: 22px;
+      height: 22px;
+      flex: 0 0 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 0;
+      color: var(--pink-800);
+      background: transparent;
+    }
+    .schedule-dialog-heading-icon .schedule-category-icon {
+      width: 19px;
+      height: 19px;
+      flex-basis: 19px;
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    .schedule-dialog-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .schedule-dialog-meta {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      font-weight: 750;
+    }
+    .schedule-dialog-count {
+      color: var(--pink-800);
+      font-size: 12.5px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    #scheduleDialog .dialog-body { padding: 12px 18px 18px; }
+    #scheduleDialog .dialog-foot { display: none; }
+    .schedule-dialog-list { gap: 3px; }
+    .schedule-dialog-group {
+      display: grid;
+      gap: 3px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .schedule-dialog-group + .schedule-dialog-group { margin-top: 13px; }
+    .schedule-dialog-group-head {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      color: var(--ink);
+      background: linear-gradient(90deg, var(--schedule-tint), transparent 92%);
+    }
+    .schedule-dialog-group-head .schedule-category-icon {
+      width: 17px;
+      height: 17px;
+      flex-basis: 17px;
+      padding: 0;
+    }
+    .schedule-dialog-group-head h3 {
+      min-width: 0;
+      margin: 0;
+      font-size: 13.5px;
+      font-weight: 900;
+    }
+    .schedule-dialog-group-head span {
+      margin-left: auto;
+      color: var(--schedule-accent);
+      font-size: 11.5px;
+      font-weight: 900;
+    }
+    .schedule-dialog-group-list {
+      display: grid;
+      gap: 2px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .schedule-dialog-list .schedule-item {
+      grid-template-columns: 96px minmax(0, 1fr);
+      min-height: 42px;
+      padding: 9px 8px;
+      font-size: 14px;
+    }
+    .schedule-dialog-list .schedule-detail {
+      display: block;
+      overflow: visible;
+      -webkit-line-clamp: unset;
+    }
     .primary-search {
       display: grid;
       grid-template-columns: repeat(6, minmax(0, 1fr)) 112px;
@@ -336,14 +640,14 @@
       grid-column: 4 / span 2;
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 3px;
+      gap: 5px;
       width: 100%;
       max-width: 280px;
       justify-self: start;
-      padding: 3px;
-      border: 1px solid rgba(255,255,255,.5);
-      border-radius: 12px;
-      background: rgba(255,244,249,.38);
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
     }
     .detail-toggle, .ghost-button, .small-button {
       min-height: 36px;
@@ -922,6 +1226,53 @@
     }
     body.mobile-edition .glass-panel { border-radius: 23px; }
     body.mobile-edition .search-panel { padding: 12px; }
+    body.mobile-edition .today-schedule {
+      padding: 0;
+      overflow: hidden;
+    }
+    body.mobile-edition .today-schedule .schedule-heading,
+    body.mobile-edition .today-schedule .schedule-grid { display: none; }
+    body.mobile-edition .mobile-schedule-open {
+      width: 100%;
+      min-height: 56px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 9px;
+      padding: 0 15px;
+      border: 0;
+      color: var(--ink);
+      background: transparent;
+      font: inherit;
+      font-weight: 900;
+      text-align: left;
+      cursor: pointer;
+    }
+    body.mobile-edition .mobile-schedule-open:hover,
+    body.mobile-edition .mobile-schedule-open:focus-visible {
+      color: var(--pink-900);
+      background: rgba(255,255,255,.28);
+    }
+    body.mobile-edition .mobile-schedule-open > .button-icon {
+      width: 19px;
+      height: 19px;
+      color: var(--pink-800);
+    }
+    body.mobile-edition .mobile-schedule-count {
+      color: var(--pink-800);
+      font-size: 12.5px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    body.mobile-edition .mobile-schedule-chevron {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: var(--pink-800);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
     body.mobile-edition .primary-search { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
     body.mobile-edition .field label { margin-left: 0; }
     body.mobile-edition .field input, body.mobile-edition .field select { height: 50px; background: rgba(255,255,255,.88); }
@@ -1149,16 +1500,48 @@
     body.mobile-edition .mobile-actionbar .search-button { width: 100%; min-width: 0; height: 48px; }
     body.mobile-edition .mobile-actionbar .detail-toggle { background: #fff; }
     body.mobile-edition dialog {
-      width: 100%;
-      max-width: none;
+      position: fixed;
+      inset: auto;
+      top: 50%;
+      right: auto;
+      bottom: auto;
+      left: 50%;
+      width: min(720px, calc(100% - 24px));
+      max-width: 720px;
       max-height: 92vh;
-      margin: auto 0 0;
-      border-radius: 25px 25px 0 0;
-      border-bottom: 0;
+      margin: 0;
+      border-radius: 25px;
+      border-bottom: 1px solid rgba(255,255,255,.95);
+      transform: translate(-50%, -50%);
     }
     body.mobile-edition .dialog-head { min-height: 60px; }
     body.mobile-edition .dialog-body { padding: 14px; }
     body.mobile-edition .dialog-foot { display: grid; grid-template-columns: auto 1fr; }
+    body.mobile-edition #scheduleDialog {
+      max-height: 84dvh;
+    }
+    body.mobile-edition #scheduleDialog .schedule-dialog-head {
+      align-items: center;
+      min-height: 68px;
+      padding: 10px 13px;
+    }
+    body.mobile-edition #scheduleDialog .schedule-dialog-heading { gap: 9px; }
+    body.mobile-edition #scheduleDialog .schedule-dialog-heading-icon {
+      width: 22px;
+      height: 22px;
+      flex-basis: 22px;
+    }
+    body.mobile-edition #scheduleDialog .dialog-title { font-size: 16.5px; }
+    body.mobile-edition #scheduleDialog .schedule-dialog-meta { font-size: 11.5px; }
+    body.mobile-edition #scheduleDialog .schedule-dialog-count { font-size: 12px; }
+    body.mobile-edition #scheduleDialog .dialog-body { padding: 9px 12px 18px; }
+    body.mobile-edition #scheduleDialog .schedule-dialog-list .schedule-item {
+      grid-template-columns: 84px minmax(0, 1fr);
+      gap: 8px;
+      min-height: 38px;
+      padding: 7px 8px;
+      font-size: 13px;
+    }
     body.mobile-edition .toast-region { right: 10px; bottom: calc(82px + env(safe-area-inset-bottom)); left: 10px; }
     body.mobile-edition .toast { max-width: none; }
 
@@ -1208,14 +1591,16 @@
       min-height: 100vh;
       min-height: 100dvh;
       display: grid;
-      align-items: center;
-      padding: 0;
+      align-content: center;
+      gap: 14px;
+      padding: calc(var(--topbar-height) + 22px) 0 34px;
     }
     body:not(.has-searched) .search-panel {
       width: 100%;
       max-width: 1280px;
       margin: 0 auto;
     }
+    body.has-searched .today-schedule { display: none; }
     body.has-searched main {
       padding: calc(var(--topbar-height) + var(--sticky-search-gap)) 0 70px;
     }
@@ -1240,7 +1625,8 @@
     body.mobile-edition:not(.has-searched) main {
       min-height: 100vh;
       min-height: 100dvh;
-      padding: 0;
+      align-content: start;
+      padding: calc(var(--topbar-height) + 16px) 0 calc(86px + env(safe-area-inset-bottom));
     }
     body.mobile-edition.has-searched main {
       padding: calc(var(--topbar-height) + var(--sticky-search-gap)) 0 calc(98px + env(safe-area-inset-bottom));
@@ -1372,6 +1758,26 @@
         padding-bottom: calc(72px + env(safe-area-inset-bottom));
       }
       body.mobile-edition .glass-panel { border-radius: 18px; }
+      body.mobile-edition .today-schedule {
+        padding: 0;
+      }
+      body.mobile-edition .schedule-heading {
+        align-items: flex-start;
+        margin-bottom: 9px;
+      }
+      body.mobile-edition .schedule-title { font-size: 16px; }
+      body.mobile-edition .schedule-date { min-height: 28px; padding: 0 9px; font-size: 11.5px; }
+      body.mobile-edition .schedule-grid { grid-template-columns: 1fr; gap: 8px; }
+      body.mobile-edition .schedule-column { padding: 10px; border-radius: 15px; }
+      body.mobile-edition .schedule-item { font-size: 12.5px; }
+      body.mobile-edition .schedule-more-button { min-height: 42px; }
+      body.mobile-edition #scheduleDialog .dialog-head { align-items: center; }
+      body.mobile-edition .schedule-dialog-list .schedule-item {
+        grid-template-columns: 84px minmax(0, 1fr);
+        gap: 8px;
+        padding: 7px 8px;
+        font-size: 13px;
+      }
       body.mobile-edition .search-panel {
         min-width: 0;
         max-width: 100%;
@@ -1568,7 +1974,7 @@
         padding: 0 13px;
         font-size: 12.5px;
       }
-      body.mobile-edition dialog { border-radius: 20px 20px 0 0; }
+      body.mobile-edition dialog { border-radius: 20px; }
       body.mobile-edition .dialog-head {
         min-height: 52px;
         padding: 8px 12px;
@@ -1625,6 +2031,17 @@
         padding: 0 8px;
       }
       body.mobile-edition.has-searched .detail-filters { margin-top: 4px; }
+    }
+
+    @media (max-width: 760px) {
+      body.pc-edition .schedule-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-height: 720px) {
+      body.pc-edition:not(.has-searched) main {
+        align-content: start;
+        padding-top: calc(var(--topbar-height) + 18px);
+      }
     }
 
     /* iOS focuses and enlarges form controls whose computed text is below 16px.
@@ -1766,6 +2183,23 @@
       </form>
     </section>
 
+    <section id="todaySchedule" class="today-schedule glass-panel" aria-labelledby="todayScheduleTitle">
+      <button id="mobileScheduleOpenButton" class="mobile-schedule-open" type="button" aria-haspopup="dialog" aria-controls="scheduleDialog">
+        <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8 14h2M14 14h2M8 18h2"/></svg>
+        <span>오늘의 일정 보기</span>
+        <span id="mobileScheduleCount" class="mobile-schedule-count"></span>
+        <svg class="mobile-schedule-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+      </button>
+      <div class="schedule-heading">
+        <h2 id="todayScheduleTitle" class="schedule-title">
+          <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8 14h2M14 14h2M8 18h2"/></svg>
+          <span>오늘의 대입 일정</span>
+        </h2>
+        <time id="todayScheduleDate" class="schedule-date" datetime="2026-10-27">10월 27일 화요일</time>
+      </div>
+      <div id="scheduleGrid" class="schedule-grid" aria-live="polite"></div>
+    </section>
+
     <section id="resultsSection" class="results-section glass-panel" aria-label="검색 결과" hidden>
       <div class="results-bar">
         <div id="resultsCount" class="results-count" aria-live="polite">검색 결과 <strong>0</strong></div>
@@ -1866,6 +2300,28 @@
     </form>
   </dialog>
 
+  <dialog id="scheduleDialog" aria-labelledby="scheduleDialogTitle">
+    <div class="dialog-head schedule-dialog-head">
+      <div class="schedule-dialog-heading">
+        <span id="scheduleDialogIcon" class="schedule-dialog-heading-icon" aria-hidden="true"></span>
+        <div>
+          <h2 id="scheduleDialogTitle" class="dialog-title">오늘의 대입 일정</h2>
+          <p id="scheduleDialogMeta" class="schedule-dialog-meta"></p>
+        </div>
+      </div>
+      <div class="schedule-dialog-actions">
+        <span id="scheduleDialogCount" class="schedule-dialog-count"></span>
+        <button id="scheduleDialogCloseButton" class="icon-button" type="button" aria-label="닫기"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </div>
+    </div>
+    <div class="dialog-body">
+      <ul id="scheduleDialogList" class="schedule-dialog-list"></ul>
+    </div>
+    <div class="dialog-foot">
+      <button id="scheduleDialogDoneButton" class="save-button" type="button">닫기</button>
+    </div>
+  </dialog>
+
   <div id="savingOverlay" class="saving-overlay" role="status" aria-live="polite" hidden>
     <span class="saving-spinner" aria-hidden="true"></span>
     <span>반영 중</span>
@@ -1881,6 +2337,40 @@
 
     const EDITION = 'mobile';
     const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbywmooL0w4mp7qvkb6PJzlPHPWJaGfVpYv2SYezE1jKZz0Sw1XXNH4evPLDxQ5DDvKa/exec";
+    const SCHEDULE_PREVIEW_LIMIT = 5;
+    const SCHEDULE_CATEGORIES = Object.freeze([
+      { key: 'interview', label: '면접 일정', tone: 'interview', icon: 'interview' },
+      { key: 'stage1', label: '1단계 합격 발표', tone: 'stage1', icon: 'stage1' },
+      { key: 'final', label: '최종 합격자 발표', tone: 'final', icon: 'final' },
+    ]);
+    const SEOUL_MAJOR_UNIVERSITIES = new Set([
+      '서울대', '연세대', '고려대', '서강대', '성균관대', '한양대',
+      '중앙대', '경희대', '한국외대', '서울시립대', '이화여대', '건국대',
+      '동국대', '홍익대', '숙명여대', '국민대', '숭실대', '세종대',
+      '광운대', '서울과기대', '성신여대', '서울여대', '동덕여대',
+      '덕성여대', '상명대', '명지대', '삼육대', '한성대', '서경대',
+    ]);
+    const ADMISSION_SCHEDULES = Object.freeze({
+      '2026-10-27': Object.freeze({
+        interview: Object.freeze([
+          { university: '유원대', detail: '모든면접 일괄면접1' },
+          { university: '한서대', detail: '충남형계약 일괄면접' },
+        ]),
+        stage1: Object.freeze([
+          { university: '고신대', detail: '의예 모든전형 1단계' },
+          { university: '동덕여대', detail: '동덕창의 1단계' },
+          { university: '루터대', detail: '섬김인재/고른 1단계' },
+          { university: '성균관대', detail: '과학인재 1단계' },
+          { university: '연세미래', detail: '학교생활 1단계' },
+          { university: '연세미래', detail: '글로벌인재 1단계 의예 제외 일반학과' },
+          { university: '차의과대', detail: 'CHA교과 1단계' },
+        ]),
+        final: Object.freeze([
+          { university: '차의과대', detail: '교과지역균형 최종 간호/약학/미래' },
+          { university: '한일장신대', detail: '모든 최종' },
+        ]),
+      }),
+    });
     // Poll every 7s on PC and 10s on mobile, with up to 1s jitter so many open
     // screens do not start Apps Script executions at the same instant.
     const REVISION_POLL_INTERVAL_MS = (EDITION === 'mobile' ? 10000 : 7000)
@@ -1898,17 +2388,21 @@
     const LOGIN_TIMEOUT_MS = 12000;
     const META_REQUEST_TIMEOUT_MS = 20000;
     const SAVE_REQUEST_TIMEOUT_MS = 35000;
-    // google.script.run inside a cross-origin iframe can acknowledge ready but
-    // never invoke callbacks in mobile WebKit. Mobile therefore uses the hard-
-    // deadline direct transport; desktop keeps the lower-latency bridge.
-    const API_BRIDGE_ENABLED = EDITION === 'pc';
+    // iOS WebKit can acknowledge a cross-origin Apps Script bridge without
+    // ever invoking its callbacks. Keep direct POST there, while desktop and
+    // Android/Chromium use the lower-latency bridge with the existing fallback.
+    const IS_IOS_WEBKIT = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const API_BRIDGE_ENABLED = EDITION === 'pc' || !IS_IOS_WEBKIT;
     const API_BRIDGE_COOLDOWN_MS = 60000;
     const READ_RETRY_BACKOFF_MS = 300;
     const READ_RETRY_ACTIONS = new Set([
       'health', 'revision', 'meta', 'universities', 'suggest', 'search', 'sync', 'export',
     ]);
     const META_REFRESH_MIN_INTERVAL_MS = 60000;
-    const META_BOOTSTRAP_DELAY_MS = EDITION === 'mobile' ? 800 : 350;
+    // Restore the persisted autocomplete index immediately after the login
+    // dialog paints instead of holding every first search for 350~800 ms.
+    const META_BOOTSTRAP_DELAY_MS = EDITION === 'mobile' ? 90 : 35;
     const META_STORAGE_VERSION = 1;
     const META_STORAGE_PREFIX = 'admissionsMetaCacheV1';
     const META_STORAGE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -1970,6 +2464,7 @@
       searchCache: new Map(),
       exporting: false,
       searchPanelObserver: null,
+      scheduleDialogTrigger: null,
       dataRevision: '',
       metaRevision: '',
       lastMetaRefreshAt: 0,
@@ -1986,10 +2481,18 @@
       universitySuggestionCache: new Map(),
       universitySuggestionRequests: new Map(),
       textSuggestionIndexes: Object.create(null),
+      textSuggestionCache: new Map(),
       universityContextIndexes: [],
       universityContextByNormalized: new Map(),
       universityContextsByFamily: new Map(),
+      universityContextPromise: null,
+      universityContextResolve: null,
+      universityContextIdleId: null,
+      universityContextTimer: null,
+      universityContextBuildVersion: 0,
       metaPromise: null,
+      metaPersistTimer: null,
+      metaPersistIdleId: null,
       apiBridgeFrame: null,
       apiBridgeWindow: null,
       apiBridgeReady: false,
@@ -2032,6 +2535,19 @@
       classSelect: $('classSelect'),
       includeCampusesToggle: $('includeCampusesToggle'),
       admissionTypeSelect: $('admissionTypeSelect'),
+      todaySchedule: $('todaySchedule'),
+      todayScheduleDate: $('todayScheduleDate'),
+      scheduleGrid: $('scheduleGrid'),
+      mobileScheduleOpenButton: $('mobileScheduleOpenButton'),
+      mobileScheduleCount: $('mobileScheduleCount'),
+      scheduleDialog: $('scheduleDialog'),
+      scheduleDialogTitle: $('scheduleDialogTitle'),
+      scheduleDialogIcon: $('scheduleDialogIcon'),
+      scheduleDialogMeta: $('scheduleDialogMeta'),
+      scheduleDialogCount: $('scheduleDialogCount'),
+      scheduleDialogList: $('scheduleDialogList'),
+      scheduleDialogCloseButton: $('scheduleDialogCloseButton'),
+      scheduleDialogDoneButton: $('scheduleDialogDoneButton'),
       resultsCount: $('resultsCount'),
       resultsSection: $('resultsSection'),
       emptyState: $('emptyState'),
@@ -2072,6 +2588,191 @@
         this.code = code;
         this.details = details;
       }
+    }
+
+    function currentScheduleDateKey() {
+      const requested = new URLSearchParams(location.search).get('scheduleDate');
+      if (/^\d{4}-\d{2}-\d{2}$/.test(requested || '')) return requested;
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(new Date());
+      const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+      return `${values.year}-${values.month}-${values.day}`;
+    }
+
+    function scheduleDateLabel(dateKey) {
+      const date = new Date(`${dateKey}T12:00:00+09:00`);
+      if (Number.isNaN(date.getTime())) return dateKey;
+      return new Intl.DateTimeFormat('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long',
+      }).format(date);
+    }
+
+    function makeScheduleItem(entry) {
+      const item = document.createElement('li');
+      item.className = 'schedule-item';
+      const universityKey = String(entry.university || '')
+        .normalize('NFKC')
+        .replace(/\s+/g, '')
+        .replace(/대학교/g, '대');
+      if (SEOUL_MAJOR_UNIVERSITIES.has(universityKey)) item.classList.add('is-seoul-major');
+      const university = document.createElement('strong');
+      university.className = 'schedule-university';
+      university.textContent = entry.university;
+      const detail = document.createElement('span');
+      detail.className = 'schedule-detail';
+      detail.textContent = entry.detail;
+      item.append(university, detail);
+      return item;
+    }
+
+    function makeScheduleCategoryIcon(iconKey) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.classList.add('schedule-category-icon');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('aria-hidden', 'true');
+      const icons = {
+        calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18M8 14h2M14 14h2M8 18h2"/>',
+        interview: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M9 21h6"/>',
+        stage1: '<path d="M6 3h8l4 4v14H6zM14 3v5h4M9 14l2 2 4-4"/>',
+        final: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+      };
+      svg.innerHTML = icons[iconKey] || icons.final;
+      return svg;
+    }
+
+    function scheduleEntries(categoryKey) {
+      const schedule = ADMISSION_SCHEDULES[currentScheduleDateKey()] || {};
+      return Array.isArray(schedule[categoryKey]) ? schedule[categoryKey] : [];
+    }
+
+    function renderTodaySchedule() {
+      const dateKey = currentScheduleDateKey();
+      const dateLabel = scheduleDateLabel(dateKey);
+      elements.todayScheduleDate.dateTime = dateKey;
+      elements.todayScheduleDate.textContent = dateLabel;
+      elements.scheduleGrid.replaceChildren();
+      const totalEntries = SCHEDULE_CATEGORIES.reduce(
+        (total, category) => total + scheduleEntries(category.key).length,
+        0
+      );
+      elements.mobileScheduleCount.textContent = `${totalEntries}건`;
+      elements.mobileScheduleOpenButton.setAttribute(
+        'aria-label',
+        `오늘의 일정 보기 ${totalEntries}건`
+      );
+
+      SCHEDULE_CATEGORIES.forEach(category => {
+        const entries = scheduleEntries(category.key);
+        const column = document.createElement('article');
+        column.className = 'schedule-column';
+        column.dataset.scheduleTone = category.tone;
+
+        const heading = document.createElement('div');
+        heading.className = 'schedule-column-head';
+        const icon = makeScheduleCategoryIcon(category.icon);
+        const title = document.createElement('h3');
+        title.textContent = category.label;
+        const count = document.createElement('span');
+        count.className = 'schedule-count';
+        count.textContent = `${entries.length}건`;
+        count.setAttribute('aria-label', `${category.label} ${entries.length}건`);
+        heading.append(icon, title, count);
+
+        const list = document.createElement('ul');
+        list.className = 'schedule-list';
+        entries.slice(0, SCHEDULE_PREVIEW_LIMIT).forEach(entry => list.append(makeScheduleItem(entry)));
+        column.append(heading);
+        if (entries.length) {
+          column.append(list);
+        } else {
+          const empty = document.createElement('p');
+          empty.className = 'schedule-empty';
+          empty.textContent = '오늘 예정된 일정이 없습니다.';
+          column.append(empty);
+        }
+
+        if (entries.length > SCHEDULE_PREVIEW_LIMIT) {
+          const more = document.createElement('button');
+          more.className = 'schedule-more-button';
+          more.type = 'button';
+          more.dataset.scheduleCategory = category.key;
+          more.innerHTML = '<span>더 보기</span><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>';
+          more.setAttribute('aria-label', `${category.label} 전체 ${entries.length}건 보기`);
+          column.append(more);
+        }
+        elements.scheduleGrid.append(column);
+      });
+    }
+
+    function openScheduleDialog(categoryKey, trigger) {
+      const category = SCHEDULE_CATEGORIES.find(item => item.key === categoryKey);
+      if (!category) return;
+      const entries = scheduleEntries(category.key);
+      state.scheduleDialogTrigger = trigger instanceof HTMLElement ? trigger : null;
+      elements.scheduleDialogList.classList.remove('is-overview');
+      elements.scheduleDialogTitle.textContent = category.label;
+      elements.scheduleDialogIcon.replaceChildren(makeScheduleCategoryIcon(category.icon));
+      elements.scheduleDialogMeta.textContent = scheduleDateLabel(currentScheduleDateKey());
+      elements.scheduleDialogCount.textContent = `${entries.length}건`;
+      elements.scheduleDialogList.replaceChildren(...entries.map(makeScheduleItem));
+      elements.scheduleDialog.showModal();
+      setTimeout(() => elements.scheduleDialogCloseButton.focus(), 0);
+    }
+
+    function makeScheduleDialogGroup(category) {
+      const entries = scheduleEntries(category.key);
+      const group = document.createElement('li');
+      group.className = 'schedule-dialog-group';
+      group.dataset.scheduleTone = category.tone;
+
+      const heading = document.createElement('div');
+      heading.className = 'schedule-dialog-group-head';
+      const title = document.createElement('h3');
+      title.textContent = category.label;
+      const count = document.createElement('span');
+      count.textContent = `${entries.length}건`;
+      heading.append(makeScheduleCategoryIcon(category.icon), title, count);
+
+      const list = document.createElement('ul');
+      list.className = 'schedule-dialog-group-list';
+      if (entries.length) {
+        entries.forEach(entry => list.append(makeScheduleItem(entry)));
+      } else {
+        const empty = document.createElement('li');
+        empty.className = 'schedule-empty';
+        empty.textContent = '일정 없음';
+        list.append(empty);
+      }
+      group.append(heading, list);
+      return group;
+    }
+
+    function openAllSchedulesDialog(trigger) {
+      const groups = SCHEDULE_CATEGORIES.map(makeScheduleDialogGroup);
+      const total = SCHEDULE_CATEGORIES.reduce(
+        (sum, category) => sum + scheduleEntries(category.key).length,
+        0
+      );
+      state.scheduleDialogTrigger = trigger instanceof HTMLElement ? trigger : null;
+      elements.scheduleDialogList.classList.add('is-overview');
+      elements.scheduleDialogTitle.textContent = '오늘의 대입 일정';
+      elements.scheduleDialogIcon.replaceChildren(makeScheduleCategoryIcon('calendar'));
+      elements.scheduleDialogMeta.textContent = scheduleDateLabel(currentScheduleDateKey());
+      elements.scheduleDialogCount.textContent = `${total}건`;
+      elements.scheduleDialogList.replaceChildren(...groups);
+      elements.scheduleDialog.showModal();
+      setTimeout(() => elements.scheduleDialogCloseButton.focus(), 0);
+    }
+
+    function closeScheduleDialog() {
+      if (elements.scheduleDialog.open) elements.scheduleDialog.close();
     }
 
     function currentApiUrl() {
@@ -2522,6 +3223,43 @@
       state.universityContextsByFamily = contextsByFamily;
     }
 
+    function scheduleUniversityContextOptions(universities, admissionRelations, recruitmentRelations) {
+      clearTimeout(state.universityContextTimer);
+      state.universityContextTimer = null;
+      if (state.universityContextIdleId !== null && 'cancelIdleCallback' in window) {
+        cancelIdleCallback(state.universityContextIdleId);
+      }
+      state.universityContextIdleId = null;
+      if (state.universityContextResolve) state.universityContextResolve();
+
+      state.universityContextIndexes = [];
+      state.universityContextByNormalized = new Map();
+      state.universityContextsByFamily = new Map();
+      const version = ++state.universityContextBuildVersion;
+      let resolveBuild;
+      const promise = new Promise(resolve => { resolveBuild = resolve; });
+      state.universityContextPromise = promise;
+      state.universityContextResolve = resolveBuild;
+
+      const build = () => {
+        state.universityContextTimer = null;
+        state.universityContextIdleId = null;
+        if (version === state.universityContextBuildVersion) {
+          setUniversityContextOptions(universities, admissionRelations, recruitmentRelations);
+        }
+        resolveBuild();
+        if (state.universityContextPromise === promise) {
+          state.universityContextPromise = null;
+          state.universityContextResolve = null;
+        }
+      };
+      if ('requestIdleCallback' in window) {
+        state.universityContextIdleId = requestIdleCallback(build, { timeout: 180 });
+      } else {
+        state.universityContextTimer = setTimeout(build, 0);
+      }
+    }
+
     function contextualTextSuggestionIndex(key) {
       const globalIndex = state.textSuggestionIndexes[key] || [];
       if (key !== 'admissionName' && key !== 'recruitmentUnit') return globalIndex;
@@ -2562,6 +3300,13 @@
     function localTextSuggestions(key, query, limit = 12) {
       const normalizedQuery = normalizeUniversityTerm(query);
       if (!normalizedQuery) return [];
+      const contextUniversity = key === 'admissionName' || key === 'recruitmentUnit'
+        ? normalizeUniversityTerm(elements.universityInput.value.trim())
+        : '';
+      const contextCampuses = contextUniversity && elements.includeCampusesToggle.checked ? '1' : '0';
+      const cacheKey = `${key}\u0000${contextUniversity}\u0000${contextCampuses}\u0000${normalizedQuery}\u0000${limit}`;
+      const cached = state.textSuggestionCache.get(cacheKey);
+      if (cached) return [...cached];
       let exact = '';
       const prefixes = [];
       const contains = [];
@@ -2570,12 +3315,20 @@
         else if (item.normalized.startsWith(normalizedQuery) && prefixes.length < limit) prefixes.push(item.value);
         else if (item.normalized.includes(normalizedQuery) && contains.length < limit) contains.push(item.value);
       }
-      return [exact, ...prefixes, ...contains].filter(Boolean).slice(0, limit);
+      const result = [exact, ...prefixes, ...contains].filter(Boolean).slice(0, limit);
+      state.textSuggestionCache.set(cacheKey, result);
+      while (state.textSuggestionCache.size > 64) {
+        state.textSuggestionCache.delete(state.textSuggestionCache.keys().next().value);
+      }
+      return [...result];
     }
 
     async function textSuggestions(key, query) {
       if (!(state.textSuggestionIndexes[key] || []).length && state.metaPromise) {
         try { await state.metaPromise; } catch (_) { /* 빈 후보로 계속합니다. */ }
+      }
+      if ((key === 'admissionName' || key === 'recruitmentUnit') && state.universityContextPromise) {
+        try { await state.universityContextPromise; } catch (_) { /* 전역 후보로 계속합니다. */ }
       }
       return localTextSuggestions(key, query);
     }
@@ -2627,9 +3380,11 @@
       const raw = String(query || '').trim();
       const normalized = normalizeUniversityTerm(raw);
       if (!normalized) return '';
-      const indexed = (Array.isArray(candidates) ? candidates : [])
-        .map(name => ({ name: String(name || '').trim(), normalized: normalizeUniversityTerm(name) }))
-        .filter(item => item.name);
+      const indexed = candidates === state.universities && state.universitySearchIndex.length
+        ? state.universitySearchIndex
+        : (Array.isArray(candidates) ? candidates : [])
+          .map(name => ({ name: String(name || '').trim(), normalized: normalizeUniversityTerm(name) }))
+          .filter(item => item.name);
       const exact = indexed.find(item => item.normalized === normalized);
       if (exact) return exact.name;
 
@@ -4138,15 +4893,6 @@
       return true;
     }
 
-    function cloneMetaOptions(options) {
-      const cloned = {};
-      META_STRING_LIST_KEYS.forEach(key => { cloned[key] = options[key].slice(); });
-      META_CONTEXT_LISTS.forEach(([relationKey]) => {
-        cloned[relationKey] = options[relationKey].map(indexes => indexes.slice());
-      });
-      return cloned;
-    }
-
     function removeStoredMeta(apiUrl = currentApiUrl()) {
       try { localStorage.removeItem(metaStorageKey(apiUrl)); } catch (_) { /* 저장소 없이 계속합니다. */ }
     }
@@ -4172,7 +4918,9 @@
         return {
           revision,
           savedAt,
-          options: cloneMetaOptions(cached.options),
+          // JSON.parse already produced an isolated object. Cloning every
+          // nested list again only doubled the cold-start indexing work.
+          options: cached.options,
         };
       } catch (_) {
         try { localStorage.removeItem(key); } catch (_) { /* 저장소 없이 계속합니다. */ }
@@ -4180,11 +4928,11 @@
       }
     }
 
-    function storeMetaResponse(data, apiUrl = currentApiUrl()) {
+    function storeMetaResponse(data, apiUrl = currentApiUrl(), { validated = false } = {}) {
       if (DEMO_MODE || !apiUrl) return false;
       const revision = String(data && data.revision || '');
       const options = data && data.options;
-      if (!revision || revision.length > 256 || !validMetaOptions(options)) return false;
+      if (!revision || revision.length > 256 || (!validated && !validMetaOptions(options))) return false;
       const key = metaStorageKey(apiUrl);
       try {
         const raw = JSON.stringify({
@@ -4192,7 +4940,7 @@
           apiUrl,
           revision,
           savedAt: Date.now(),
-          options: cloneMetaOptions(options),
+          options,
         });
         if (metaStorageByteLength(raw) > META_STORAGE_MAX_BYTES) {
           localStorage.removeItem(key);
@@ -4205,8 +4953,31 @@
       }
     }
 
-    function applyMetaResponse(data, { persist = false, cachedAt = 0 } = {}) {
-      if (!data || !validMetaOptions(data.options)) {
+    function scheduleMetaPersistence(data) {
+      if (DEMO_MODE || !currentApiUrl()) return;
+      const revision = String(data && data.revision || '');
+      clearTimeout(state.metaPersistTimer);
+      state.metaPersistTimer = null;
+      if (state.metaPersistIdleId !== null && 'cancelIdleCallback' in window) {
+        cancelIdleCallback(state.metaPersistIdleId);
+      }
+      state.metaPersistIdleId = null;
+      const persist = () => {
+        state.metaPersistTimer = null;
+        state.metaPersistIdleId = null;
+        if (revision && revision === state.metaRevision) {
+          storeMetaResponse(data, currentApiUrl(), { validated: true });
+        }
+      };
+      if ('requestIdleCallback' in window) {
+        state.metaPersistIdleId = requestIdleCallback(persist, { timeout: 800 });
+      } else {
+        state.metaPersistTimer = setTimeout(persist, 0);
+      }
+    }
+
+    function applyMetaResponse(data, { persist = false, cachedAt = 0, validated = false } = {}) {
+      if (!data || (!validated && !validMetaOptions(data.options))) {
         throw new ApiError('INVALID_META_RESPONSE', '검색 목록 응답을 확인할 수 없습니다.');
       }
       const revision = String(data.revision == null ? '' : data.revision);
@@ -4215,11 +4986,14 @@
       }
       populateSelect(elements.universityTypeSelect, data.options.universityTypes);
       populateSelect(elements.admissionTypeSelect, data.options.admissionTypes);
+      state.textSuggestionCache.clear();
       setUniversityOptions(data.options.universities);
       setTextSuggestionOptions('name', data.options.names);
       setTextSuggestionOptions('admissionName', data.options.admissionNames);
       setTextSuggestionOptions('recruitmentUnit', data.options.recruitmentUnits);
-      setUniversityContextOptions(
+      // University/name search becomes usable first. The larger per-university
+      // admission/unit context is built immediately afterward during idle time.
+      scheduleUniversityContextOptions(
         data.options.universities,
         data.options.admissionNameIndexesByUniversity,
         data.options.recruitmentUnitIndexesByUniversity
@@ -4229,7 +5003,7 @@
       state.metaRetryAttempts = 0;
       clearTimeout(state.metaRefreshTimer);
       state.metaRefreshTimer = null;
-      if (persist) storeMetaResponse(data);
+      if (persist) scheduleMetaPersistence(data);
       resumeRecoveredDrafts();
       retryAllDrafts({ immediate: true });
     }
@@ -4238,7 +5012,10 @@
       const cached = readStoredMeta();
       if (!cached) return null;
       try {
-        applyMetaResponse({ options: cached.options, revision: cached.revision }, { cachedAt: cached.savedAt });
+        applyMetaResponse(
+          { options: cached.options, revision: cached.revision },
+          { cachedAt: cached.savedAt, validated: true }
+        );
         return cached;
       } catch (_) {
         removeStoredMeta();
@@ -4291,7 +5068,7 @@
       state.metaBootstrapTimer = setTimeout(() => {
         state.metaBootstrapTimer = null;
         if (state.searching || state.pendingManualSearch) {
-          scheduleAuthenticatedMetaInitialization({ knownRevision, serverTime }, 800);
+          scheduleAuthenticatedMetaInitialization({ knownRevision, serverTime }, 120);
           return;
         }
         void initializeAuthenticatedMeta({ knownRevision, serverTime });
@@ -4444,7 +5221,10 @@
 
       input.addEventListener('input', () => {
         pendingNavigation = 0;
-        scheduleUpdate(debounceMs == null ? (EDITION === 'mobile' ? 90 : 140) : debounceMs);
+        const defaultDelay = state.universitySearchIndex.length
+          ? (EDITION === 'mobile' ? 30 : 25)
+          : (EDITION === 'mobile' ? 90 : 140);
+        scheduleUpdate(debounceMs == null ? defaultDelay : debounceMs);
       });
       input.addEventListener('compositionstart', () => {
         clearTimeout(timer);
@@ -4676,6 +5456,19 @@
       elements.detailToggle.addEventListener('click', () => toggleDetails());
       elements.mobileDetailButton.addEventListener('click', () => toggleDetails());
       elements.clearButton.addEventListener('click', resetSearch);
+      elements.scheduleGrid.addEventListener('click', event => {
+        const button = event.target.closest('[data-schedule-category]');
+        if (button) openScheduleDialog(button.dataset.scheduleCategory, button);
+      });
+      elements.mobileScheduleOpenButton.addEventListener('click', () => {
+        openAllSchedulesDialog(elements.mobileScheduleOpenButton);
+      });
+      elements.scheduleDialogCloseButton.addEventListener('click', closeScheduleDialog);
+      elements.scheduleDialogDoneButton.addEventListener('click', closeScheduleDialog);
+      elements.scheduleDialog.addEventListener('close', () => {
+        if (state.scheduleDialogTrigger?.isConnected) state.scheduleDialogTrigger.focus();
+        state.scheduleDialogTrigger = null;
+      });
       elements.moreButton.addEventListener('click', () => {
         state.visibleCount += MORE_PAGE_SIZE;
         renderResults();
@@ -4844,6 +5637,7 @@
     function init() {
       restorePendingDrafts();
       configureSortControls();
+      renderTodaySchedule();
       wireEvents();
       setupInstall();
       if ('ResizeObserver' in window) {
@@ -4871,7 +5665,7 @@
         loadMeta();
       } else if (currentApiUrl() && currentSessionToken()) {
         setupApiBridge();
-        scheduleAuthenticatedMetaInitialization({}, 800);
+        scheduleAuthenticatedMetaInitialization();
       } else if (currentApiUrl()) {
         setSyncState('idle', '로그인 필요');
         openPassword();

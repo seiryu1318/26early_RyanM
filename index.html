@@ -640,13 +640,13 @@
       padding: 0 2px;
     }
     .utility-button-group {
-      grid-column: 4 / span 2;
+      grid-column: 1 / -1;
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 5px;
       width: 100%;
       max-width: 280px;
-      justify-self: start;
+      justify-self: center;
       padding: 0;
       border: 0;
       border-radius: 0;
@@ -1190,18 +1190,20 @@
       .primary-search { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .primary-search .search-button { width: 100%; grid-column: span 2; }
       body.pc-edition .search-utility {
-        display: block;
+        display: grid;
+        grid-template-columns: 1fr;
       }
       body.pc-edition .utility-button-group {
         grid-column: auto;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        max-width: none;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: min(100%, 280px);
+        max-width: 280px;
+        margin-inline: auto;
       }
       body.pc-edition .utility-button-group > #detailToggle,
       body.pc-edition .utility-button-group > #clearButton {
-        width: auto;
+        width: 100%;
         min-width: 0;
       }
       .detail-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -2380,6 +2382,240 @@
           { university: '한일장신대', detail: '모든 최종' },
         ]),
       }),
+      '2026-10-28': Object.freeze({
+        interview: Object.freeze([
+          { university: '유원대', detail: '모든면접 일괄면접2' },
+          { university: '한서대', detail: '한서인재 일괄면접1 인문/공학/예체능/자전' },
+        ]),
+        stage1: Object.freeze([
+          { university: '광운대', detail: '참빛면접형/SW 1단계' },
+          { university: '한국해양대', detail: '지역교과 1단계' },
+        ]),
+        final: Object.freeze([
+          { university: '광주여대', detail: '모든 최종' },
+          { university: '남부대', detail: '간호 제외 모든 최종' },
+          { university: '동신대', detail: '최저 미적용 최종' },
+          { university: '서울장신대', detail: '모든 최종' },
+          { university: '신경주대', detail: '모든 최종' },
+        ]),
+      }),
+      '2026-10-29': Object.freeze({
+        interview: Object.freeze([
+          { university: '우석대', detail: '군사학 면접/체력측정 10/29(목)~30(금)' },
+          { university: '유원대', detail: '모든면접 일괄면접3' },
+          { university: '한서대', detail: '한서인재 일괄면접2 자연과학계열 항공운항/헬기조종 포함' },
+          { university: '한양에리카', detail: '조기취업형계약 2단계면접 10/29(목)~31(토)' },
+        ]),
+        stage1: Object.freeze([
+          { university: '가천대', detail: '가천바람개비 1단계' },
+          { university: '가천대', detail: '조기취업계약 1단계' },
+          { university: '상명대천안', detail: '조기취업 1단계' },
+          { university: '한체대', detail: '교과성적우수자 면접대상 1단계' },
+        ]),
+        final: Object.freeze([
+          { university: '광주대', detail: '최저미적용 최종' },
+          { university: '초당대', detail: '모든 최종' },
+          { university: '한체대', detail: '면접 미실시 최종' },
+          { university: '호남대', detail: '최저미적용 최종' },
+        ]),
+      }),
+      '2026-10-30': Object.freeze({
+        interview: Object.freeze([
+          { university: '가톨릭대', detail: '신학 2단계 면접/교리' },
+          { university: '동양대', detail: '면접전형 일괄면접 게임학부/e스포츠/영상 등' },
+          { university: '동의대', detail: '교과조기취업 2단계면접1' },
+          { university: '목원대', detail: '유아교육 일괄면접1' },
+          { university: '유원대', detail: '모든면접 일괄면접4' },
+          { university: '우석대', detail: '교과면접 2단계면접' },
+          { university: '장로회신학', detail: '자유전공/신학과/드림PUTS/기타 면접' },
+          { university: '차의과대', detail: 'CHA교과 간호/미래 2단계면접1' },
+        ]),
+        stage1: Object.freeze([
+          { university: '강남대', detail: '종합 학교생활2 1단계' },
+          { university: '강남대', detail: '종합 장애인 등 1단계' },
+          { university: '고려서울', detail: '계열적합형 1단계' },
+          { university: '고려서울', detail: '체교특기자 1단계' },
+          { university: '상명대서울', detail: '상명인재 스포츠건강/조형예술 1단계' },
+          { university: '순천대', detail: '종합일반 면접대상 1단계' },
+          { university: '한국항공대', detail: '미래인재/고른 1단계' },
+          { university: '한국항공대', detail: '항공운항과 미래/고른 1단계' },
+        ]),
+        final: Object.freeze([
+          { university: '가야대', detail: '모든 최종' },
+          { university: '동명대', detail: '간호 제외 최종' },
+          { university: '아신대', detail: '모든 최종' },
+          { university: '칼빈대', detail: '모든 최종' },
+          { university: '한국침례신대', detail: '최종' },
+          { university: '호원대', detail: '모든 최종' },
+        ]),
+      }),
+      '2026-10-31': Object.freeze({
+        interview: Object.freeze([
+          { university: '가천대', detail: '바람개비 2단계면접1 10/31(토)~11/1(일), 11/7(토)~8(일)' },
+          { university: '고려서울', detail: '사이버국방 2단계면접' },
+          { university: '고려서울', detail: '고른기회 등 2단계면접' },
+          { university: '고려세종', detail: '글로벌스포츠 2단계면접' },
+          { university: '고려세종', detail: '실기미래인재 2단계면접' },
+          { university: '고신대', detail: '간호학과 자추 2단계면접' },
+          { university: '광운대', detail: '참빛면접형 2단계면접1' },
+          { university: '국립경국대', detail: '바른인재간호 2단계면접' },
+          { university: '대구대', detail: '면접전형 2단계면접' },
+          { university: '대구대', detail: '특수창의/라이프 2단계면접' },
+          { university: '대전대', detail: '혜화인재종합 2단계면접1' },
+          { university: '동덕여대', detail: '동덕창의 2단계면접1' },
+          { university: '동의대', detail: '교과조기취업 2단계면접2' },
+          { university: '명지대', detail: '교과면접 2단계면접' },
+          { university: '목원대', detail: '유아교육 일괄면접2' },
+          { university: '서울신대', detail: 'H+인재/기여 2단계면접' },
+          { university: '선문대', detail: '항공서비스/신학/보건 4개학과 일괄대면면접' },
+          { university: '선문대', detail: '비대면 녹화영상 면접 간호/물치/치위생/응급 등' },
+          { university: '성공회대', detail: '열린인재 일괄면접' },
+          { university: '순천향대', detail: '조기취업 2단계면접' },
+          { university: '순천향대', detail: '지역의사 2단계면접' },
+          { university: '연세대서울', detail: '체육인재 2단계면접' },
+          { university: '연세미래', detail: '학교생활 2단계면접' },
+          { university: '연세미래', detail: '글로벌인재 2단계면접' },
+          { university: '인제대', detail: '면접/지역인재Ⅰ/배려 2단계면접' },
+          { university: '차의과대', detail: 'CHA교과 간호/미래 2단계면접2' },
+          { university: '한국기술교대', detail: '창의면접 2단계면접' },
+          { university: '한양에리카', detail: '국방전략 2단계면접' },
+          { university: '협성대', detail: '종합 융합Ⅱ 2단계면접1 인문사회대학/이공대학' },
+        ]),
+        stage1: Object.freeze([]),
+        final: Object.freeze([]),
+      }),
+      '2026-11-01': Object.freeze({
+        interview: Object.freeze([
+          { university: '가천대', detail: '바람개비 2단계면접2 10/31(토)~11/1(일), 11/7(토)~8(일)' },
+          { university: '광운대', detail: '참빛면접형/SW 2단계면접2' },
+          { university: '대전대', detail: '혜화인재종합 2단계면접2' },
+          { university: '동덕여대', detail: '동덕창의 2단계면접2' },
+          { university: '성균관대', detail: '과학인재 2단계면접' },
+          { university: '연세대서울', detail: '기회균형 2단계면접' },
+          { university: '차의과대', detail: 'CHA교과 간호/미래 2단계면접3' },
+          { university: '한국기술교대', detail: '충남형계약 2단계면접' },
+          { university: '협성대', detail: '종합 융합Ⅱ 2단계면접2 경영대학' },
+        ]),
+        stage1: Object.freeze([]),
+        final: Object.freeze([]),
+      }),
+      '2026-11-02': Object.freeze({
+        interview: Object.freeze([]),
+        stage1: Object.freeze([]),
+        final: Object.freeze([
+          { university: '가톨릭관동대', detail: '최종 의학/간호 제외' },
+          { university: '삼육대', detail: '최저미적용 최종' },
+        ]),
+      }),
+      '2026-11-03': Object.freeze({
+        interview: Object.freeze([]),
+        stage1: Object.freeze([
+          { university: '대진대', detail: '윈윈대진 1단계' },
+          { university: '성균관대', detail: '성균인재 1단계 사범대학/연기연출' },
+          { university: '차의과대', detail: 'CHA종합 1단계 간호대학/미래융합' },
+          { university: '차의과대', detail: '사회통합 1단계' },
+        ]),
+        final: Object.freeze([
+          { university: '중앙승가대', detail: '최종' },
+        ]),
+      }),
+      '2026-11-04': Object.freeze({
+        interview: Object.freeze([
+          { university: '가천대', detail: '조기취업 2단계면접1' },
+          { university: '고려대서울', detail: '사이버국방 2단계 군면접 및 신체검사 11/4(수)~5(목)' },
+          { university: '세종대', detail: '사이버국방 2단계면접' },
+        ]),
+        stage1: Object.freeze([
+          { university: '인제대', detail: '의약간호 모든 1단계 의예/약학/지역Ⅰ/농/기초/지역의사의예 포함' },
+          { university: '총신대', detail: '모든 종합 1단계' },
+          { university: 'UNIST', detail: '탐구우수/그릿인재 1단계' },
+        ]),
+        final: Object.freeze([
+          { university: '세한대', detail: '모든 최종' },
+        ]),
+      }),
+      '2026-11-05': Object.freeze({
+        interview: Object.freeze([
+          { university: '가천대', detail: '조기취업 2단계면접2' },
+        ]),
+        stage1: Object.freeze([]),
+        final: Object.freeze([
+          { university: '경남대', detail: '최저미적용 최종 군사/체교/간호/물치 제외' },
+          { university: '고신대', detail: '최저미적용 최종' },
+          { university: '상지대', detail: '한의/간호 제외 최종' },
+          { university: '서울한영대', detail: '모든 최종' },
+          { university: '영남신학대', detail: '최종' },
+          { university: '청운대', detail: '모든 최종' },
+          { university: '해군사관학교', detail: '우선선발 최종 및 종합선발 대상자 발표' },
+        ]),
+      }),
+      '2026-11-06': Object.freeze({
+        interview: Object.freeze([
+          { university: '차의과대', detail: '간호/미래융합 2단계면접1 CHA종합/사회통합전형' },
+        ]),
+        stage1: Object.freeze([
+          { university: '경북대', detail: '의치약 포함 모든 종합 1단계' },
+          { university: '경북대', detail: '지역의사/지역학추 1단계' },
+          { university: '국립한밭대', detail: '모든 단계종합 1단계' },
+          { university: '인천대', detail: '자기추천/특수교육 1단계' },
+          { university: '한국공학대', detail: '창의인재/조기취업 1단계' },
+          { university: '한국항공대', detail: '항공운항 교과/학추 1단계' },
+        ]),
+        final: Object.freeze([
+          { university: '감리신대', detail: '모든 최종' },
+          { university: '경동대', detail: '모든 최종' },
+          { university: '경운대', detail: '간호/항공 제외 최종' },
+          { university: '국립경국대', detail: '최저미적용 최종' },
+          { university: '국립한밭대', detail: '실기위주전형 최종' },
+          { university: '대구한의대', detail: '한의/간호 제외 최종' },
+          { university: '동국WISE', detail: '최저미적용 최종' },
+          { university: '목원대', detail: '교과/지역/배려/실기 최종' },
+          { university: '성결대', detail: '모든 최종' },
+          { university: '세종대', detail: '실기/예체능 최종' },
+          { university: '수원대', detail: '면접교과/기회/고운 최종' },
+          { university: '인천대', detail: '특기자전형 최종' },
+          { university: '제주국제대', detail: '최종' },
+          { university: '한국성서대', detail: '최종' },
+          { university: '한성대', detail: '최저미적용 최종' },
+          { university: '한신대', detail: '논술제외 최종' },
+          { university: '호남신학대', detail: '최종' },
+        ]),
+      }),
+      '2026-11-07': Object.freeze({
+        interview: Object.freeze([
+          { university: '가천대', detail: '바람개비 2단계면접3 10/31(토)~11/1(일), 11/7(토)~8(일)' },
+          { university: '강남대', detail: '종합학교생활2 2단계면접1' },
+          { university: '고려서울', detail: '계열적합 2단계면접인문' },
+          { university: '남서울대', detail: '종합면접형 2단계면접' },
+          { university: '남서울대', detail: '채용조건형 일괄면접' },
+          { university: '대진대', detail: '윈윈대진 2단계면접1' },
+          { university: '루터대', detail: '모든 교과/종합 2단계면접' },
+          { university: '상명대서울', detail: '상명인재 스포츠/조형 2단계면접' },
+          { university: '상명천안캠', detail: '조기취업 2단계면접1' },
+          { university: '차의과대', detail: '간호/미래융합 2단계면접2 CHA종합/사회통합전형' },
+          { university: '총신대', detail: '목회자추천자 일괄면접' },
+          { university: '총신대', detail: '외국어우수자 2단계면접' },
+          { university: '한국항공대', detail: '미래/고른 2단계면접' },
+          { university: 'UNIST', detail: '탐구우수전형 2단계면접' },
+        ]),
+        stage1: Object.freeze([]),
+        final: Object.freeze([]),
+      }),
+      '2026-11-08': Object.freeze({
+        interview: Object.freeze([
+          { university: '가천대', detail: '바람개비 2단계면접4 10/31(토)~11/1(일), 11/7(토)~8(일)' },
+          { university: '강남대', detail: '종합학교생활2 2단계면접2' },
+          { university: '고려서울', detail: '계열적합 2단계면접자연' },
+          { university: '대진대', detail: '윈윈대진 2단계면접2' },
+          { university: '상명천안캠', detail: '조기취업 2단계면접2' },
+          { university: '성균관대', detail: '성균인재 2단계면접 사범대학/연기연출' },
+          { university: '차의과대', detail: '간호/미래융합 2단계면접3 CHA종합/사회통합전형' },
+          { university: 'UNIST', detail: '그릿인재전형 2단계면접' },
+        ]),
+        stage1: Object.freeze([]),
+        final: Object.freeze([]),
+      }),
+      ...{"2026-11-09":{"interview":[{"university":"대전가톨릭대","detail":"교리고사 및 일괄면접"}],"stage1":[],"final":[{"university":"예원예술대","detail":"최종"},{"university":"한국전통문화대","detail":"최종 전통문화인재전형 교과종합 특기자/기회균형 등"}]},"2026-11-10":{"interview":[],"stage1":[{"university":"국민대","detail":"국제인재/알고리즘 기회균형1 1단계"}],"final":[{"university":"국민대","detail":"실기우수/특기자 최종"},{"university":"김천대","detail":"모든 최종"},{"university":"나사렛대","detail":"최저미적용 최종"},{"university":"장로회신학대","detail":"모든 최종"},{"university":"중부대","detail":"모든 최종"},{"university":"한세대","detail":"모든 최종"}]},"2026-11-11":{"interview":[{"university":"고려서울","detail":"체교특기자 2단면접"}],"stage1":[{"university":"한동대","detail":"G-IMPACT인재/SW 1단계"},{"university":"KAIST","detail":"일반/특기자/고른/ 반도체전형 등 1단계"}],"final":[{"university":"가톨릭꽃동네대","detail":"모든 최종"},{"university":"건양대","detail":"종합전형 최종"},{"university":"극동대","detail":"모든 최종"},{"university":"대구가톨릭대","detail":"최저미적용 최종 의/약/간호/체교 제외"},{"university":"영산대","detail":"모든 최종"},{"university":"인천가톨릭송도캠","detail":"모든 최종"},{"university":"한동대","detail":"한동인재/지역 최종"}]},"2026-11-12":{"interview":[],"stage1":[{"university":"가천대","detail":"지역균형 1단계"},{"university":"덕성여대","detail":"덕성인재Ⅱ/기회 균형/장애인 등 1단계"},{"university":"이화여대","detail":"미래면접형 1단계"}],"final":[{"university":"서울기독대","detail":"모든 최종"}]},"2026-11-13":{"interview":[],"stage1":[{"university":"건양대","detail":"의학과 지역의사 1단계"},{"university":"경상국립대","detail":"모든종합전형 1단계"},{"university":"광주교대","detail":"전남광주종합/지역종합 사회통합/장애/만학도 1단계"},{"university":"대구교대","detail":"모든 종합 1단계"},{"university":"동국대서울","detail":"모든종합 1단계"},{"university":"목포대","detail":"지역종합등 모든종합 1단계"},{"university":"서울교대","detail":"모든 종합 1단계"},{"university":"성신여대","detail":"자기주도종합 1단계"},{"university":"세종대","detail":"창의인재면접형 1단계"},{"university":"영남대","detail":"의예 지역의사 1단계"},{"university":"영남대","detail":"의예 지역종합 1단계"},{"university":"전남대","detail":"모든 교과/종합 1단계"},{"university":"제주대","detail":"모든 종합 1단계"},{"university":"전주교대","detail":"모든 종합 1단계"},{"university":"진주교대","detail":"모든 종합 1단계"},{"university":"창원대","detail":"종합 계열적합인재 1단계"},{"university":"청주교대","detail":"모든 종합 1단계"},{"university":"한남대","detail":"한남인재Ⅱ 서류+면접전형 1단계"},{"university":"한양대서울/에리카","detail":"종합면접 1단계"}],"final":[{"university":"강서대","detail":"최저미적용 최종"},{"university":"경북대","detail":"실기/체육특기자 최종"},{"university":"경일대","detail":"간호학 제외 최종"},{"university":"공군사관학교","detail":"우선선발 최종"},{"university":"대전가톨릭대","detail":"성김대건전형A/ 성요셉전형 최종"},{"university":"대진대","detail":"학교장/윈윈종합/고른 최종"},{"university":"동서대","detail":"교과/고교/배려/고른 최종"},{"university":"서울여대","detail":"교과체육/실기실적 최종"},{"university":"서원대","detail":"최저미적용 최종"},{"university":"성신여대","detail":"실기실적일반 최종"},{"university":"세명대","detail":"한의예/기초 제외 최종"},{"university":"성공회대","detail":"최종"},{"university":"송원대","detail":"최종"},{"university":"신라대","detail":"모든 최종"},{"university":"안양대","detail":"모든 최종"},{"university":"용인대","detail":"체육우수자 특별전형 최종"},{"university":"우송대","detail":"최종"},{"university":"추계예대","detail":"최종"},{"university":"한국기술교대","detail":"종합/계약학과 최종"},{"university":"한남대","detail":"교과/한남인재Ⅰ 최종"},{"university":"한라대","detail":"모든 최종"},{"university":"한양에리카","detail":"조기취업계약 최종"},{"university":"화성의과학대","detail":"모든 최종"}]},"2026-11-14":{"interview":[{"university":"국민대","detail":"국제인재/알고리즘/기회1 2단계면접"},{"university":"총신대","detail":"코람데오종합 2단계면접"}],"stage1":[{"university":"계명대","detail":"면접전형 1단계"},{"university":"계명대","detail":"의예과 모든전형 1단계"}],"final":[{"university":"가천대","detail":"바람개비/농어촌/조기취업 종합전형 등 최종"},{"university":"계명대","detail":"교과기회균형/특성화 최종"},{"university":"계명대","detail":"실기실적예체/체육특 최종"}]},"2026-11-15":{"interview":[],"stage1":[],"final":[]},"2026-11-16":{"interview":[{"university":"한국공학대","detail":"조기취업계약학 예비대학미팅 11/16(월)~20(금)"}],"stage1":[{"university":"연세대서울","detail":"활동우수 1단계"},{"university":"한국교통대","detail":"종합Ⅰ 1단계 항공서비스"},{"university":"한국외대","detail":"종합면접형 1단계"}],"final":[{"university":"대구대","detail":"최저미적용 최종"},{"university":"서울신대","detail":"모든 최종"},{"university":"신한대","detail":"교과/실기위주 최종"},{"university":"대전대","detail":"최저미적용 최종"},{"university":"부산장신대","detail":"최종"}]},"2026-11-17":{"interview":[],"stage1":[{"university":"국민대","detail":"프런티어 1단계"},{"university":"아주대","detail":"ACE/첨단융합/국방IT 등 모든 종합 1단계 의학/약학 제외"},{"university":"울산대","detail":"의예지역교과 1단계"},{"university":"울산대","detail":"의예지역의사 1단계"},{"university":"인하대","detail":"인하미래/지역의사 1단계"},{"university":"조선대","detail":"종합면접 1단계"}],"final":[{"university":"남서울대","detail":"모든 최종"},{"university":"대신대","detail":"모든 최종"},{"university":"동덕여대","detail":"종합전형 최종 교과/약학/논술 제외"},{"university":"동양대","detail":"모든 최종"},{"university":"영남대","detail":"실기/특기자 최종"},{"university":"인하대","detail":"실기실적 최종"},{"university":"조선대","detail":"사회통합/기초 최종"},{"university":"청주대","detail":"항공/군사제외 최종"}]},"2026-11-18":{"interview":[],"stage1":[{"university":"서강대","detail":"특성화고졸 1단계"},{"university":"을지대","detail":"EU면접형 1단계"}],"final":[{"university":"을지대","detail":"논술시행전형 최종"},{"university":"한경국립대","detail":"평택캠 교과 최종"}]},"2026-11-19":{"interview":[],"stage1":[{"university":"건국글로컬","detail":"모든 의예 1단계"},{"university":"건국글로컬","detail":"Cogito자기추천/ 지역종합 등 1단계"},{"university":"국립공주대","detail":"모든종합 1단계"},{"university":"목포해양대","detail":"해양스포츠 1단계"},{"university":"숙명여대","detail":"숙명인재면접 1단계"},{"university":"숙명여대","detail":"SW인재 1단계"}],"final":[{"university":"건국글로컬","detail":"교과 등 일부 최종"}]},"2026-11-20":{"interview":[{"university":"국립한밭대","detail":"지역종합/sw 2단면접"},{"university":"아주대","detail":"국방IT우수인재 신체검사"}],"stage1":[{"university":"강원대 모든캠","detail":"모든종합 1단계"},{"university":"경기대","detail":"KGU종합/SW전형 1단계"},{"university":"건국대서울","detail":"KU자기추천 1단계"},{"university":"단국죽전","detail":"DKU인재면접/SW인재 창업인재 1단계"},{"university":"단국천안","detail":"DKU면접/지역의료인재 /농어촌 의약학 1단계"},{"university":"동아대","detail":"잠재종합/지역종합 1단계"},{"university":"동의대","detail":"학교생활종합 1단계"},{"university":"명지대","detail":"명지인재/크리스천 1단계"},{"university":"부산대","detail":"교육대 초등교육 1단계"},{"university":"서울과기대","detail":"모든 종합 1단계"},{"university":"서울대","detail":"일반전형/기회균형 1단계★"},{"university":"서울시립대","detail":"모든종합전형 1단계"},{"university":"울산대","detail":"잠재역량/지역인재 1단계"},{"university":"원광대","detail":"의약학/지역의사 1단계"},{"university":"원광대","detail":"면접실시 모든종합 1단계"},{"university":"전북대","detail":"모든 종합 1단계"},{"university":"충남대","detail":"교과사범/단계종합 1단계"},{"university":"한국교원대","detail":"종합전형 1단계"},{"university":"POSTECH","detail":"모든 종합 1단계"},{"university":"KENTECH","detail":"모든 종합 1단계"}],"final":[{"university":"경기대","detail":"학교장/기초수급 최종"},{"university":"동의대","detail":"조기취업/기회/실기등 최종"},{"university":"우석대","detail":"최저미적용 최종"},{"university":"울산대","detail":"교과 등 최저미적용 최종"},{"university":"원광대","detail":"면접없음/최저없음 최종"},{"university":"인제대","detail":"의약간호 제외 최종"},{"university":"전주대","detail":"모든 최종"},{"university":"창신대","detail":"최종"},{"university":"창원대","detail":"예체능 최종"},{"university":"평택대","detail":"모든 최종"},{"university":"한서대","detail":"모든 최종"}]},"2026-11-21":{"interview":[{"university":"경북대","detail":"의치약포함 종합 2단면접"},{"university":"계명대","detail":"의예 교과일반 2단계면접"},{"university":"계명대","detail":"의예 지역기균 2단계면접"},{"university":"고신대","detail":"의예과 자추/지역 2단면접"},{"university":"국민대","detail":"프런티어 2단계면접자연"},{"university":"대구가톨릭대","detail":"<의예> 교과/지역교과/교과지역기회균형 2단계면접"},{"university":"대구가톨릭대","detail":"<약학>지역교과 교과가톨릭추천 2단계면접"},{"university":"대진대","detail":"학생부우수자 일괄면접1"},{"university":"덕성여대","detail":"덕성Ⅱ/기회 2단면접1"},{"university":"서울교대","detail":"모든 종합 2단계면접"},{"university":"성신여대","detail":"자기주도 2단계면접1"},{"university":"세종대","detail":"세종창의인재 면접형 창의소프트학부 2단계면접"},{"university":"세종대","detail":"국방AI융합시스템 2단면접"},{"university":"세종대","detail":"국방AI로봇융합공 2단면접"},{"university":"아주대","detail":"첨단융합/국방IT우수인재 특수교육 등 2단계면접"},{"university":"연세대서울","detail":"활동우수 2단면접인문"},{"university":"영남대","detail":"창의인재 자전 2단계면접"},{"university":"울산대","detail":"의예지역교과 2단계면접"},{"university":"울산대","detail":"의예지역의사 2단계면접"},{"university":"을지대","detail":"EU면접형 2단계면접"},{"university":"이화여대","detail":"미래면접형 2단면접인문"},{"university":"인제대","detail":"의예약학전형 2단계면접"},{"university":"인제대","detail":"지역기초 의약간 2단면접"},{"university":"인제대","detail":"지역Ⅰ 약/간호 2단면접"},{"university":"인천대","detail":"자기추천/특수교 2단면접"},{"university":"인하대","detail":"인하미래 2단계면접인문"},{"university":"인하대","detail":"지역의사선발 2단계면접"},{"university":"총신대","detail":"기초차/고른 등 2단면접"},{"university":"한국외대","detail":"종합면접 2단면접서울"},{"university":"한동대","detail":"G-IMPACT/SW 2단면접"},{"university":"한양에리카","detail":"종합면접 2단계면접"},{"university":"POSTECH","detail":"일반전형Ⅰ 2단계면접"}],"stage1":[],"final":[]},"2026-11-22":{"interview":[{"university":"국민대","detail":"프런티어 2단계면접인문"},{"university":"대구가톨릭대","detail":"의/약 지역종합 2단면접"},{"university":"대구가톨릭대","detail":"의예 지역의사 2단계면접"},{"university":"대진대","detail":"학생부우수자 일괄면접2"},{"university":"덕성여대","detail":"덕성인재Ⅱ 2단계면접2"},{"university":"성신여대","detail":"자기주도 2단계면접2"},{"university":"세종대","detail":"세종창의인재 면접형 인문자연 2단계면접"},{"university":"아주대","detail":"ACE 면접 공과/첨단ICT융"},{"university":"연세대서울","detail":"활동우수 2단면접자연"},{"university":"이화여대","detail":"미래면접형 2단면접자연"},{"university":"인하대","detail":"인하미래 2단계면접자연"},{"university":"한국외대","detail":"종합면접 2단면접글로벌"},{"university":"한양대서울","detail":"종합면접 2단계면접1 공과대학/인터칼리지자연"}],"stage1":[],"final":[]},"2026-11-23":{"interview":[],"stage1":[{"university":"숭실대","detail":"모든종합 1단계"},{"university":"숭실대","detail":"정보보호특기 1단계"},{"university":"연세서울","detail":"국제형 국내/해외 ASIA/HASS/ISE 1단계"}],"final":[]},"2026-11-24":{"interview":[{"university":"창원대","detail":"계열적합인재/특기자 2단계면접"}],"stage1":[{"university":"연세대미래","detail":"의예과 모든면접 1단계"}],"final":[{"university":"국립군산대","detail":"최종"},{"university":"상명천안","detail":"교과전형 제외 최종"},{"university":"호서대","detail":"모든 최종"}]},"2026-11-25":{"interview":[{"university":"경상국립대","detail":"종합 2단계면접1"},{"university":"순천대","detail":"종합일반 2단계면접"},{"university":"한국공학대","detail":"조기취업계약학 2단계면접1"},{"university":"한국교통대","detail":"종합Ⅰ 항공서비스 2단계면접1"},{"university":"DGIST","detail":"과학인재 2단계면접1"}],"stage1":[{"university":"경희대","detail":"네오르네상스 1단계"},{"university":"서울여대","detail":"모든 종합 1단계 바롬면접/SW/기독지도자"}],"final":[{"university":"경희대","detail":"기회균형Ⅰ 최종"},{"university":"경희대","detail":"기회균형Ⅱ 최종"},{"university":"경희대","detail":"실기우수자 최종"},{"university":"부산가톨릭대","detail":"모든 최종"},{"university":"선문대","detail":"모든 최종"}]},"2026-11-26":{"interview":[{"university":"경상국립대","detail":"종합 2단계면접2"},{"university":"국립공주대","detail":"종합 2단계면접1 사범대학/예술대학"},{"university":"목포해양대","detail":"해양스포츠 2단 실기"},{"university":"서원대","detail":"사범대학 일괄면접 11/26(목)~11/28(토)"},{"university":"전북대","detail":"종합전형 2단계면접 큰사람/SW/사회통합 등"},{"university":"한국공학대","detail":"조기취업계약학 2단계면접2"},{"university":"한국교통대","detail":"종합Ⅰ 항공서비스 2단계면접2"},{"university":"한국해양대","detail":"지역교과 2단계면접"},{"university":"KAIST","detail":"일반/특기자/고른기회/반도체시스템인재 전형 2단계면접"},{"university":"DGIST","detail":"과학인재 2단계면접2"}],"stage1":[{"university":"중앙대","detail":"탐구형/성장형 1단계"},{"university":"중앙대","detail":"융합형 의학부 1단계"}],"final":[]},"2026-11-27":{"interview":[{"university":"강원춘천삼척","detail":"미래인재/영농창업"},{"university":"강원원주강릉","detail":"모든종합 2단계면접"},{"university":"국립공주대","detail":"종합 2단계면접2 천안공과/산업과학대학 장애인 등 대상자 11/27, 11/30"},{"university":"동아대","detail":"잠재능력종합 2단계면접1"},{"university":"동아대","detail":"의과 지역종합 2단계면접"},{"university":"동아대","detail":"지역의사광역 2단계면접"},{"university":"명지대","detail":"크리스천리더 2단계면접"},{"university":"목포대","detail":"지역종합/미래인재 2단계면접"},{"university":"서울대","detail":"일반전형 일반 2단계면접"},{"university":"수원대","detail":"지역균형 일괄면접1"},{"university":"숭실대","detail":"SS미래인재 2단계면접"},{"university":"숭실대","detail":"정보보호특기 2단계면접"},{"university":"전주교대","detail":"모든 종합 2단계면접"},{"university":"청주교대","detail":"모든 종합 2단계면접"},{"university":"한국교통대","detail":"종합Ⅰ 항공서비스 2단계면접3"},{"university":"DGIST","detail":"과학인재 2단계면접3"}],"stage1":[{"university":"가톨릭대","detail":"잠재/학교장/가톨릭 1단계"},{"university":"서울대","detail":"지균/기회 1단계"},{"university":"동국WISE","detail":"종합참사람 1단계 의예/한의예/간호"},{"university":"동국WISE","detail":"지역종합/지역의사 1단계 의예/한의예/간호"},{"university":"한동대","detail":"사회통합/기초/글로벌 1단계"}],"final":[{"university":"가톨릭대","detail":"잠재서류/기회 등 최종"},{"university":"목원대","detail":"교과면접/종합/기초 최종"},{"university":"백석대","detail":"모든 최종"},{"university":"한동대","detail":"G-IMPACT인재/SW 최종"}]},"2026-11-28":{"interview":[{"university":"진주교대","detail":"모든 종합 2단계면접"},{"university":"차의과대","detail":"CHA교과 약학대 2단계면접"},{"university":"차의과대","detail":"CHA종합 약학대 2단계면접"},{"university":"한국공학대","detail":"창의인재 2단계면접"},{"university":"한남대","detail":"한남인재Ⅱ 서류+면접 2단계면접"},{"university":"홍익대세종","detail":"미술우수자 2단계면접1"},{"university":"POSTECH","detail":"일반전형Ⅰ 2단계면접"},{"university":"가톨릭대","detail":"의예 지역균형 일괄면접"},{"university":"강원춘천캠","detail":"의예지역종합 2단계면접"},{"university":"건국글로컬","detail":"모든 의예 2단계면접"},{"university":"건국글로컬","detail":"Cogito 2단계면접1"},{"university":"건양대","detail":"의학과 지역의사 2단계면접"},{"university":"계명대","detail":"의예 종합일반 2단계면접"},{"university":"계명대","detail":"의예 지역의사진료 면접"},{"university":"고신대","detail":"의예과 교과 2단계면접"},{"university":"광주교대","detail":"전남광주종합/지역종합 사회통합/장애/만학 2단계면접"},{"university":"단국천안","detail":"DKU면접/지역의료인재 농어촌 의약학 2단계면접"},{"university":"대구교대","detail":"모든종합 2단계면접"},{"university":"대구한의대","detail":"면접전형 간호학 면접"},{"university":"동아대","detail":"잠재능력종합 2단계면접2"},{"university":"동아대","detail":"지역의사진료 2단계면접"},{"university":"동의대","detail":"학교생활종합 2단계면접1"},{"university":"명지대","detail":"명지인재 2단계면접자연"},{"university":"부산대","detail":"교육 초등교육 2단계면접"},{"university":"서강대","detail":"특성화고졸 2단계면접"},{"university":"서울과기대","detail":"학교생활/창의 2단계면접"},{"university":"서울대","detail":"일반 의/치/수 2단계면접"},{"university":"서울시립대","detail":"모든종합 2단계면접1"},{"university":"서울여대","detail":"모든 종합 2단계면접 바롬면접/SW/기독지도자"},{"university":"성신여대","detail":"자기주도 2단계면접3"},{"university":"수원대","detail":"지역균형 일괄면접2"},{"university":"숙명여대","detail":"숙명인/SW 2단계면접1"},{"university":"숭실대","detail":"SW/기회/특교 2단계면접"},{"university":"아주대","detail":"ACE 면접 SW/간호/자연"},{"university":"연세미래","detail":"의예과 모든 2단계면접"},{"university":"영남대","detail":"의예 지역의사 2단계면접"},{"university":"영남대","detail":"의예 지역종합 2단계면접"},{"university":"인제대","detail":"지역Ⅰ 의예 2단계면접"},{"university":"울산대","detail":"잠재역량/지역 2단계면접"},{"university":"전북대","detail":"지역인재1,2 2단계면접"},{"university":"조선대","detail":"종합면접전형 2단계면접1"}],"stage1":[],"final":[]},"2026-11-29":{"interview":[{"university":"건국글로컬","detail":"Cogito 2단계면접2"},{"university":"경기대","detail":"KGU종합 2단계면접1 디자인학부/소프트웨어"},{"university":"경기대","detail":"SW우수자전형 2단계면접"},{"university":"계명대","detail":"의예 종합지역 2단계면접"},{"university":"단국천안","detail":"DKU면접인재 문예창작 2단계면접"},{"university":"단국천안","detail":"군사학과 일괄면접"},{"university":"동의대","detail":"학교생활종합 2단계면접2"},{"university":"명지대","detail":"명지인재 2단계면접인문"},{"university":"서울과기대","detail":"기회/군위탁 2단계면접"},{"university":"서울시립대","detail":"모든종합 2단계면접2"},{"university":"성신여대","detail":"자기주도 2단계면접4"},{"university":"수원대","detail":"지역균형 일괄면접3"},{"university":"숙명여대","detail":"숙명인재 2단계면접2"},{"university":"아주대","detail":"ACE 면접 경영/인문/사과"},{"university":"연세서울","detail":"국제형(국내/해외고) ASIA/HASS/ISE 2단계면접"},{"university":"조선대","detail":"종합면접전형 2단계면접2"},{"university":"중앙대","detail":"융합형 의학부 2단계면접"},{"university":"홍익대세종","detail":"미술우수자 2단계면접2"},{"university":"POSTECH","detail":"일반전형Ⅱ/반도체공학 2단계면접"}],"stage1":[],"final":[]},"2026-11-30":{"interview":[{"university":"KENTECH","detail":"종합 2단계면접"}],"stage1":[],"final":[]},"2026-12-01":{"interview":[{"university":"수원가톨릭대","detail":"일반전형 2단계 면접"},{"university":"원광대","detail":"지역인재 종합/기회 2단계면접"},{"university":"전남대","detail":"교과특수교육 2단계면접"},{"university":"충남대","detail":"종합전형 2단계면접1 인문/사과/경상/지역의예"}],"stage1":[{"university":"부산대","detail":"모든 종합전형 1단계"},{"university":"성균관대","detail":"성균인재 1단계 자전/글로벌융합/의예"}],"final":[{"university":"동국대서울","detail":"학교장추천 최종"}]},"2026-12-02":{"interview":[{"university":"경찰대","detail":"2차 시험 면접시험 12/2(수)~12/9(수)"},{"university":"원광대","detail":"지역의사종합/종합기회균형/종합농어촌 2단계면접"},{"university":"전남대","detail":"고교생활Ⅰ 2단계면접"},{"university":"전남대","detail":"지역의사 2단계면접"},{"university":"충남대","detail":"종합전형 2단계면접2 자연/의약수의/간호/생과/생명시스템과학"},{"university":"충남대","detail":"해양안보종합 2단계면접"}],"stage1":[],"final":[]},"2026-12-03":{"interview":[{"university":"충남대","detail":"사범대학 일반/지역 2단계면접"},{"university":"충남대","detail":"종합전형 2단계면접3 공과/AI대학/지식융합"},{"university":"충남대","detail":"국토안보종합 2단계면접"}],"stage1":[{"university":"한림대","detail":"모든 종합 1단계"}],"final":[{"university":"상명대서울","detail":"모든 최종"},{"university":"이화여대","detail":"미래면접형 최종"},{"university":"이화여대","detail":"고른기회/사회기여 실기실적 최종"}]},"2026-12-04":{"interview":[{"university":"서울대","detail":"지균/기회 2단계면접일반"},{"university":"제주대","detail":"모든 종합전형 2단계면접"},{"university":"제주대","detail":"지역의사/지역인재 2단계면접"},{"university":"충남대","detail":"종합전형 2단계면접4 농업/사범/특성화고졸"},{"university":"충남대","detail":"국토안보교과 2단계면접"}],"stage1":[],"final":[{"university":"부산외대","detail":"모든 최종"}]},"2026-12-05":{"interview":[{"university":"가천대","detail":"지역균형 2단계면접1"},{"university":"가톨릭대","detail":"잠재/가톨릭/학교장 약학/의예/간호 포함 2단계면접"},{"university":"건국대서울","detail":"자기추천 2단계면접1"},{"university":"경기대","detail":"KGU종합 2단계면접2 인문/예술/공과/관광대"},{"university":"경희대","detail":"네오르네 2단계면접1"},{"university":"계명대","detail":"의예 교과면접 2단계면접"},{"university":"계명대","detail":"의예 지역의사광역 면접"},{"university":"단국죽전","detail":"DKU면접인문 2단계면접"},{"university":"단국죽전","detail":"창업인재인문 2단계면접"},{"university":"서울대","detail":"지균/기회 2단계면접 의/수"},{"university":"동국WISE","detail":"종합참사람 2단계면접 의예/한의예/간호"},{"university":"동국WISE","detail":"지역종합/지역의사 2단계면접 의예/한의예/간호"},{"university":"부산대","detail":"모든 종합전형 2단계면접"},{"university":"울산대","detail":"의예 잠재역량 2단계면접"},{"university":"인제대","detail":"의예 지역의사 2단계면접"},{"university":"중앙대","detail":"성장형 2단계면접"},{"university":"중앙대","detail":"탐구형 2단계면접1"},{"university":"한국교원대","detail":"종합전형 2단계면접"},{"university":"한동대","detail":"사회통합/기초 등 2단계면접"},{"university":"한양대서울","detail":"종합면접 2단계면접2 의과대학"},{"university":"홍익대서울","detail":"미술우수자 2단계면접1"}],"stage1":[],"final":[]},"2026-12-06":{"interview":[{"university":"가천대","detail":"지역균형 2단계면접2"},{"university":"건국대서울","detail":"자기추천 2단계면접2"},{"university":"경기대","detail":"KGU종합 2단계면접3 사과/SW경영/융합과학대"},{"university":"경희대","detail":"네오르네 2단계면접2"},{"university":"단국죽전","detail":"DKU면접자연/SW 창업인재자연 2단계면접"},{"university":"성균관대","detail":"성균인재 2단계면접 자전/글로벌융합/의예"},{"university":"중앙대","detail":"융합형 의학부 2단계면접"},{"university":"중앙대","detail":"탐구형 2단계면접2"},{"university":"한양대서울","detail":"종합면접 2단계면접2 사범대학"},{"university":"홍익대서울","detail":"미술우수자 2단계면접2"}],"stage1":[],"final":[]},"2026-12-07":{"interview":[{"university":"가천대","detail":"지역균형 2단계면접3"}],"stage1":[],"final":[]},"2026-12-08":{"interview":[{"university":"한림대","detail":"간호학과 지역인재 및 장애인 2단계면접"}],"stage1":[],"final":[]},"2026-12-09":{"interview":[{"university":"한림대","detail":"학교생활 등 모든종합 및 모든 의학 2단계면접 지역의사/지역인재 포함"}],"stage1":[{"university":"가천대","detail":"가천의약학 1단계"},{"university":"가천대","detail":"의예 기회균형/의예 농어촌/교육기회균형 1단계"}],"final":[{"university":"명지대","detail":"모든 최종"}]},"2026-12-10":{"interview":[],"stage1":[{"university":"한예종","detail":"일반전형 11월입시 1단계"}],"final":[]},"2026-12-11":{"interview":[{"university":"동국대서울","detail":"기회/특수 2단계면접1"},{"university":"동국대서울","detail":"두드림 2단계면접1"}],"stage1":[{"university":"건양대","detail":"의학 최저적용 1단계 지역기초/농어촌"}],"final":[{"university":"국립금오공과대","detail":"최저미적용 최종"},{"university":"대구한의대","detail":"한의예/간호 최종"},{"university":"대진대","detail":"학생부우수/종단추천 최종"},{"university":"한동대","detail":"사회통합/기초/글로벌 최종"},{"university":"KENTECH","detail":"최종"}]},"2026-12-12":{"interview":[{"university":"건양대","detail":"의학 최저적용 2단계면접 지역기초/농어촌"},{"university":"동국대서울","detail":"기회/특수 2단계면접2"},{"university":"동국대서울","detail":"두드림 2단계면접2"}],"stage1":[{"university":"아주대","detail":"ACE종합 의학/약학 1단계"},{"university":"아주대","detail":"지역의사 1단계"}],"final":[]},"2026-12-13":{"interview":[{"university":"동국대서울","detail":"기회/특수 2단계면접3"},{"university":"동국대서울","detail":"두드림 2단계면접3"},{"university":"동국대서울","detail":"불교추천 2단계면접"}],"stage1":[],"final":[]},"2026-12-14":{"interview":[{"university":"가천대","detail":"가천의약학 2단계면접 의예과"},{"university":"아주대","detail":"ACE종합 의학/약학/지역의사 2단계면접"}],"stage1":[],"final":[{"university":"한국전통문화대","detail":"논술 최종"}]},"2026-12-15":{"interview":[{"university":"가천대","detail":"가천의약학 2단계면접 약학과"},{"university":"한예종","detail":"일반전형 2차 시험 12/15(화)~12/22(화)"}],"stage1":[],"final":[{"university":"대전대","detail":"한의/간호/군사학 최종"},{"university":"동명대","detail":"모든 간호학과 최종"},{"university":"루터대","detail":"최종"},{"university":"삼육대","detail":"최종"},{"university":"청주대","detail":"항공/군사 최종"},{"university":"우석대","detail":"한의/한약/약/간호 최종"}]},"2026-12-16":{"interview":[],"stage1":[],"final":[{"university":"건양대","detail":"의학/군사/지역의사 최종"},{"university":"경남대","detail":"간호/물치/체교/군사 최종"},{"university":"경운대","detail":"간호/항공 최종"},{"university":"고신대","detail":"의예/간호 최종"},{"university":"광주대","detail":"간호 최종"},{"university":"국립경국대","detail":"최종"},{"university":"남부대","detail":"간호 최종"},{"university":"동신대","detail":"한의/간호/물리치료 최종"},{"university":"동의대","detail":"최종"},{"university":"신한대","detail":"논술/종합 최종"},{"university":"용인대","detail":"교과성적 최종"},{"university":"한성대","detail":"교과우수자 최종"},{"university":"호남대","detail":"최종"}]},"2026-12-17":{"interview":[],"stage1":[],"final":[{"university":"가톨릭관동대","detail":"의학/간호 최종"},{"university":"건국대글로컬","detail":"의예/종합 최종"},{"university":"경성대","detail":"최종"},{"university":"대구가톨릭대","detail":"의/약/간/체교 최종"},{"university":"대전가톨릭대","detail":"일반/성김대건 등 최종"},{"university":"상명대천안","detail":"교과전형 최종"},{"university":"상지대","detail":"한의/간호 최종"},{"university":"수원가톨릭대","detail":"최종"},{"university":"이화여대","detail":"최종"},{"university":"한경국립대","detail":"안성교과/잠재/통합 최종"},{"university":"한국교원대","detail":"최종"},{"university":"한동대","detail":"교과일반 최종"},{"university":"한림대","detail":"교과간호/모든종합/의학 최종"},{"university":"해군사관학교","detail":"종합선발 최종"}]},"2026-12-18":{"interview":[],"stage1":[],"final":[{"university":"가천대","detail":"교과/논술/의약학 최종"},{"university":"가톨릭대","detail":"최종"},{"university":"강남대","detail":"최종"},{"university":"강서대","detail":"간호 최종"},{"university":"강원대","detail":"춘천/삼척/도계/원주/강릉캠 최종"},{"university":"건국대서울","detail":"최종"},{"university":"경기대","detail":"최종"},{"university":"경상국립대","detail":"최종"},{"university":"경북대","detail":"최종"},{"university":"경일대","detail":"최종"},{"university":"경희대","detail":"최종"},{"university":"계명대","detail":"최종"},{"university":"고려대서울","detail":"최종"},{"university":"고려대세종","detail":"최종"},{"university":"광운대","detail":"최종"},{"university":"국립공주대","detail":"최종"},{"university":"국립한밭대","detail":"최종"},{"university":"국민대","detail":"최종"},{"university":"금오공과대","detail":"최종"},{"university":"나사렛대","detail":"최종"},{"university":"단국대","detail":"죽전/천안 최종"},{"university":"대구대","detail":"최종"},{"university":"덕성여대","detail":"최종"},{"university":"동국대서울","detail":"최종"},{"university":"동국대WISE","detail":"의예/한의/간호 최종"},{"university":"동덕여대","detail":"최종"},{"university":"동서대","detail":"최종"},{"university":"동아대","detail":"최종"},{"university":"목포대","detail":"최종"},{"university":"목포해양대","detail":"최종"},{"university":"배재대","detail":"최종"},{"university":"부경대","detail":"최종"},{"university":"부산대","detail":"최종"},{"university":"서강대","detail":"최종"},{"university":"서경대","detail":"최종"},{"university":"서울대","detail":"최종"},{"university":"서울과기대","detail":"최종"},{"university":"서울시립대","detail":"최종"},{"university":"서울여대","detail":"최종"},{"university":"서원대","detail":"사범대학 최종"},{"university":"성균관대","detail":"최종"},{"university":"성신여대","detail":"최종"},{"university":"세명대","detail":"한의예/기초 최종"},{"university":"세종대","detail":"최종"},{"university":"수원대","detail":"최종"},{"university":"숙명여대","detail":"최종"},{"university":"순천대","detail":"최종"},{"university":"순천향대","detail":"최종"},{"university":"숭실대","detail":"최종"},{"university":"아주대","detail":"최종"},{"university":"연세대서울","detail":"최종"},{"university":"연세대미래","detail":"최종"},{"university":"영남대","detail":"최종"},{"university":"예수대","detail":"최종"},{"university":"울산대","detail":"최종"},{"university":"원광대","detail":"최종"},{"university":"유원대","detail":"최종"},{"university":"위덕대","detail":"최종"},{"university":"을지대","detail":"최종"},{"university":"인제대","detail":"최종"},{"university":"인천대","detail":"최종"},{"university":"인하대","detail":"최종"},{"university":"전남대","detail":"최종"},{"university":"전북대","detail":"최종"},{"university":"제주대","detail":"최종"},{"university":"조선대","detail":"최종"},{"university":"중앙대","detail":"최종"},{"university":"중원대","detail":"최종"},{"university":"차의과학대","detail":"최종"},{"university":"창원대","detail":"최종"},{"university":"총신대","detail":"최종"},{"university":"충남대","detail":"최종"},{"university":"충북대","detail":"최종"},{"university":"한국기술교대","detail":"최종"},{"university":"한국공학대","detail":"최종"},{"university":"한국교통대","detail":"최종"},{"university":"한국외대","detail":"최종"},{"university":"한국체육대","detail":"최종"},{"university":"한국항공대","detail":"최종"},{"university":"한국해양대","detail":"최종"},{"university":"한남대","detail":"최종"},{"university":"한신대","detail":"논술 최종"},{"university":"한양대서울","detail":"최종"},{"university":"한양에리카","detail":"최종"},{"university":"협성대","detail":"최종"},{"university":"홍익대서울","detail":"최종"},{"university":"홍익대세종","detail":"최종"},{"university":"DGIST","detail":"최종"},{"university":"GIST","detail":"최종"},{"university":"KAIST","detail":"최종"},{"university":"POSTECH","detail":"최종"},{"university":"UNIST","detail":"최종"},{"university":"경인교대","detail":"교육대학 수시 최종"},{"university":"공주교대","detail":"교육대학 수시 최종"},{"university":"광주교대","detail":"교육대학 수시 최종"},{"university":"대구교대","detail":"교육대학 수시 최종"},{"university":"부산대초등교육","detail":"교육대학 수시 최종"},{"university":"서울교대","detail":"교육대학 수시 최종"},{"university":"전주교대","detail":"교육대학 수시 최종"},{"university":"진주교대","detail":"교육대학 수시 최종"},{"university":"청주교대","detail":"교육대학 수시 최종"},{"university":"춘천교대","detail":"교육대학 수시 최종"},{"university":"공군사관학교","detail":"종합선발 최종"},{"university":"육군사관학교","detail":"종합선발 최종"}]}},
     });
     // Poll every 7s on PC and 10s on mobile, with up to 1s jitter so many open
     // screens do not start Apps Script executions at the same instant.

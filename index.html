@@ -1071,6 +1071,8 @@
     .list-controls .ghost-button { min-width: 112px; padding: 0 17px; color: var(--pink-800); }
     .list-controls .more-button { color: #fff; border-color: transparent; background: var(--pink-800); }
     .list-controls .more-button:hover { background: var(--pink-900); }
+    .list-controls .expand-all-button { color: #fff; border-color: transparent; background: #b44c7b; }
+    .list-controls .expand-all-button:hover { background: #8f2857; }
     .list-controls .top-button { color: #765464; background: rgba(255,255,255,.68); }
     .list-controls .top-button:hover { color: var(--pink-900); background: rgba(255,255,255,.94); }
 
@@ -2252,6 +2254,9 @@
         <button id="moreButton" class="ghost-button more-button" type="button">
           <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg><span>더 보기</span>
         </button>
+        <button id="expandAllButton" class="ghost-button expand-all-button" type="button">
+          <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 6 6 6-6M6 12l6 6 6-6"/></svg><span>다 펼치기</span>
+        </button>
         <button id="scrollTopButton" class="ghost-button top-button" type="button">
           <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg><span>맨 위로</span>
         </button>
@@ -2622,7 +2627,7 @@
     const REVISION_POLL_INTERVAL_MS = (EDITION === 'mobile' ? 10000 : 7000)
       + Math.floor(Math.random() * 1000);
     const FULL_SYNC_INTERVAL_MS = 45000;
-    const INITIAL_PAGE_SIZE = EDITION === 'mobile' ? 10 : 15;
+    const INITIAL_PAGE_SIZE = 13;
     const MORE_PAGE_SIZE = 10;
     const PENDING_DRAFTS_KEY = `admissionsPendingDraftsV1:${EDITION}`;
     const PENDING_DRAFT_TTL_MS = 3 * 60 * 60 * 1000;
@@ -2808,6 +2813,7 @@
       listControls: $('listControls'),
       collapseButton: $('collapseButton'),
       moreButton: $('moreButton'),
+      expandAllButton: $('expandAllButton'),
       scrollTopButton: $('scrollTopButton'),
       mobileScrollTopButton: $('mobileScrollTopButton'),
       exportButton: $('exportButton'),
@@ -3986,8 +3992,10 @@
       const canCollapse = shownCount > INITIAL_PAGE_SIZE;
       elements.listControls.hidden = !hasRecords || (!canMore && !canCollapse);
       elements.moreButton.hidden = !canMore;
+      elements.expandAllButton.hidden = !canMore;
       elements.collapseButton.hidden = !canCollapse;
       elements.moreButton.setAttribute('aria-expanded', String(canMore));
+      elements.expandAllButton.setAttribute('aria-expanded', String(!canMore));
     }
 
     function sortedRecords() {
@@ -5736,6 +5744,10 @@
       });
       elements.moreButton.addEventListener('click', () => {
         state.visibleCount += MORE_PAGE_SIZE;
+        renderResults();
+      });
+      elements.expandAllButton.addEventListener('click', () => {
+        state.visibleCount = state.records.length;
         renderResults();
       });
       elements.collapseButton.addEventListener('click', () => {

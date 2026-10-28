@@ -2629,6 +2629,8 @@
     const FULL_SYNC_INTERVAL_MS = 45000;
     const INITIAL_PAGE_SIZE = 13;
     const MORE_PAGE_SIZE = 10;
+    const DEFAULT_SORT_KEY = 'classNo';
+    const DEFAULT_SORT_DIRECTION = 'asc';
     const PENDING_DRAFTS_KEY = `admissionsPendingDraftsV1:${EDITION}`;
     const PENDING_DRAFT_TTL_MS = 3 * 60 * 60 * 1000;
     const SAVE_RETRY_BASE_MS = 1000;
@@ -2702,8 +2704,8 @@
     const state = {
       records: [],
       visibleCount: INITIAL_PAGE_SIZE,
-      sortKey: 'name',
-      sortDirection: 'asc',
+      sortKey: DEFAULT_SORT_KEY,
+      sortDirection: DEFAULT_SORT_DIRECTION,
       lastFilters: null,
       pollingTimer: null,
       pollingBusy: false,
@@ -3793,8 +3795,14 @@
       state.lastTotalMatches = Number(data.totalMatches) || 0;
       state.lastTruncated = Boolean(data.truncated);
       state.lastFilters = { ...filters };
-      if (!silent) state.visibleCount = INITIAL_PAGE_SIZE;
-      else state.visibleCount = Math.max(INITIAL_PAGE_SIZE, state.visibleCount);
+      if (!silent) {
+        state.visibleCount = INITIAL_PAGE_SIZE;
+        state.sortKey = DEFAULT_SORT_KEY;
+        state.sortDirection = DEFAULT_SORT_DIRECTION;
+        syncSortControls();
+      } else {
+        state.visibleCount = Math.max(INITIAL_PAGE_SIZE, state.visibleCount);
+      }
       updateMobileSearchSummary(filters);
       setSearchLayout(true, { collapseMobile: !silent });
       renderResults(data.totalMatches, data.truncated);
@@ -5110,6 +5118,9 @@
       state.lastTotalMatches = 0;
       state.lastTruncated = false;
       state.visibleCount = INITIAL_PAGE_SIZE;
+      state.sortKey = DEFAULT_SORT_KEY;
+      state.sortDirection = DEFAULT_SORT_DIRECTION;
+      syncSortControls();
       clearInterval(state.pollingTimer);
       if (state.pollController) state.pollController.abort();
       state.pollController = null;

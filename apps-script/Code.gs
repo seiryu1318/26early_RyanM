@@ -1367,6 +1367,31 @@ function resolveUniqueUniversityQuery_(universityMap, query) {
   });
   if (directFamilies.size) return requested.key;
 
+  // 자동완성에 공식 교명이 하나만 남는 고유 앞부분도 같은 공식 대학군으로
+  // 해석합니다. 예: "울산과학" -> "울산과학기술원". 둘 이상의 대학군이
+  // 같은 앞부분을 공유하면 임의로 첫 대학을 고르지 않습니다. 캠퍼스를
+  // 명시한 입력은 기존 규칙과 동일하게 그 캠퍼스가 한 건일 때만 확정합니다.
+  if ([...requested.alias].length >= 2) {
+    const prefixFamilies = new Map();
+    universityMap.forEach((_, university) => {
+      const source = universityIdentity_(university);
+      // `X대`처럼 축약하면서 교명 중간 단어를 건너뛴 값은 공식 교명의
+      // 앞부분으로 보지 않습니다. 정규화된 실제 교명 문자열이 그대로
+      // 시작하는 경우에만 이 보조 규칙을 적용합니다.
+      if (!source.baseKey.startsWith(requested.baseKey)) return;
+      if (!prefixFamilies.has(source.baseKey)) prefixFamilies.set(source.baseKey, []);
+      prefixFamilies.get(source.baseKey).push(source);
+    });
+    if (prefixFamilies.size === 1) {
+      const [baseKey, family] = prefixFamilies.entries().next().value;
+      if (!requested.isCampus) return baseKey;
+      const campusMatches = family.filter(source => (
+        source.isCampus && source.campusAlias === requested.campusAlias
+      ));
+      if (campusMatches.length === 1) return campusMatches[0].key;
+    }
+  }
+
   // 공식 교명의 접미 약칭이 정확히 한 대학군에만 대응할 때만
   // 직접검색으로 확장합니다. "해양대", "교육대"처럼 둘 이상이
   // 겹치는 표현은 절대로 첫 번째 대학으로 임의 연결하지 않습니다.

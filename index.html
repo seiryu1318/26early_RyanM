@@ -3660,6 +3660,25 @@
       const directFamily = canonicalUniversityFromFamily(raw, familyMatches);
       if (directFamily) return directFamily;
 
+      // 자동완성에 공식 교명이 한 대학군만 남는 고유 앞부분은 검색 버튼이나
+      // Enter를 누를 때 그 공식명으로 확정합니다. 예: "울산과학" →
+      // "울산과학기술원". 서로 다른 대학군이 함께 걸리면 정확성을 위해
+      // 어떤 후보도 임의 선택하지 않고 사용자가 목록에서 직접 고르게 합니다.
+      if ([...normalized].length >= 2) {
+        const prefixFamilies = new Map();
+        indexed.forEach(item => {
+          if (!item.normalized.startsWith(normalized)) return;
+          const family = universityFamilyKey(item.name);
+          if (!prefixFamilies.has(family)) prefixFamilies.set(family, []);
+          prefixFamilies.get(family).push(item);
+        });
+        if (prefixFamilies.size === 1) {
+          const prefixMatches = prefixFamilies.values().next().value;
+          const canonical = canonicalUniversityFromFamily(raw, prefixMatches);
+          if (canonical) return canonical;
+        }
+      }
+
       // 자동완성과 같은 후보군 안에서 접미 약칭이 유일한 대학군일 때만
       // 정식 교명으로 바꿉니다. 여러 대학이 겹치면 입력값을 그대로 두어
       // 사용자가 목록에서 직접 선택하도록 합니다.
@@ -5835,12 +5854,12 @@
             options: {
               universityTypes: ['일반대학'], enrollments: ['재학생', '졸업생'], classes: ['1', '2', '3'],
               tracks: ['인문', '자연'], admissionTypes: ['교과(학생부)', '교과(면접)', '종합', '논술'],
-              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '성균관대학교', '홍익대학교(서)', '홍익대학교(세)', '국립경국대학교'],
+              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '성균관대학교', '홍익대학교(서)', '홍익대학교(세)', '국립경국대학교', '울산과학기술원'],
               names: ['강승민', '김민준', '이서연', '박도윤'],
               admissionNames: ['활동우수형', '미래인재', '학교추천', '세종추천', 'KU자기추천', 'KU글로컬추천', '논술우수', '학교생활우수자', '교과우수자'],
               recruitmentUnits: ['경영학과', '의공학부', '정치외교학과', '약학과', '컴퓨터공학부', '글로컬공학부', '전자전기공학부', '건설환경공학과', '게임소프트웨어전공'],
-              admissionNameIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8], []],
-              recruitmentUnitIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8], []],
+              admissionNameIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8], [], []],
+              recruitmentUnitIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8], [], []],
             },
             revision: window.__demoRevision,
             serverTime: new Date().toISOString(),
@@ -5850,7 +5869,7 @@
             const query = normalizeUniversityTerm(payload.query);
             resolve({
               ok: true,
-              suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '홍익대학교(서)', '홍익대학교(세)', '국립경국대학교']
+              suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '홍익대학교(서)', '홍익대학교(세)', '국립경국대학교', '울산과학기술원']
                 .filter(value => normalizeUniversityTerm(value).includes(query)),
               serverTime: new Date().toISOString(),
             });

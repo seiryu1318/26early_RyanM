@@ -1125,6 +1125,23 @@
       display: flex;
       justify-content: center;
     }
+    .password-dialog-shade {
+      position: fixed;
+      inset: 0;
+      z-index: 3100;
+      background: rgba(45,13,28,.48);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      pointer-events: none;
+    }
+    .password-dialog-shade[hidden] { display: none; }
+    #passwordDialog[open] {
+      position: fixed;
+      inset: 50% auto auto 50%;
+      z-index: 3200;
+      margin: 0;
+      transform: translate(-50%, -50%);
+    }
     #passwordInput.is-invalid {
       color: var(--pink-900);
       background: rgba(255,235,244,.94);
@@ -2279,14 +2296,15 @@
     <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h12M12 19V9M7.5 13.5 12 9l4.5 4.5"/></svg>
   </button>
 
-  <dialog id="passwordDialog" aria-labelledby="passwordTitle">
-    <form id="passwordForm" method="dialog">
+  <div id="passwordDialogShade" class="password-dialog-shade" hidden aria-hidden="true"></div>
+  <dialog id="passwordDialog" aria-labelledby="passwordTitle" aria-modal="true">
+    <form id="passwordForm" method="dialog" autocomplete="on">
       <div class="dialog-head">
         <h2 id="passwordTitle" class="dialog-title">비밀번호</h2>
       </div>
       <div class="dialog-body">
         <div class="field">
-          <input id="passwordInput" type="password" inputmode="numeric" autocomplete="current-password" maxlength="32" placeholder="비밀번호" aria-label="비밀번호">
+          <input id="passwordInput" name="password" type="password" inputmode="numeric" autocomplete="current-password" enterkeyhint="go" autocapitalize="off" spellcheck="false" maxlength="32" placeholder="비밀번호" aria-label="비밀번호">
         </div>
       </div>
       <div class="dialog-foot">
@@ -2829,6 +2847,7 @@
       settingsSaveButton: $('settingsSaveButton'),
       apiUrlInput: $('apiUrlInput'),
       passwordDialog: $('passwordDialog'),
+      passwordDialogShade: $('passwordDialogShade'),
       passwordForm: $('passwordForm'),
       passwordInput: $('passwordInput'),
       passwordSubmitButton: $('passwordSubmitButton'),
@@ -5576,12 +5595,16 @@
 
     function openPassword() {
       if (DEMO_MODE || !currentApiUrl()) return;
+      // Password-manager suggestion UIs live outside this document. A native
+      // modal dialog makes everything outside it inert, so the suggestion can
+      // be visible yet unclickable. Keep this one dialog non-modal and provide
+      // a visual-only shade instead.
+      if (elements.passwordDialog.open) return;
       elements.passwordInput.value = '';
       resetPasswordInputFeedback();
-      if (!elements.passwordDialog.open) {
-        elements.passwordDialog.showModal();
-        setTimeout(() => elements.passwordInput.focus(), 30);
-      }
+      elements.passwordDialog.show();
+      elements.passwordDialogShade.hidden = false;
+      setTimeout(() => elements.passwordInput.focus(), 30);
     }
 
     function resetPasswordInputFeedback() {
@@ -5825,6 +5848,9 @@
       elements.passwordForm.addEventListener('submit', event => { event.preventDefault(); loginWithPassword(); });
       elements.passwordInput.addEventListener('input', resetPasswordInputFeedback);
       elements.passwordDialog.addEventListener('cancel', event => event.preventDefault());
+      elements.passwordDialog.addEventListener('close', () => {
+        elements.passwordDialogShade.hidden = true;
+      });
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
           persistPendingDrafts();

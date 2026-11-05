@@ -31,6 +31,9 @@ const CONFIG = Object.freeze({
   // v2 starts a fresh public revision generation so already-open clients
   // immediately discard the pre-normalization rows snapshot after deployment.
   dataRevisionProperty: 'DATA_REVISION_V2',
+  // A:P 검색 원자료와 Q:U 결과 리비전을 분리합니다. 결과 저장은 공개
+  // data revision만 바꾸고, 검색 인덱스는 source revision을 계속 재사용합니다.
+  sourceRevisionProperty: 'SOURCE_REVISION_V1',
   passwordProperty: 'ACCESS_PASSWORD',
   sessionSecretProperty: 'SESSION_SECRET',
   sessionDurationMs: 3 * 60 * 60 * 1000,
@@ -269,6 +272,8 @@ function login_(providedPassword, includeMeta) {
     sessionToken: payload + '.' + signature,
     expiresAt,
     revision: meta ? meta.revision : (properties[CONFIG.dataRevisionProperty] || '0'),
+    sourceRevision: meta ? meta.sourceRevision :
+      (properties[CONFIG.sourceRevisionProperty] || properties[CONFIG.dataRevisionProperty] || '0'),
     meta: meta || undefined,
     serverTime: new Date().toISOString(),
   };
@@ -294,13 +299,12 @@ function requireSession_(token, properties) {
 }
 
 function getMeta_() {
-  // rows cache manifest에는 revision과 같이 사용할 snapshotToken이 있습니다.
-  // meta cache hit인 경우 2,162행 압축 데이터를 풀지 않고 즉시 반환합니다.
-  const revision = getDataRevision_();
-  const descriptor = readRowsCacheDescriptor_(revision);
-  const earlyCached = descriptor
-    ? readMetaCache_(revision, descriptor.snapshotToken)
-    : null;
+  const properties = PropertiesService.getScriptProperties().getProperties();
+  const revision = properties[CONFIG.dataRevisionProperty] || '0';
+  const sourceRevision = properties[CONFIG.sourceRevisionProperty] || revision;
+  // 메타는 A:P에서만 만들어지므로 Q:U 결과 저장 뒤에도 그대로 유효합니다.
+  // source revision으로 바로 조회하면 rows manifest와 압축 rows를 읽지 않습니다.
+  const earlyCached = readMetaCache_(sourceRevision, '');
   if (earlyCached) {
     SEARCH_METRICS_.metaCacheHits += 1;
     return {
@@ -308,12 +312,14 @@ function getMeta_() {
       options: earlyCached.options,
       rowCount: earlyCached.rowCount,
       revision,
+      sourceRevision,
       serverTime: new Date().toISOString(),
     };
   }
 
   const snapshot = getRowsSnapshot_();
-  const cached = readMetaCache_(snapshot.revision, snapshot.snapshotToken);
+  const sourceIdentity = sourceIdentityForSnapshot_(snapshot);
+  const cached = readMetaCache_(sourceIdentity, '');
   if (cached) {
     SEARCH_METRICS_.metaCacheHits += 1;
     return {
@@ -321,6 +327,7 @@ function getMeta_() {
       options: cached.options,
       rowCount: cached.rowCount,
       revision: snapshot.revision,
+      sourceRevision: sourceIdentity,
       serverTime: new Date().toISOString(),
     };
   }
@@ -338,11 +345,12 @@ function getMeta_() {
     options,
     rowCount: rows.length,
   };
-  writeMetaCache_(snapshot.revision, snapshot.snapshotToken, result);
+  writeMetaCache_(sourceIdentity, '', result);
   return {
     ok: true,
     ...result,
     revision: snapshot.revision,
+    sourceRevision: sourceIdentity,
     serverTime: new Date().toISOString(),
   };
 }
@@ -463,7 +471,8 @@ function search_(rawFilters) {
   // full rows snapshot. The cache identity includes both the data revision and
   // the concrete snapshot generation, so a refreshed sheet can never reuse an
   // older result even when filters are identical.
-  const initialRevision = getDataRevision_();
+  const initialRevisionPair = getRevisionPair_();
+  const initialRevision = initialRevisionPair.revision;
   const descriptor = readRowsCacheDescriptor_(initialRevision);
   if (descriptor) {
     const cachedResponse = readSearchResponseCache_(
@@ -471,12 +480,14 @@ function search_(rawFilters) {
       descriptor.snapshotToken,
       filters
     );
-    if (cachedResponse && getDataRevision_() === initialRevision) {
+    const validatedRevisionPair = getRevisionPair_();
+    if (cachedResponse && validatedRevisionPair.revision === initialRevision) {
       SEARCH_METRICS_.responseCacheHits += 1;
       return {
         ok: true,
         ...cachedResponse,
         revision: initialRevision,
+        sourceRevision: validatedRevisionPair.sourceRevision,
         serverTime: new Date().toISOString(),
       };
     }
@@ -502,6 +513,7 @@ function search_(rawFilters) {
     ok: true,
     ...result,
     revision: snapshot.revision,
+    sourceRevision: sourceIdentityForSnapshot_(snapshot),
     serverTime: new Date().toISOString(),
   };
 }
@@ -518,6 +530,7 @@ function syncSearch_(rawFilters, knownRevision, force, properties) {
       ok: true,
       notModified: true,
       revision,
+      sourceRevision: source[CONFIG.sourceRevisionProperty] || revision,
       serverTime: new Date().toISOString(),
     };
   }
@@ -529,6 +542,7 @@ function getRevision_(properties) {
   return {
     ok: true,
     revision: source[CONFIG.dataRevisionProperty] || '0',
+    sourceRevision: source[CONFIG.sourceRevisionProperty] || source[CONFIG.dataRevisionProperty] || '0',
     serverTime: new Date().toISOString(),
   };
 }
@@ -548,6 +562,7 @@ function export_(rawFilters) {
     rows,
     totalMatches: rows.length,
     revision: snapshot.revision,
+    sourceRevision: sourceIdentityForSnapshot_(snapshot),
     serverTime: new Date().toISOString(),
   };
 }
@@ -660,6 +675,7 @@ function save_(payload) {
         ok: true,
         record: toRecord_(current, sheetRow),
         revision: getDataRevision_(),
+        sourceRevision: getSourceRevision_(),
         serverTime: new Date().toISOString(),
       };
     }
@@ -673,6 +689,10 @@ function save_(payload) {
         merged.finalWait,
       ]]);
     SpreadsheetApp.flush();
+    // 구 배포에서 source revision 속성이 아직 없을 수 있습니다. 공개 data
+    // revision을 바꾸기 전에 현재 세대를 고정해야 결과 저장이 검색 인덱스
+    // 세대까지 바꾸지 않습니다.
+    ensureSourceRevision_();
     const revision = bumpDataRevision_();
 
     current[COL.stage1] = merged.stage1;
@@ -681,64 +701,25 @@ function save_(payload) {
     current[COL.firstWait] = merged.firstWait;
     current[COL.finalWait] = merged.finalWait;
 
-    const cacheWarmPlan = {
+    // 전체 rows를 다시 inflate/gzip하지 않습니다. 이전 A:P 압축 snapshot을
+    // 참조하고 Q:U 한 행 patch만 새 revision에 게시합니다. ScriptLock 안에서
+    // descriptor를 마지막에 게시하므로 연속 저장도 patch를 잃지 않습니다.
+    promoteRowsCacheWithResultPatch_(
       previousRevision,
       revision,
       rowIndex,
-      row: current.slice(),
-      expectedRowCount: lastRow - CONFIG.headerRow,
-      response: {
-        ok: true,
-        record: toRecord_(current, sheetRow),
-        revision,
-        serverTime: new Date().toISOString(),
-      },
+      current,
+      lastRow - CONFIG.headerRow
+    );
+    return {
+      ok: true,
+      record: toRecord_(current, sheetRow),
+      revision,
+      sourceRevision: getSourceRevision_(),
+      serverTime: new Date().toISOString(),
     };
-    lock.releaseLock();
-    lockHeld = false;
-    return warmSavedRowsCacheAfterUnlock_(cacheWarmPlan);
   } finally {
     if (lockHeld) lock.releaseLock();
-  }
-}
-
-function warmSavedRowsCacheAfterUnlock_(plan) {
-  // Cache unzip/gzip can take much longer than the five-cell sheet write.
-  // Release the global save lock first so other users can validate and write
-  // their rows instead of waiting behind cache compression.
-  try {
-    if (!plan || getDataRevision_() !== plan.revision) return plan.response;
-    const previousSnapshot = readRowsCache_(plan.previousRevision);
-    if (
-      !previousSnapshot ||
-      !Array.isArray(previousSnapshot.rows) ||
-      previousSnapshot.rows.length !== plan.expectedRowCount ||
-      plan.previousRevision === plan.revision ||
-      getDataRevision_() !== plan.revision
-    ) return plan.response;
-
-    const warmedRows = previousSnapshot.rows.slice();
-    warmedRows[plan.rowIndex] = plan.row;
-    const warmedSnapshotToken = createRowsSnapshotToken_(plan.revision);
-    // Q:U 저장은 A:P 기반 메타/대학 인덱스를 바꾸지 않습니다. 원시 캐시만
-    // 새 snapshot identity로 승계하고, revision 종속 response/match 캐시는
-    // 의도적으로 승계하지 않습니다. Rows descriptor는 마지막에 게시합니다.
-    copyScriptCacheValue_(
-      metaCacheKey_(plan.previousRevision, previousSnapshot.snapshotToken),
-      metaCacheKey_(plan.revision, warmedSnapshotToken),
-      CONFIG.rowsCacheTtlSeconds
-    );
-    copyScriptCacheValue_(
-      universityIndexCacheKey_(plan.previousRevision, previousSnapshot.snapshotToken),
-      universityIndexCacheKey_(plan.revision, warmedSnapshotToken),
-      CONFIG.rowsCacheTtlSeconds
-    );
-    writeRowsCache_(warmedRows, plan.revision, warmedSnapshotToken);
-    return plan.response;
-  } catch (_) {
-    // Cache warming is an optimization only. The sheet write and revision have
-    // already committed, so a cache failure must not turn the save into an error.
-    return plan.response;
   }
 }
 
@@ -747,12 +728,15 @@ function getAllRows_() {
 }
 
 function getRowsSnapshot_() {
-  let revision = getDataRevision_();
+  let revisionPair = getRevisionPair_();
+  let revision = revisionPair.revision;
+  let sourceRevision = revisionPair.sourceRevision;
   let cached = readRowsCache_(revision);
   if (cached) {
     return {
       rows: cached.rows,
       revision,
+      sourceRevision,
       snapshotToken: cached.snapshotToken,
     };
   }
@@ -773,12 +757,15 @@ function getRowsSnapshot_() {
       // The lock owner may have finished warming while this execution waited.
       // Recheck once, but never launch another full-sheet read without the
       // shared lock. The client treats CACHE_WARMING as a retryable read.
-      revision = getDataRevision_();
+      revisionPair = getRevisionPair_();
+      revision = revisionPair.revision;
+      sourceRevision = revisionPair.sourceRevision;
       cached = readRowsCache_(revision);
       if (cached) {
         return {
           rows: cached.rows,
           revision,
+          sourceRevision,
           snapshotToken: cached.snapshotToken,
         };
       }
@@ -788,12 +775,15 @@ function getRowsSnapshot_() {
     // 대조합니다. 변경이 겹치면 한 번 다시 읽고, 계속 변하는 경우에는
     // 구 revision 자료를 반환하지 않고 클라이언트 재시도 경로로 넘깁니다.
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      revision = getDataRevision_();
+      revisionPair = getRevisionPair_();
+      revision = revisionPair.revision;
+      sourceRevision = revisionPair.sourceRevision;
       cached = readRowsCache_(revision);
       if (cached) {
         return {
           rows: cached.rows,
           revision,
+          sourceRevision,
           snapshotToken: cached.snapshotToken,
         };
       }
@@ -804,7 +794,7 @@ function getRowsSnapshot_() {
       if (afterRevision === revision) {
         const snapshotToken = createRowsSnapshotToken_(revision);
         writeRowsCache_(rows, revision, snapshotToken);
-        return { rows, revision, snapshotToken };
+        return { rows, revision, sourceRevision, snapshotToken };
       }
     }
     throw apiError_('DATA_CHANGED', '자료가 갱신되어 최신 상태로 다시 확인하고 있습니다.');
@@ -817,9 +807,52 @@ function getDataRevision_() {
   return PropertiesService.getScriptProperties().getProperty(CONFIG.dataRevisionProperty) || '0';
 }
 
+function getRevisionPair_() {
+  const properties = PropertiesService.getScriptProperties().getProperties();
+  const revision = properties[CONFIG.dataRevisionProperty] || '0';
+  return {
+    revision,
+    sourceRevision: properties[CONFIG.sourceRevisionProperty] || revision,
+  };
+}
+
+function getSourceRevision_() {
+  const properties = PropertiesService.getScriptProperties();
+  return properties.getProperty(CONFIG.sourceRevisionProperty) ||
+    properties.getProperty(CONFIG.dataRevisionProperty) || '0';
+}
+
+function ensureSourceRevision_() {
+  const properties = PropertiesService.getScriptProperties();
+  const existing = properties.getProperty(CONFIG.sourceRevisionProperty);
+  if (existing) return existing;
+  const sourceRevision = properties.getProperty(CONFIG.dataRevisionProperty) || '0';
+  properties.setProperty(CONFIG.sourceRevisionProperty, sourceRevision);
+  return sourceRevision;
+}
+
+function createRevision_() {
+  return String(Date.now()) + '-' + Utilities.getUuid();
+}
+
 function bumpDataRevision_() {
-  const revision = String(Date.now()) + '-' + Utilities.getUuid();
+  const revision = createRevision_();
   PropertiesService.getScriptProperties().setProperty(CONFIG.dataRevisionProperty, revision);
+  return revision;
+}
+
+function bumpSourceAndDataRevision_() {
+  const revision = createRevision_();
+  const properties = PropertiesService.getScriptProperties();
+  if (typeof properties.setProperties === 'function') {
+    const updates = {};
+    updates[CONFIG.dataRevisionProperty] = revision;
+    updates[CONFIG.sourceRevisionProperty] = revision;
+    properties.setProperties(updates, false);
+  } else {
+    properties.setProperty(CONFIG.sourceRevisionProperty, revision);
+    properties.setProperty(CONFIG.dataRevisionProperty, revision);
+  }
   return revision;
 }
 
@@ -835,10 +868,11 @@ function publishAdmissionsDataRevision() {
     const sheet = getSheet_();
     assertSchema_(sheet);
     SpreadsheetApp.flush();
-    const revision = bumpDataRevision_();
+    const revision = bumpSourceAndDataRevision_();
     return {
       ok: true,
       revision,
+      sourceRevision: revision,
       rowCount: Math.max(0, sheet.getLastRow() - CONFIG.headerRow),
       serverTime: new Date().toISOString(),
     };
@@ -857,6 +891,7 @@ function warmAdmissionsCaches() {
   return {
     ok: true,
     revision: snapshot.revision,
+    sourceRevision: sourceIdentityForSnapshot_(snapshot),
     rowCount: meta.rowCount,
     serverTime: new Date().toISOString(),
   };
@@ -874,7 +909,13 @@ function handleAdmissionsSheetEdit(event) {
   const lock = LockService.getScriptLock();
   lock.waitLock(CONFIG.lockWaitMs);
   try {
-    bumpDataRevision_();
+    const sourceChanged = range.getColumn() <= COL.examNo + 1 && range.getLastColumn() >= 1;
+    if (sourceChanged) {
+      bumpSourceAndDataRevision_();
+    } else {
+      ensureSourceRevision_();
+      bumpDataRevision_();
+    }
   } finally {
     lock.releaseLock();
   }
@@ -894,6 +935,10 @@ function rowsCacheChunkKey_(revision, snapshotToken, index) {
   return rowsCacheKey_(revision, 'snapshot:' + digestHex_(snapshotToken) + ':' + String(index));
 }
 
+function rowsCachePatchChunkKey_(revision, snapshotToken, index) {
+  return rowsCacheKey_(revision, 'patch:' + digestHex_(snapshotToken) + ':' + String(index));
+}
+
 function readRowsCacheDescriptor_(revision) {
   try {
     const cache = CacheService.getScriptCache();
@@ -902,12 +947,67 @@ function readRowsCacheDescriptor_(revision) {
     const meta = JSON.parse(metaRaw);
     const chunkCount = Number(meta.chunks);
     const snapshotToken = text_(meta.snapshotToken);
+    const baseRevision = text_(meta.baseRevision) || text_(revision);
+    const baseSnapshotToken = text_(meta.baseSnapshotToken) || snapshotToken;
+    const resultPatchChunkCount = Number(meta.resultPatchChunks || 0);
+    const rowCount = Number(meta.rowCount);
     if (!Number.isInteger(chunkCount) || chunkCount < 1 || chunkCount > CONFIG.rowsCacheMaxChunks) return null;
     if (!snapshotToken) return null;
-    return { chunkCount, snapshotToken };
+    if (!baseRevision || !baseSnapshotToken) return null;
+    if (!Number.isInteger(resultPatchChunkCount) || resultPatchChunkCount < 0 ||
+        resultPatchChunkCount > CONFIG.rowsCacheMaxChunks) return null;
+    return {
+      revision: text_(revision),
+      chunkCount,
+      snapshotToken,
+      baseRevision,
+      baseSnapshotToken,
+      resultPatchChunkCount,
+      rowCount: Number.isInteger(rowCount) && rowCount >= 0 ? rowCount : null,
+    };
   } catch (_) {
     return null;
   }
+}
+
+function readRowsResultPatches_(descriptor) {
+  if (!descriptor || !descriptor.resultPatchChunkCount) return [];
+  const cache = CacheService.getScriptCache();
+  const keys = [];
+  for (let index = 0; index < descriptor.resultPatchChunkCount; index += 1) {
+    keys.push(rowsCachePatchChunkKey_(descriptor.revision, descriptor.snapshotToken, index));
+  }
+  const stored = cache.getAll(keys);
+  const encoded = keys.map(key => stored[key] || '').join('');
+  if (!encoded || keys.some(key => !stored[key])) return null;
+  const zipped = Utilities.base64DecodeWebSafe(encoded);
+  const json = Utilities.ungzip(Utilities.newBlob(zipped)).getDataAsString('UTF-8');
+  const patches = JSON.parse(json);
+  if (!Array.isArray(patches)) return null;
+  for (let index = 0; index < patches.length; index += 1) {
+    const patch = patches[index];
+    if (!Array.isArray(patch) || !Number.isInteger(patch[0]) || patch[0] < 0 ||
+        !Array.isArray(patch[1]) || patch[1].length !== 5) return null;
+  }
+  return patches;
+}
+
+function writeRowsResultPatches_(patches, revision, snapshotToken) {
+  if (!patches.length) return 0;
+  const json = JSON.stringify(patches);
+  const zipped = Utilities.gzip(Utilities.newBlob(json, 'application/json'));
+  const encoded = Utilities.base64EncodeWebSafe(zipped.getBytes());
+  const chunks = [];
+  for (let offset = 0; offset < encoded.length; offset += CONFIG.rowsCacheChunkChars) {
+    chunks.push(encoded.slice(offset, offset + CONFIG.rowsCacheChunkChars));
+  }
+  if (!chunks.length || chunks.length > CONFIG.rowsCacheMaxChunks) return -1;
+  const entries = {};
+  chunks.forEach((chunk, index) => {
+    entries[rowsCachePatchChunkKey_(revision, snapshotToken, index)] = chunk;
+  });
+  CacheService.getScriptCache().putAll(entries, CONFIG.rowsCacheTtlSeconds);
+  return chunks.length;
 }
 
 function readRowsCache_(revision) {
@@ -920,7 +1020,11 @@ function readRowsCache_(revision) {
 
     const keys = [];
     for (let index = 0; index < chunkCount; index += 1) {
-      keys.push(rowsCacheChunkKey_(revision, snapshotToken, index));
+      keys.push(rowsCacheChunkKey_(
+        descriptor.baseRevision,
+        descriptor.baseSnapshotToken,
+        index
+      ));
     }
     const stored = cache.getAll(keys);
     const encoded = keys.map(key => stored[key] || '').join('');
@@ -929,7 +1033,18 @@ function readRowsCache_(revision) {
     const zipped = Utilities.base64DecodeWebSafe(encoded);
     const json = Utilities.ungzip(Utilities.newBlob(zipped)).getDataAsString('UTF-8');
     const rows = JSON.parse(json);
-    return Array.isArray(rows) ? { rows, snapshotToken } : null;
+    if (!Array.isArray(rows)) return null;
+    if (descriptor.rowCount !== null && rows.length !== descriptor.rowCount) return null;
+    const patches = readRowsResultPatches_(descriptor);
+    if (patches === null) return null;
+    if (patches.some(patch => patch[0] >= rows.length || !Array.isArray(rows[patch[0]]))) return null;
+    patches.forEach(patch => {
+      const rowIndex = patch[0];
+      for (let offset = 0; offset < 5; offset += 1) {
+        rows[rowIndex][COL.stage1 + offset] = patch[1][offset];
+      }
+    });
+    return { rows, snapshotToken };
   } catch (_) {
     return null;
   }
@@ -955,11 +1070,58 @@ function writeRowsCache_(rows, revision, snapshotToken) {
     cache.putAll(entries, CONFIG.rowsCacheTtlSeconds);
     cache.put(
       rowsCacheKey_(revision, 'meta'),
-      JSON.stringify({ chunks: chunks.length, snapshotToken }),
+      JSON.stringify({
+        chunks: chunks.length,
+        snapshotToken,
+        baseRevision: revision,
+        baseSnapshotToken: snapshotToken,
+        rowCount: rows.length,
+        resultPatchChunks: 0,
+      }),
       CONFIG.rowsCacheTtlSeconds
     );
   } catch (_) {
     // 캐시를 사용할 수 없어도 원본 시트 조회는 정상적으로 계속합니다.
+  }
+}
+
+function promoteRowsCacheWithResultPatch_(previousRevision, revision, rowIndex, row, expectedRowCount) {
+  try {
+    if (!previousRevision || !revision || previousRevision === revision) return false;
+    const previous = readRowsCacheDescriptor_(previousRevision);
+    if (!previous) return false;
+    if (previous.rowCount !== null && previous.rowCount !== expectedRowCount) return false;
+    if (!Number.isInteger(rowIndex) || rowIndex < 0 || rowIndex >= expectedRowCount) return false;
+
+    const previousPatches = readRowsResultPatches_(previous);
+    if (previousPatches === null) return false;
+    const patchMap = new Map(previousPatches.map(patch => [patch[0], patch[1]]));
+    patchMap.set(rowIndex, row.slice(COL.stage1, COL.finalWait + 1));
+    const patches = Array.from(patchMap.entries()).sort((left, right) => left[0] - right[0]);
+    const snapshotToken = createRowsSnapshotToken_(revision);
+    const resultPatchChunks = writeRowsResultPatches_(patches, revision, snapshotToken);
+    if (resultPatchChunks < 0) return false;
+
+    // 기존 압축 rows chunk를 복사하거나 다시 압축하지 않습니다. 새 descriptor가
+    // 같은 base generation을 참조하고, Q:U patch chunk만 새로 가리킵니다.
+    // descriptor는 마지막에 게시되어 부분적으로 작성된 cache가 노출되지 않습니다.
+    CacheService.getScriptCache().put(
+      rowsCacheKey_(revision, 'meta'),
+      JSON.stringify({
+        chunks: previous.chunkCount,
+        snapshotToken,
+        baseRevision: previous.baseRevision,
+        baseSnapshotToken: previous.baseSnapshotToken,
+        rowCount: expectedRowCount,
+        resultPatchChunks,
+      }),
+      CONFIG.rowsCacheTtlSeconds
+    );
+    return true;
+  } catch (_) {
+    // 캐시 승계는 최적화입니다. 시트 저장과 공개 revision은 이미 확정됐으며,
+    // 실패 시 다음 검색이 ScriptLock 아래 시트를 다시 읽어 정확성을 복구합니다.
+    return false;
   }
 }
 
@@ -981,20 +1143,8 @@ function putCacheSafely_(key, value, ttlSeconds) {
   }
 }
 
-function copyScriptCacheValue_(sourceKey, targetKey, ttlSeconds) {
-  try {
-    const cache = CacheService.getScriptCache();
-    const raw = cache.get(sourceKey);
-    if (!raw) return false;
-    cache.put(targetKey, raw, ttlSeconds);
-    return true;
-  } catch (_) {
-    return false;
-  }
-}
-
 function metaCacheKey_(revision, snapshotToken) {
-  return CONFIG.metaCachePrefix + ':' + digestHex_(revision + '\u001e' + snapshotToken);
+  return CONFIG.metaCachePrefix + ':' + digestHex_(revision);
 }
 
 function readMetaCache_(revision, snapshotToken) {
@@ -1038,7 +1188,7 @@ function writeMetaCache_(revision, snapshotToken, value) {
 
 function universityIndexCacheKey_(revision, snapshotToken) {
   return CONFIG.searchIndexCachePrefix + ':' +
-    digestHex_(revision + '\u001e' + snapshotToken) + ':university';
+    digestHex_(revision) + ':university';
 }
 
 function readPersistentUniversityMap_(revision, snapshotToken, rowCount) {
@@ -1072,20 +1222,35 @@ function writePersistentUniversityMap_(revision, snapshotToken, map) {
   );
 }
 
+function sourceIdentityForSnapshot_(snapshot) {
+  const explicit = text_(snapshot && snapshot.sourceRevision);
+  if (explicit) return explicit;
+  // 테스트/구형 호출자가 sourceRevision을 전달하지 않은 경우에는 기존처럼
+  // rows generation까지 포함해 A:P 직접 변경을 안전하게 무효화합니다.
+  return text_(snapshot && snapshot.revision) + '\u001e' +
+    text_(snapshot && snapshot.snapshotToken);
+}
+
 function getRuntimeSearchIndex_(snapshot) {
   const now = Date.now();
   const maxAgeMs = CONFIG.rowsCacheTtlSeconds * 1000;
+  const sourceRevision = sourceIdentityForSnapshot_(snapshot);
   if (
     RUNTIME_SEARCH_INDEX_ &&
-    RUNTIME_SEARCH_INDEX_.revision === snapshot.revision &&
-    RUNTIME_SEARCH_INDEX_.snapshotToken === snapshot.snapshotToken &&
+    RUNTIME_SEARCH_INDEX_.sourceRevision === sourceRevision &&
     RUNTIME_SEARCH_INDEX_.rows.length === snapshot.rows.length &&
     now - RUNTIME_SEARCH_INDEX_.createdAt < maxAgeMs
   ) {
+    // 후보/정규화 인덱스는 A:P 기준으로 재사용하되, record 생성은 항상
+    // 최신 Q:U가 적용된 rows snapshot을 사용합니다.
+    RUNTIME_SEARCH_INDEX_.rows = snapshot.rows;
+    RUNTIME_SEARCH_INDEX_.revision = snapshot.revision;
+    RUNTIME_SEARCH_INDEX_.snapshotToken = snapshot.snapshotToken;
     return RUNTIME_SEARCH_INDEX_;
   }
 
   RUNTIME_SEARCH_INDEX_ = {
+    sourceRevision,
     revision: snapshot.revision,
     snapshotToken: snapshot.snapshotToken,
     rows: snapshot.rows,
@@ -1116,8 +1281,8 @@ function ensureCandidateMap_(searchIndex, field) {
 
   if (field === 'university') {
     const persistent = readPersistentUniversityMap_(
-      searchIndex.revision,
-      searchIndex.snapshotToken,
+      searchIndex.sourceRevision,
+      '',
       searchIndex.rows.length
     );
     if (persistent) {
@@ -1136,7 +1301,7 @@ function ensureCandidateMap_(searchIndex, field) {
   searchIndex.candidateMaps[field] = map;
   SEARCH_METRICS_.candidateMapBuilds += 1;
   if (field === 'university') {
-    writePersistentUniversityMap_(searchIndex.revision, searchIndex.snapshotToken, map);
+    writePersistentUniversityMap_(searchIndex.sourceRevision, '', map);
   }
   return map;
 }
@@ -1229,8 +1394,7 @@ function writeSearchResponseCache_(revision, snapshotToken, filters, result) {
 }
 
 function searchMatchCacheKey_(revision, snapshotToken, normalizedFilters) {
-  const signature = revision + '\u001e' + snapshotToken + '\u001e' +
-    normalizedFilterSignature_(normalizedFilters);
+  const signature = revision + '\u001e' + normalizedFilterSignature_(normalizedFilters);
   return CONFIG.searchMatchCachePrefix + ':' + digestHex_(signature);
 }
 
@@ -1571,9 +1735,10 @@ function matchesNormalizedFilters_(searchIndex, rowIndex, filters) {
 
 function findMatchingRowIndexes_(snapshot, filters) {
   const normalizedFilters = normalizedSearchFilters_(filters);
+  const sourceRevision = sourceIdentityForSnapshot_(snapshot);
   const cached = readMatchCache_(
-    snapshot.revision,
-    snapshot.snapshotToken,
+    sourceRevision,
+    '',
     normalizedFilters,
     snapshot.rows.length
   );
@@ -1592,7 +1757,7 @@ function findMatchingRowIndexes_(snapshot, filters) {
     matchesNormalizedFilters_(searchIndex, rowIndex, resolvedFilters)
   ));
   const result = { rowIndexes, candidateCount: candidates.length, cacheHit: false };
-  writeMatchCache_(snapshot.revision, snapshot.snapshotToken, normalizedFilters, result);
+  writeMatchCache_(sourceRevision, '', normalizedFilters, result);
   return result;
 }
 

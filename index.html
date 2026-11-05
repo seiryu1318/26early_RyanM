@@ -1151,6 +1151,59 @@
       color: var(--pink-800);
       opacity: 1;
     }
+    #conflictDialog { width: min(650px, calc(100% - 28px)); }
+    .conflict-note {
+      margin: 0 0 14px;
+      color: #6f4358;
+      font-size: 14px;
+      font-weight: 750;
+      line-height: 1.55;
+    }
+    .conflict-list {
+      display: grid;
+      gap: 7px;
+    }
+    .conflict-row {
+      display: grid;
+      grid-template-columns: minmax(96px, .8fr) repeat(2, minmax(0, 1fr));
+      align-items: stretch;
+      gap: 7px;
+      padding: 8px;
+      border-radius: 14px;
+      background: linear-gradient(120deg, rgba(255,255,255,.76), rgba(250,225,237,.58));
+    }
+    .conflict-label {
+      display: flex;
+      align-items: center;
+      padding: 9px 7px;
+      color: var(--pink-900);
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .conflict-value {
+      min-width: 0;
+      padding: 8px 10px;
+      border-radius: 11px;
+      background: rgba(255,255,255,.7);
+    }
+    .conflict-value.is-local { background: rgba(249,206,227,.64); }
+    .conflict-value small {
+      display: block;
+      margin-bottom: 3px;
+      color: #8c6b7a;
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .conflict-value strong {
+      display: block;
+      overflow: hidden;
+      color: #39262f;
+      font-size: 14px;
+      font-weight: 900;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    #conflictDialog .dialog-foot { justify-content: center; }
     .save-button {
       display: inline-flex;
       align-items: center;
@@ -1544,6 +1597,15 @@
     body.mobile-edition .dialog-head { min-height: 60px; }
     body.mobile-edition .dialog-body { padding: 14px; }
     body.mobile-edition .dialog-foot { display: grid; grid-template-columns: auto 1fr; }
+    body.mobile-edition #conflictDialog .dialog-foot { grid-template-columns: 1fr 1fr; }
+    body.mobile-edition .conflict-row {
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    body.mobile-edition .conflict-label {
+      grid-column: 1 / -1;
+      padding: 3px 5px;
+    }
     body.mobile-edition #scheduleDialog {
       max-height: 84dvh;
     }
@@ -2357,6 +2419,20 @@
     </div>
   </dialog>
 
+  <dialog id="conflictDialog" aria-labelledby="conflictTitle" aria-modal="true">
+    <div class="dialog-head">
+      <h2 id="conflictTitle" class="dialog-title">동시 입력 확인</h2>
+    </div>
+    <div class="dialog-body">
+      <p id="conflictMessage" class="conflict-note">같은 항목이 다른 화면에서도 변경되었습니다. 적용할 값을 선택해 주세요.</p>
+      <div id="conflictList" class="conflict-list"></div>
+    </div>
+    <div class="dialog-foot">
+      <button id="conflictKeepServerButton" class="ghost-button" type="button">서버 값 유지</button>
+      <button id="conflictApplyMineButton" class="save-button" type="button">내 입력 반영</button>
+    </div>
+  </dialog>
+
   <div id="savingOverlay" class="saving-overlay" role="status" aria-live="polite" hidden>
     <span class="saving-spinner" aria-hidden="true"></span>
     <span>반영 중</span>
@@ -2778,6 +2854,9 @@
       drafts: new Map(),
       inFlightDrafts: new Map(),
       recoveredDrafts: new Map(),
+      conflictedDrafts: new Map(),
+      recoveredConflicts: new Map(),
+      activeConflictRecordId: '',
       recoveryFilters: null,
       recoveryToastShown: false,
       retryTimers: new Map(),
@@ -2851,6 +2930,11 @@
       passwordForm: $('passwordForm'),
       passwordInput: $('passwordInput'),
       passwordSubmitButton: $('passwordSubmitButton'),
+      conflictDialog: $('conflictDialog'),
+      conflictMessage: $('conflictMessage'),
+      conflictList: $('conflictList'),
+      conflictKeepServerButton: $('conflictKeepServerButton'),
+      conflictApplyMineButton: $('conflictApplyMineButton'),
       savingOverlay: $('savingOverlay'),
       loadingOverlay: $('loadingOverlay'),
       toastRegion: $('toastRegion'),
@@ -3786,6 +3870,7 @@
         totalMatches: Number(data && data.totalMatches) || 0,
         truncated: Boolean(data && data.truncated),
         revision: String(data && data.revision != null ? data.revision : ''),
+        sourceRevision: String(data && data.sourceRevision != null ? data.sourceRevision : ''),
         serverTime: data && data.serverTime,
       };
     }
@@ -3823,7 +3908,7 @@
       const nextSignature = makeRecordsSignature(nextRecords, data.totalMatches, data.truncated);
       const unchanged = silent && nextSignature === state.recordsSignature;
       state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
-      scheduleMetaRefresh(state.dataRevision);
+      scheduleMetaRefresh(data.sourceRevision || data.revision);
       if (verified) state.lastFullSyncAt = Date.now();
       if (unchanged) return false;
 
@@ -3897,6 +3982,7 @@
           if (controller.signal.aborted) return;
           if (validation.notModified) {
             state.dataRevision = String(validation.revision == null ? cached.revision : validation.revision);
+            scheduleMetaRefresh(validation.sourceRevision || validation.revision);
             state.lastFullSyncAt = Date.now();
             setSyncState('online', timeLabel(validation.serverTime));
             schedulePolling();
@@ -3980,6 +4066,7 @@
         if (controller.signal.aborted) return;
         if (data.notModified) {
           state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
+          scheduleMetaRefresh(data.sourceRevision || data.revision);
           setSyncState('online', timeLabel(data.serverTime));
           return;
         }
@@ -4002,7 +4089,8 @@
     }
 
     function hasActiveInlineWork() {
-      return state.drafts.size > 0 || state.inFlightDrafts.size > 0 || state.saving.size > 0;
+      return state.drafts.size > 0 || state.inFlightDrafts.size > 0
+        || state.conflictedDrafts.size > 0 || state.saving.size > 0;
     }
 
     function hasActiveUserInput() {
@@ -4606,22 +4694,31 @@
         const pending = new Map(state.recoveredDrafts);
         state.inFlightDrafts.forEach((draft, recordId) => pending.set(recordId, draft));
         state.drafts.forEach((draft, recordId) => pending.set(recordId, draft));
-        if (!pending.size) {
+        const conflicts = new Map(state.recoveredConflicts);
+        state.conflictedDrafts.forEach((draft, recordId) => conflicts.set(recordId, draft));
+        if (!pending.size && !conflicts.size) {
           localStorage.removeItem(PENDING_DRAFTS_KEY);
           return;
         }
         const filters = normalizeFilterSnapshot(
           state.lastFilters || state.recoveryFilters || (elements.searchForm ? collectFilters() : {})
         );
-        const drafts = [...pending.entries()].map(([recordId, draft]) => ({
+        const serializeDraft = ([recordId, draft]) => ({
           recordId,
           values: { ...draft.values },
           baseValues: { ...draft.baseValues },
           changedKeys: [...draft.changedKeys],
           expectedVersion: draft.expectedVersion,
           updatedAt: Number(draft.updatedAt) || Date.now(),
+        });
+        const drafts = [...pending.entries()].map(serializeDraft);
+        const conflictDrafts = [...conflicts.entries()].map(serializeDraft);
+        localStorage.setItem(PENDING_DRAFTS_KEY, JSON.stringify({
+          version: 2,
+          filters,
+          drafts,
+          conflicts: conflictDrafts,
         }));
-        localStorage.setItem(PENDING_DRAFTS_KEY, JSON.stringify({ version: 1, filters, drafts }));
       } catch (_) {
         // localStorage를 사용할 수 없어도 현재 세션의 자동 저장은 계속합니다.
       }
@@ -4630,7 +4727,7 @@
     function restorePendingDrafts() {
       try {
         const stored = JSON.parse(localStorage.getItem(PENDING_DRAFTS_KEY) || 'null');
-        if (!stored || stored.version !== 1 || !Array.isArray(stored.drafts)) {
+        if (!stored || ![1, 2].includes(stored.version) || !Array.isArray(stored.drafts)) {
           localStorage.removeItem(PENDING_DRAFTS_KEY);
           return;
         }
@@ -4641,6 +4738,15 @@
             state.recoveredDrafts.set(recordId, draft);
           }
         });
+        if (stored.version === 2 && Array.isArray(stored.conflicts)) {
+          stored.conflicts.forEach(raw => {
+            const normalized = normalizePendingDraft(raw);
+            if (normalized) {
+              const { recordId, ...draft } = normalized;
+              state.recoveredConflicts.set(recordId, draft);
+            }
+          });
+        }
         state.recoveryFilters = normalizeFilterSnapshot(stored.filters || {});
         persistPendingDrafts();
       } catch (_) {
@@ -4662,7 +4768,7 @@
     }
 
     function resumeRecoveredDrafts() {
-      if (!state.recoveredDrafts.size || state.searching || state.lastFilters
+      if ((!state.recoveredDrafts.size && !state.recoveredConflicts.size) || state.searching || state.lastFilters
         || !hasFilter(state.recoveryFilters || {}) || !navigator.onLine
         || (!DEMO_MODE && !currentSessionToken())) return;
       applyFilterSnapshot(state.recoveryFilters);
@@ -4671,37 +4777,61 @@
 
     function adoptRecoveredDrafts(records) {
       let adopted = 0;
+      let adoptedConflicts = 0;
       records.forEach(record => {
         const recovered = state.recoveredDrafts.get(record.id);
-        if (!recovered || state.drafts.has(record.id) || state.inFlightDrafts.has(record.id)) return;
-        const changedKeys = recovered.changedKeys.filter(key => !(record.stage1Locked && key === 'stage1'));
-        state.recoveredDrafts.delete(record.id);
-        if (!changedKeys.length) return;
-
-        const values = resultValues(record);
-        changedKeys.forEach(key => { values[key] = recovered.values[key]; });
-        if (changedKeys.includes('stage1')) {
-          applyStage1Cascade(record, values, 'stage1', resultValues(record).stage1);
+        if (recovered && !state.drafts.has(record.id) && !state.inFlightDrafts.has(record.id)) {
+          const changedKeys = recovered.changedKeys.filter(key => !(record.stage1Locked && key === 'stage1'));
+          state.recoveredDrafts.delete(record.id);
+          if (changedKeys.length) {
+            const values = resultValues(record);
+            changedKeys.forEach(key => { values[key] = recovered.values[key]; });
+            if (changedKeys.includes('stage1')) {
+              applyStage1Cascade(record, values, 'stage1', resultValues(record).stage1);
+            }
+            if (record.stage1Locked) values.stage1 = '일괄합산';
+            state.drafts.set(record.id, {
+              values,
+              baseValues: { ...recovered.baseValues },
+              changedKeys,
+              expectedVersion: recovered.expectedVersion,
+              updatedAt: recovered.updatedAt,
+            });
+            adopted += 1;
+          }
         }
-        if (record.stage1Locked) values.stage1 = '일괄합산';
-        state.drafts.set(record.id, {
-          values,
-          baseValues: { ...recovered.baseValues },
-          changedKeys,
-          expectedVersion: recovered.expectedVersion,
-          updatedAt: recovered.updatedAt,
+
+        const recoveredConflict = state.recoveredConflicts.get(record.id);
+        if (!recoveredConflict || state.conflictedDrafts.has(record.id)) return;
+        const conflictKeys = recoveredConflict.changedKeys
+          .filter(key => !(record.stage1Locked && key === 'stage1'));
+        state.recoveredConflicts.delete(record.id);
+        if (!conflictKeys.length) return;
+        const serverValues = resultValues(record);
+        const conflictValues = { ...serverValues };
+        conflictKeys.forEach(key => { conflictValues[key] = recoveredConflict.values[key]; });
+        if (record.stage1Locked) conflictValues.stage1 = '일괄합산';
+        state.conflictedDrafts.set(record.id, {
+          values: conflictValues,
+          baseValues: serverValues,
+          changedKeys: conflictKeys,
+          expectedVersion: record.version,
+          updatedAt: recoveredConflict.updatedAt,
         });
-        adopted += 1;
+        adoptedConflicts += 1;
       });
       persistPendingDrafts();
-      if (adopted) {
+      if (adopted || adoptedConflicts) {
         if (!state.recoveryToastShown) {
-          toast(`임시 저장된 입력 ${adopted}건을 복구했습니다.`, 'success', 4200);
+          toast(`임시 저장된 입력 ${adopted + adoptedConflicts}건을 복구했습니다.`, 'success', 4200);
           state.recoveryToastShown = true;
         }
-        queueMicrotask(() => retryAllDrafts({ immediate: true }));
+        queueMicrotask(() => {
+          retryAllDrafts({ immediate: true });
+          openNextConflictDialog();
+        });
       }
-      return adopted;
+      return adopted + adoptedConflicts;
     }
 
     function clearDraftRetry(recordId, resetAttempts = false) {
@@ -4735,6 +4865,7 @@
       state.reconcileTimer = setTimeout(() => {
         state.reconcileTimer = null;
         if (!state.lastFilters) return;
+        if (state.conflictedDrafts.size) return;
         if (hasActiveInlineWork() || state.searching) {
           scheduleResultReconciliation(350);
           return;
@@ -4765,13 +4896,20 @@
 
     function hasPendingResultWork() {
       return state.drafts.size > 0 || state.inFlightDrafts.size > 0
-        || state.recoveredDrafts.size > 0 || state.saving.size > 0;
+        || state.recoveredDrafts.size > 0 || state.conflictedDrafts.size > 0
+        || state.recoveredConflicts.size > 0 || state.saving.size > 0;
     }
 
     function currentResultValues(record) {
-      const draft = state.drafts.get(record.id);
+      const values = resultValues(record);
       const inFlight = state.inFlightDrafts.get(record.id);
-      return draft ? draft.values : (inFlight ? inFlight.values : resultValues(record));
+      const draft = state.drafts.get(record.id);
+      const conflict = state.conflictedDrafts.get(record.id);
+      [inFlight, draft, conflict].forEach(source => {
+        if (!source) return;
+        source.changedKeys.forEach(key => { values[key] = source.values[key]; });
+      });
+      return values;
     }
 
     function isStepwiseSelection(record) {
@@ -4865,18 +5003,37 @@
     function setDraftValue(recordId, key, value) {
       const record = state.records.find(item => item.id === recordId);
       if (!record) return;
+      const conflict = state.conflictedDrafts.get(recordId);
+      if (conflict && conflict.changedKeys.includes(key)) {
+        const values = { ...conflict.values };
+        const previousStage1 = values.stage1;
+        values[key] = value;
+        applyStage1Cascade(record, values, key, previousStage1);
+        if (record.stage1Locked) values.stage1 = '일괄합산';
+        if (key === 'stage1' && isStepwiseSelection(record)) {
+          ['stage1', 'finalResult', 'failureReason'].forEach(conflictKey => {
+            if (!conflict.changedKeys.includes(conflictKey)) conflict.changedKeys.push(conflictKey);
+          });
+        }
+        conflict.values = values;
+        conflict.updatedAt = Date.now();
+        persistPendingDrafts();
+        syncDraftControls(recordId, currentResultValues(record), record);
+        openNextConflictDialog();
+        return;
+      }
       const existing = state.drafts.get(recordId);
       const inFlight = state.inFlightDrafts.get(recordId);
       const values = existing
         ? { ...existing.values }
-        : (inFlight ? { ...inFlight.values } : resultValues(record));
+        : (inFlight ? { ...inFlight.values } : currentResultValues(record));
       const previousStage1 = values.stage1;
       values[key] = value;
       applyStage1Cascade(record, values, key, previousStage1);
       if (record.stage1Locked) values.stage1 = '일괄합산';
       const changedKeys = new Set(existing ? existing.changedKeys : []);
       changedKeys.add(key);
-      if (key === 'stage1' && previousStage1 === '불합격' && value !== '불합격') {
+      if (key === 'stage1' && isStepwiseSelection(record)) {
         changedKeys.add('finalResult');
         changedKeys.add('failureReason');
       }
@@ -4930,18 +5087,179 @@
       queued.expectedVersion = currentRecord.version;
     }
 
-    function discardConflictingQueuedFields(recordId, currentRecord, conflictingFields) {
-      const queued = state.drafts.get(recordId);
-      if (!queued) return false;
-      const conflicts = new Set((Array.isArray(conflictingFields) ? conflictingFields : [])
-        .filter(key => RESULT_KEYS.includes(key)));
-      queued.changedKeys = queued.changedKeys.filter(key => !conflicts.has(key));
-      if (!queued.changedKeys.length) {
-        state.drafts.delete(recordId);
-        return false;
+    function mergeDraftIntent(failedDraft, queuedDraft) {
+      const values = { ...failedDraft.values };
+      const changedKeys = new Set(failedDraft.changedKeys);
+      if (queuedDraft) {
+        queuedDraft.changedKeys.forEach(key => {
+          changedKeys.add(key);
+          values[key] = queuedDraft.values[key];
+        });
       }
-      rebaseQueuedDraft(recordId, currentRecord);
+      return {
+        values,
+        changedKeys: [...changedKeys],
+        updatedAt: Math.max(Number(failedDraft.updatedAt) || 0, Number(queuedDraft?.updatedAt) || 0, Date.now()),
+      };
+    }
+
+    function makeRebasedDraft(currentRecord, intent, changedKeys) {
+      const baseValues = resultValues(currentRecord);
+      const values = { ...baseValues };
+      changedKeys.forEach(key => { values[key] = intent.values[key]; });
+      if (currentRecord.stage1Locked) values.stage1 = '일괄합산';
+      return {
+        values,
+        baseValues,
+        changedKeys: [...changedKeys],
+        expectedVersion: currentRecord.version,
+        updatedAt: intent.updatedAt || Date.now(),
+      };
+    }
+
+    function restoreDraftAfterConflict(recordId, failedDraft, currentRecord) {
+      const queued = state.drafts.get(recordId);
+      state.drafts.delete(recordId);
+      const intent = mergeDraftIntent(failedDraft, queued);
+      state.drafts.set(recordId, makeRebasedDraft(currentRecord, intent, intent.changedKeys));
       return true;
+    }
+
+    function preserveFieldConflict(recordId, failedDraft, currentRecord, conflictingFields) {
+      const queued = state.drafts.get(recordId);
+      state.drafts.delete(recordId);
+      const intent = mergeDraftIntent(failedDraft, queued);
+      const reported = (Array.isArray(conflictingFields) ? conflictingFields : [])
+        .filter(key => RESULT_KEYS.includes(key));
+      const conflictKeys = new Set(reported.length ? reported : intent.changedKeys);
+      const cascadeKeys = ['stage1', 'finalResult', 'failureReason'];
+      if (isStepwiseSelection(currentRecord) && intent.changedKeys.includes('stage1')
+        && cascadeKeys.some(key => conflictKeys.has(key))) {
+        cascadeKeys.forEach(key => conflictKeys.add(key));
+      }
+      const preservedKeys = [...conflictKeys]
+        .filter(key => RESULT_KEYS.includes(key) && !(currentRecord.stage1Locked && key === 'stage1'));
+      const nonconflictingKeys = intent.changedKeys.filter(key => !conflictKeys.has(key));
+
+      if (nonconflictingKeys.length) {
+        state.drafts.set(recordId, makeRebasedDraft(currentRecord, intent, nonconflictingKeys));
+      }
+      if (preservedKeys.length) {
+        const existing = state.conflictedDrafts.get(recordId);
+        const combinedKeys = new Set(existing ? existing.changedKeys : []);
+        preservedKeys.forEach(key => combinedKeys.add(key));
+        const combinedValues = { ...intent.values };
+        if (existing) existing.changedKeys.forEach(key => { combinedValues[key] = existing.values[key]; });
+        preservedKeys.forEach(key => { combinedValues[key] = intent.values[key]; });
+        const combinedIntent = {
+          values: combinedValues,
+          updatedAt: Math.max(Number(existing?.updatedAt) || 0, Number(intent.updatedAt) || 0),
+        };
+        state.conflictedDrafts.set(
+          recordId,
+          makeRebasedDraft(currentRecord, combinedIntent, [...combinedKeys])
+        );
+      }
+      return nonconflictingKeys.length > 0;
+    }
+
+    function rebaseConflictedDraft(recordId, currentRecord) {
+      const conflict = state.conflictedDrafts.get(recordId);
+      if (!conflict) return;
+      state.conflictedDrafts.set(
+        recordId,
+        makeRebasedDraft(currentRecord, conflict, conflict.changedKeys)
+      );
+      if (state.activeConflictRecordId === recordId && elements.conflictDialog.open) {
+        renderConflictDialog(recordId);
+      }
+    }
+
+    function conflictValueLabel(value) {
+      return String(value || '').trim() || '미입력';
+    }
+
+    function renderConflictDialog(recordId) {
+      const conflict = state.conflictedDrafts.get(recordId);
+      const record = state.records.find(item => item.id === recordId);
+      if (!conflict || !record) return false;
+      elements.conflictMessage.textContent = `${record.name} · ${record.university}의 같은 항목이 다른 화면에서도 변경되었습니다.`;
+      const fragment = document.createDocumentFragment();
+      conflict.changedKeys.forEach(key => {
+        const definition = RESULT_DEFINITIONS[key];
+        if (!definition) return;
+        const row = makeElement('div', '', 'conflict-row');
+        row.append(makeElement('span', definition.label, 'conflict-label'));
+        const server = makeElement('div', '', 'conflict-value');
+        server.append(makeElement('small', '현재 값'), makeElement('strong', conflictValueLabel(conflict.baseValues[key])));
+        const local = makeElement('div', '', 'conflict-value is-local');
+        local.append(makeElement('small', '내 입력'), makeElement('strong', conflictValueLabel(conflict.values[key])));
+        row.append(server, local);
+        fragment.append(row);
+      });
+      elements.conflictList.replaceChildren(fragment);
+      return true;
+    }
+
+    function openNextConflictDialog() {
+      if (elements.conflictDialog.open) {
+        if (state.activeConflictRecordId) renderConflictDialog(state.activeConflictRecordId);
+        return;
+      }
+      const next = [...state.conflictedDrafts.keys()]
+        .find(recordId => state.records.some(record => record.id === recordId));
+      if (!next || !renderConflictDialog(next)) {
+        state.activeConflictRecordId = '';
+        return;
+      }
+      state.activeConflictRecordId = next;
+      setSyncState('error', '입력 확인 필요');
+      elements.conflictDialog.showModal();
+    }
+
+    function closeResolvedConflictDialog() {
+      state.activeConflictRecordId = '';
+      if (elements.conflictDialog.open) elements.conflictDialog.close();
+      renderResults();
+      persistPendingDrafts();
+      queueMicrotask(openNextConflictDialog);
+      drainQueuedSaves();
+      if (!state.conflictedDrafts.size) scheduleResultReconciliation();
+    }
+
+    function keepServerConflictValue() {
+      const recordId = state.activeConflictRecordId;
+      if (!recordId) return;
+      state.conflictedDrafts.delete(recordId);
+      clearDraftRetry(recordId, true);
+      if (!state.conflictedDrafts.size) setSyncState('online', '연결됨');
+      closeResolvedConflictDialog();
+    }
+
+    function applyLocalConflictValue() {
+      const recordId = state.activeConflictRecordId;
+      const conflict = state.conflictedDrafts.get(recordId);
+      const record = state.records.find(item => item.id === recordId);
+      if (!conflict || !record) return;
+      const queued = state.drafts.get(recordId);
+      const inFlight = state.inFlightDrafts.get(recordId);
+      const values = queued
+        ? { ...queued.values }
+        : (inFlight ? { ...inFlight.values } : resultValues(record));
+      conflict.changedKeys.forEach(key => { values[key] = conflict.values[key]; });
+      const changedKeys = new Set(queued ? queued.changedKeys : []);
+      conflict.changedKeys.forEach(key => changedKeys.add(key));
+      state.drafts.set(recordId, {
+        values,
+        baseValues: queued ? queued.baseValues : (inFlight ? inFlight.baseValues : resultValues(record)),
+        changedKeys: [...changedKeys],
+        expectedVersion: queued ? queued.expectedVersion : (inFlight ? inFlight.expectedVersion : record.version),
+        updatedAt: Date.now(),
+      });
+      state.conflictedDrafts.delete(recordId);
+      clearDraftRetry(recordId, true);
+      closeResolvedConflictDialog();
+      if (!state.saving.has(recordId)) queueMicrotask(() => saveInlineResult(recordId));
     }
 
     async function saveInlineResult(recordId) {
@@ -4972,6 +5290,7 @@
       setSyncState('busy', '반영 중');
       let saved = false;
       let shouldRetry = false;
+      let needsConflictChoice = false;
       try {
         const data = await api('save', {
           recordId: record.id,
@@ -4983,26 +5302,31 @@
         });
         replaceRecord(data.record);
         state.searchCache.clear();
+        state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
+        scheduleMetaRefresh(data.sourceRevision || data.revision);
         state.recordsSignature = makeRecordsSignature(
           state.records,
           state.lastTotalMatches,
           state.lastTruncated
         );
         rebaseQueuedDraft(recordId, data.record);
+        rebaseConflictedDraft(recordId, data.record);
         saved = true;
-        setSyncState('online', timeLabel(data.serverTime));
+        if (state.conflictedDrafts.size) setSyncState('error', '입력 확인 필요');
+        else setSyncState('online', timeLabel(data.serverTime));
       } catch (error) {
         if ((error.code === 'CONFLICT' || error.code === 'FIELD_CONFLICT') && error.details && error.details.current) {
           replaceRecord(error.details.current);
           if (error.code === 'FIELD_CONFLICT') {
-            shouldRetry = discardConflictingQueuedFields(
+            shouldRetry = preserveFieldConflict(
               recordId,
+              draft,
               error.details.current,
               error.details.conflictingFields
             );
+            needsConflictChoice = state.conflictedDrafts.has(recordId);
           } else {
-            rebaseQueuedDraft(recordId, error.details.current);
-            shouldRetry = state.drafts.has(recordId);
+            shouldRetry = restoreDraftAfterConflict(recordId, draft, error.details.current);
           }
         } else {
           const queued = state.drafts.get(recordId);
@@ -5016,10 +5340,10 @@
           }
           shouldRetry = true;
         }
-        setSyncState('error', '저장 실패');
+        setSyncState('error', needsConflictChoice ? '입력 확인 필요' : '저장 실패');
         if (!state.retryAttempts.has(recordId)
           || error.code === 'CONFLICT' || error.code === 'FIELD_CONFLICT') {
-          toast(error.message, 'error');
+          toast(needsConflictChoice ? '다른 입력과 겹친 항목을 확인해 주세요.' : error.message, 'error');
         }
       } finally {
         state.inFlightDrafts.delete(recordId);
@@ -5027,13 +5351,14 @@
         renderResults();
         syncSavingOverlay();
         persistPendingDrafts();
+        if (needsConflictChoice) openNextConflictDialog();
         if (saved && state.drafts.has(recordId)) {
           clearDraftRetry(recordId, true);
           queueMicrotask(() => saveInlineResult(recordId));
         } else if (saved) {
           clearDraftRetry(recordId, true);
         } else if (shouldRetry && state.drafts.has(recordId)) {
-          scheduleDraftRetry(recordId);
+          scheduleDraftRetry(recordId, { immediate: needsConflictChoice });
         } else {
           clearDraftRetry(recordId, true);
         }
@@ -5142,6 +5467,9 @@
       state.records = [];
       state.drafts.clear();
       state.inFlightDrafts.clear();
+      state.conflictedDrafts.clear();
+      state.recoveredConflicts.clear();
+      state.activeConflictRecordId = '';
       state.saving.clear();
       state.retryTimers.forEach(timer => clearTimeout(timer));
       state.retryTimers.clear();
@@ -5219,6 +5547,10 @@
       try { localStorage.removeItem(metaStorageKey(apiUrl)); } catch (_) { /* 저장소 없이 계속합니다. */ }
     }
 
+    function metaResponseRevision(data) {
+      return String(data && (data.sourceRevision || data.revision) || '');
+    }
+
     function readStoredMeta(apiUrl = currentApiUrl()) {
       if (DEMO_MODE || !apiUrl) return null;
       const key = metaStorageKey(apiUrl);
@@ -5252,7 +5584,7 @@
 
     function storeMetaResponse(data, apiUrl = currentApiUrl(), { validated = false } = {}) {
       if (DEMO_MODE || !apiUrl) return false;
-      const revision = String(data && data.revision || '');
+      const revision = metaResponseRevision(data);
       const options = data && data.options;
       if (!revision || revision.length > 256 || (!validated && !validMetaOptions(options))) return false;
       const key = metaStorageKey(apiUrl);
@@ -5277,7 +5609,7 @@
 
     function scheduleMetaPersistence(data) {
       if (DEMO_MODE || !currentApiUrl()) return;
-      const revision = String(data && data.revision || '');
+      const revision = metaResponseRevision(data);
       clearTimeout(state.metaPersistTimer);
       state.metaPersistTimer = null;
       if (state.metaPersistIdleId !== null && 'cancelIdleCallback' in window) {
@@ -5302,7 +5634,7 @@
       if (!data || (!validated && !validMetaOptions(data.options))) {
         throw new ApiError('INVALID_META_RESPONSE', '검색 목록 응답을 확인할 수 없습니다.');
       }
-      const revision = String(data.revision == null ? '' : data.revision);
+      const revision = metaResponseRevision(data);
       if (!revision || revision.length > 256) {
         throw new ApiError('INVALID_META_RESPONSE', '검색 목록 버전을 확인할 수 없습니다.');
       }
@@ -5362,7 +5694,7 @@
       setSyncState('busy', '연결 확인 중');
       try {
         const validation = await api('revision');
-        const nextRevision = String(validation.revision == null ? '' : validation.revision);
+        const nextRevision = metaResponseRevision(validation);
         if (nextRevision && nextRevision === cached.revision) {
           setSyncState('online', timeLabel(validation.serverTime));
           return;
@@ -5649,7 +5981,7 @@
         // on mobile Apps Script/WebKit connections.
         setupApiBridge();
         scheduleAuthenticatedMetaInitialization({
-          knownRevision: data.revision,
+          knownRevision: data.sourceRevision || data.revision,
           serverTime: data.serverTime,
         });
       } catch (error) {
@@ -5851,6 +6183,9 @@
       elements.passwordDialog.addEventListener('close', () => {
         elements.passwordDialogShade.hidden = true;
       });
+      elements.conflictKeepServerButton.addEventListener('click', keepServerConflictValue);
+      elements.conflictApplyMineButton.addEventListener('click', applyLocalConflictValue);
+      elements.conflictDialog.addEventListener('cancel', event => event.preventDefault());
       document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
           persistPendingDrafts();
@@ -5873,8 +6208,9 @@
         setTimeout(() => {
           if (!window.__demoRows) window.__demoRows = demoRows();
           if (!window.__demoRevision) window.__demoRevision = 'demo-0';
+          if (!window.__demoSourceRevision) window.__demoSourceRevision = 'demo-source-0';
           if (action === 'health') resolve({ ok: true, serverTime: new Date().toISOString() });
-          else if (action === 'revision') resolve({ ok: true, revision: window.__demoRevision, serverTime: new Date().toISOString() });
+          else if (action === 'revision') resolve({ ok: true, revision: window.__demoRevision, sourceRevision: window.__demoSourceRevision, serverTime: new Date().toISOString() });
           else if (action === 'meta') resolve({
             ok: true,
             options: {
@@ -5888,6 +6224,7 @@
               recruitmentUnitIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8], [], []],
             },
             revision: window.__demoRevision,
+            sourceRevision: window.__demoSourceRevision,
             serverTime: new Date().toISOString(),
           });
           else if (action === 'universities') {
@@ -5906,6 +6243,7 @@
               ok: true,
               notModified: true,
               revision: window.__demoRevision,
+              sourceRevision: window.__demoSourceRevision,
               serverTime: new Date().toISOString(),
             });
           }
@@ -5919,7 +6257,7 @@
               reject(new ApiError('DEMO_SEARCH_FAILED', '데모 검색 실패'));
               return;
             }
-            resolve({ ok: true, notModified: false, records: window.__demoRows.map(record => ({ ...record })), totalMatches: window.__demoRows.length, truncated: false, revision: window.__demoRevision, serverTime: new Date().toISOString() });
+            resolve({ ok: true, notModified: false, records: window.__demoRows.map(record => ({ ...record })), totalMatches: window.__demoRows.length, truncated: false, revision: window.__demoRevision, sourceRevision: window.__demoSourceRevision, serverTime: new Date().toISOString() });
           }
           else if (action === 'export') resolve({
             ok: true,
@@ -5953,7 +6291,7 @@
               row.failureReason = '1단계 불합격';
             }
             window.__demoRevision = `demo-${Date.now()}`;
-            resolve({ ok: true, record: { ...row }, revision: window.__demoRevision, serverTime: new Date().toISOString() });
+            resolve({ ok: true, record: { ...row }, revision: window.__demoRevision, sourceRevision: window.__demoSourceRevision, serverTime: new Date().toISOString() });
           }
         }, Number(window.__demoApiDelayMs) || 260);
       });

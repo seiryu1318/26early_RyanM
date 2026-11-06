@@ -990,22 +990,54 @@
       font-weight: 750;
     }
     input.inline-result-control { font-variant-numeric: tabular-nums; }
-    input.inline-result-checkbox {
-      width: 22px;
-      height: 22px;
+    .result-input-wrap[data-result-key="waitPrediction"] { padding: 0; }
+    .prediction-toggle {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
       margin: 0 auto;
-      padding: 0;
-      border: 2px solid #c67b9d;
-      border-radius: 7px;
-      appearance: none;
       cursor: pointer;
-      background: rgba(255,255,255,.82);
     }
-    input.inline-result-checkbox:checked {
-      border-color: #981552;
-      background: #981552 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 7'/%3E%3C/svg%3E") center/15px no-repeat;
+    .prediction-toggle .inline-result-checkbox {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
     }
-    .cell-result-waitPrediction { width: 68px; }
+    .prediction-indicator {
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      border: 1px solid #a18091;
+      border-radius: 50%;
+      background: #fffafd;
+      color: #76264e;
+      pointer-events: none;
+    }
+    .prediction-indicator svg { width: 13px; height: 13px; visibility: hidden; }
+    .inline-result-checkbox:checked + .prediction-indicator {
+      border-color: #a15c7e;
+      background: #fff7fb;
+      box-shadow: 0 1px 2px rgba(118,38,78,.16);
+    }
+    .inline-result-checkbox:checked + .prediction-indicator svg { visibility: visible; }
+    .inline-result-checkbox:focus-visible + .prediction-indicator {
+      outline: 2px solid #76264e;
+      outline-offset: 3px;
+    }
+    @media (hover: hover) {
+      .prediction-toggle:hover .prediction-indicator { border-color: #76264e; }
+    }
+    @media (forced-colors: active) {
+      .prediction-indicator { border-color: ButtonText; color: ButtonText; }
+      .inline-result-checkbox:focus-visible + .prediction-indicator { outline-color: Highlight; }
+    }
     input.inline-result-control::placeholder { color: #85757d; font-weight: 750; opacity: 1; }
     .inline-result-control:disabled { cursor: default; opacity: .78; }
     .inline-result-control.is-filled {
@@ -1072,8 +1104,9 @@
     .result-table :is(th, td):nth-child(12),
     .result-table :is(th, td):nth-child(13) { width: 90px; }
     .result-table :is(th, td):nth-child(14) { width: 103px; }
-    .result-table :is(th, td):nth-child(15),
-    .result-table :is(th, td):nth-child(16) { width: 82px; }
+    .result-table :is(th, td):nth-child(15) { width: 72px; }
+    .result-table :is(th, td):nth-child(16),
+    .result-table :is(th, td):nth-child(17) { width: 82px; }
     .result-table th:nth-child(n+12) {
       background: linear-gradient(180deg, rgba(255,238,246,.82), rgba(245,180,211,.72));
     }
@@ -1518,7 +1551,9 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .card-inline-results .inline-result-control,
+    .card-result-field[data-result-key="waitPrediction"] { text-align: center; }
+    .card-result-field[data-result-key="waitPrediction"] label { margin-left: 0; }
+    .card-inline-results .inline-result-control:not(.inline-result-checkbox),
     .card-inline-results .stage1-locked { height: 38px; min-height: 38px; font-size: 12.5px; }
     body.mobile-edition .card-inline-results { grid-template-columns: repeat(6, minmax(0, 1fr)); }
     body.mobile-edition .card-result-field { grid-column: span 2; }
@@ -2032,7 +2067,7 @@
         margin-bottom: 3px;
         font-size: 11.5px;
       }
-      body.mobile-edition .card-inline-results .inline-result-control,
+      body.mobile-edition .card-inline-results .inline-result-control:not(.inline-result-checkbox),
       body.mobile-edition .card-inline-results .stage1-locked {
         height: 40px;
         min-height: 40px;
@@ -2797,7 +2832,7 @@
       { key: 'stage1', label: '1단계 합격', result: true },
       { key: 'finalResult', label: '최종 합격', result: true },
       { key: 'failureReason', label: '불합격 사유', result: true },
-      { key: 'waitPrediction', label: '충원 예측', result: true },
+      { key: 'waitPrediction', label: '예측 결과', result: true },
       { key: 'firstWait', label: '최초 충원번호', result: true },
       { key: 'finalWait', label: '최종 충원번호', result: true },
     ];
@@ -2805,7 +2840,10 @@
       stage1: { label: '1단계 합격', type: 'select', options: ['', '합격', '불합격'] },
       finalResult: { label: '최종 합격', type: 'select', options: ['', '합격', '불합격', '충원합격'] },
       failureReason: { label: '불합격 사유', type: 'select', options: ['', '미응시', '최저미충족', '불합격', '1단계 불합격'] },
-      waitPrediction: { label: '충원 예측', type: 'checkbox' },
+      waitPrediction: {
+        label: '예측 결과', type: 'checkbox',
+        help: '최종 합격 칸에 예측값을 입력한 경우 체크합니다.',
+      },
       firstWait: { label: '최초 충원번호', type: 'rank' },
       finalWait: { label: '최종 충원번호', type: 'rank' },
     });
@@ -4177,6 +4215,7 @@
         const button = makeElement('button', '', 'sort-button');
         button.type = 'button';
         button.dataset.sortKey = column.key;
+        if (RESULT_DEFINITIONS[column.key]?.help) button.title = RESULT_DEFINITIONS[column.key].help;
         const sortIcon = makeSvgIcon(
           active
             ? '<path d="M12 19V5M7 10l5-5 5 5"/>'
@@ -5025,7 +5064,17 @@
           (key === 'finalResult' || key === 'failureReason');
         if (control.disabled) control.title = '1단계 불합격으로 자동 입력됨';
         control.addEventListener('click', event => event.stopPropagation());
-        field.append(control);
+        if (definition.type === 'checkbox') {
+          const toggle = makeElement('div', '', 'prediction-toggle');
+          toggle.title = definition.help;
+          const indicator = makeElement('span', '', 'prediction-indicator');
+          indicator.setAttribute('aria-hidden', 'true');
+          indicator.append(makeSvgIcon('<path d="m5 12 4 4L19 7"/>'));
+          toggle.append(control, indicator);
+          field.append(toggle);
+        } else {
+          field.append(control);
+        }
       }
 
       return field;
@@ -6299,7 +6348,7 @@
           }
           else if (action === 'export') resolve({
             ok: true,
-            headers: ['대학구분', '재학여부', '재학년도', '반', '번호', '성명', '대학명', '모집시기', '전형유형', '선발유형', '계열', '전형명', '모집단위', '(원본)평가단위명', '생년월일', '수험번호', '1단계 합격', '최종 합격', '불합격 사유', '충원 예측', '최초 충원번호', '최종 충원번호'],
+            headers: ['대학구분', '재학여부', '재학년도', '반', '번호', '성명', '대학명', '모집시기', '전형유형', '선발유형', '계열', '전형명', '모집단위', '(원본)평가단위명', '생년월일', '수험번호', '1단계 합격', '최종 합격', '불합격 사유', '예측 결과', '최초 충원번호', '최종 충원번호'],
             rows: window.__demoRows.map(record => [
               record.universityType, record.enrollment, '2027', record.classNo,
               String(record.studentNo || '').padStart(2, '0'), record.name, record.university, '수시',

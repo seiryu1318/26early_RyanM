@@ -857,7 +857,7 @@
     .empty-state svg { display: block; width: 40px; height: 40px; margin: 0 auto 11px; color: #d784aa; }
 
     .table-wrap { width: 100%; overflow: visible; }
-    .result-table { width: 100%; min-width: 1450px; table-layout: fixed; border-collapse: collapse; border-spacing: 0; }
+    .result-table { width: 100%; min-width: 1508px; table-layout: fixed; border-collapse: collapse; border-spacing: 0; }
     .result-table th {
       position: sticky;
       top: calc(var(--topbar-height) + var(--sticky-search-gap) + var(--sticky-search-height) + 10px + var(--sticky-results-bar-height));
@@ -990,6 +990,22 @@
       font-weight: 750;
     }
     input.inline-result-control { font-variant-numeric: tabular-nums; }
+    input.inline-result-checkbox {
+      width: 22px;
+      height: 22px;
+      margin: 0 auto;
+      padding: 0;
+      border: 2px solid #c67b9d;
+      border-radius: 7px;
+      appearance: none;
+      cursor: pointer;
+      background: rgba(255,255,255,.82);
+    }
+    input.inline-result-checkbox:checked {
+      border-color: #981552;
+      background: #981552 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4L19 7'/%3E%3C/svg%3E") center/15px no-repeat;
+    }
+    .cell-result-waitPrediction { width: 68px; }
     input.inline-result-control::placeholder { color: #85757d; font-weight: 750; opacity: 1; }
     .inline-result-control:disabled { cursor: default; opacity: .78; }
     .inline-result-control.is-filled {
@@ -1492,7 +1508,6 @@
     }
     .card-result-field.is-filled { background: #f6c9dc; }
     .card-result-field.is-locked { background: #f2cf7a; }
-    .card-result-field:nth-child(5) { grid-column: 1 / -1; }
     .card-result-field label {
       display: block;
       margin: 0 0 4px 2px;
@@ -1508,7 +1523,8 @@
     body.mobile-edition .card-inline-results { grid-template-columns: repeat(6, minmax(0, 1fr)); }
     body.mobile-edition .card-result-field { grid-column: span 2; }
     body.mobile-edition .card-result-field:nth-child(4),
-    body.mobile-edition .card-result-field:nth-child(5) { grid-column: span 3; }
+    body.mobile-edition .card-result-field:nth-child(5),
+    body.mobile-edition .card-result-field:nth-child(6) { grid-column: span 2; }
     body.mobile-edition .list-controls { padding: 11px 108px 11px 11px; }
     body.mobile-edition .list-controls button { min-width: 0; flex: 1; }
     body.mobile-edition .list-controls .top-button { display: none; }
@@ -1815,10 +1831,11 @@
     @media (min-width: 900px) {
       body.mobile-edition .card-quick-meta { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       body.mobile-edition .card-meta { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      body.mobile-edition .card-inline-results { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      body.mobile-edition .card-inline-results { grid-template-columns: repeat(6, minmax(0, 1fr)); }
       body.mobile-edition .card-result-field,
       body.mobile-edition .card-result-field:nth-child(4),
-      body.mobile-edition .card-result-field:nth-child(5) { grid-column: auto; }
+      body.mobile-edition .card-result-field:nth-child(5),
+      body.mobile-edition .card-result-field:nth-child(6) { grid-column: auto; }
     }
 
     @media (max-width: 430px) {
@@ -2009,7 +2026,8 @@
       }
       body.mobile-edition .card-result-field { grid-column: span 2; }
       body.mobile-edition .card-result-field:nth-child(4),
-      body.mobile-edition .card-result-field:nth-child(5) { grid-column: span 3; }
+      body.mobile-edition .card-result-field:nth-child(5),
+      body.mobile-edition .card-result-field:nth-child(6) { grid-column: span 2; }
       body.mobile-edition .card-result-field label {
         margin-bottom: 3px;
         font-size: 11.5px;
@@ -2447,7 +2465,7 @@
     'use strict';
 
     const EDITION = 'mobile';
-    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbywmooL0w4mp7qvkb6PJzlPHPWJaGfVpYv2SYezE1jKZz0Sw1XXNH4evPLDxQ5DDvKa/exec";
+    const DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbz6Xm_2HL3V3EhL4BYMJGQUlNwmAgzDfqRLza9qvFys-3Evry6BznMlCwkXGLQ3yyuB4w/exec";
     const SCHEDULE_PREVIEW_LIMIT = 5;
     const SCHEDULE_CATEGORIES = Object.freeze([
       { key: 'interview', label: '면접 일정', tone: 'interview', icon: 'interview' },
@@ -2779,6 +2797,7 @@
       { key: 'stage1', label: '1단계 합격', result: true },
       { key: 'finalResult', label: '최종 합격', result: true },
       { key: 'failureReason', label: '불합격 사유', result: true },
+      { key: 'waitPrediction', label: '충원 예측', result: true },
       { key: 'firstWait', label: '최초 충원번호', result: true },
       { key: 'finalWait', label: '최종 충원번호', result: true },
     ];
@@ -2786,6 +2805,7 @@
       stage1: { label: '1단계 합격', type: 'select', options: ['', '합격', '불합격'] },
       finalResult: { label: '최종 합격', type: 'select', options: ['', '합격', '불합격', '충원합격'] },
       failureReason: { label: '불합격 사유', type: 'select', options: ['', '미응시', '최저미충족', '불합격', '1단계 불합격'] },
+      waitPrediction: { label: '충원 예측', type: 'checkbox' },
       firstWait: { label: '최초 충원번호', type: 'rank' },
       finalWait: { label: '최종 충원번호', type: 'rank' },
     });
@@ -4249,7 +4269,7 @@
         );
 
         const inlineResults = makeElement('div', '', 'card-inline-results');
-        ['stage1', 'finalResult', 'failureReason', 'firstWait', 'finalWait'].forEach(key => {
+        ['stage1', 'finalResult', 'failureReason', 'waitPrediction', 'firstWait', 'finalWait'].forEach(key => {
           inlineResults.append(makeInlineResultField(record, key, true, false));
         });
         card.append(primary, keys, meta, inlineResults);
@@ -4642,6 +4662,7 @@
         stage1: record.stage1Locked ? '일괄합산' : String(record.stage1 || ''),
         finalResult: String(record.finalResult || ''),
         failureReason: String(record.failureReason || ''),
+        waitPrediction: Boolean(record.waitPrediction),
         firstWait: String(record.firstWait || ''),
         finalWait: String(record.finalWait || ''),
       };
@@ -4674,6 +4695,11 @@
       const values = {};
       const baseValues = {};
       RESULT_KEYS.forEach(key => {
+        if (key === 'waitPrediction') {
+          values[key] = Boolean(raw.values && raw.values[key]);
+          baseValues[key] = Boolean(raw.baseValues && raw.baseValues[key]);
+          return;
+        }
         values[key] = String(raw.values && raw.values[key] || '');
         baseValues[key] = String(raw.baseValues && raw.baseValues[key] || '');
       });
@@ -4946,7 +4972,17 @@
       } else {
         const values = currentResultValues(record);
         let control;
-        if (definition.type === 'select') {
+        if (definition.type === 'checkbox') {
+          control = document.createElement('input');
+          control.type = 'checkbox';
+          control.checked = Boolean(values[key]);
+          control.addEventListener('change', event => {
+            event.stopPropagation();
+            syncResultFieldFilledState(field, control.checked);
+            setDraftValue(record.id, key, control.checked);
+            saveInlineResult(record.id);
+          });
+        } else if (definition.type === 'select') {
           control = document.createElement('select');
           definition.options.forEach(optionValue => control.append(makeOption(optionValue, optionValue || '미입력')));
           control.value = values[key] || '';
@@ -4979,8 +5015,9 @@
             if (event.key === 'Enter') { event.preventDefault(); control.blur(); }
           });
         }
-        control.className = 'inline-result-control' + (control.value ? ' is-filled' : '');
-        syncResultFieldFilledState(field, Boolean(control.value));
+        control.className = 'inline-result-control' + (definition.type === 'checkbox' ? ' inline-result-checkbox' : '') +
+          ((definition.type === 'checkbox' ? control.checked : control.value) ? ' is-filled' : '');
+        syncResultFieldFilledState(field, definition.type === 'checkbox' ? control.checked : Boolean(control.value));
         control.dataset.recordId = record.id;
         control.dataset.resultKey = key;
         control.setAttribute('aria-label', `${record.name || ''} ${definition.label}`.trim());
@@ -5054,7 +5091,8 @@
         if (control.dataset.recordId !== recordId) return;
         const key = control.dataset.resultKey;
         if (!key || !(key in values)) return;
-        if (control.value !== values[key]) control.value = values[key];
+        if (control.type === 'checkbox') control.checked = Boolean(values[key]);
+        else if (control.value !== values[key]) control.value = values[key];
         control.classList.toggle('is-filled', Boolean(values[key]));
         const field = control.closest('.result-input-wrap, .card-result-field');
         if (field) syncResultFieldFilledState(field, Boolean(values[key]));
@@ -6261,13 +6299,13 @@
           }
           else if (action === 'export') resolve({
             ok: true,
-            headers: ['대학구분', '재학여부', '재학년도', '반', '번호', '성명', '대학명', '모집시기', '전형유형', '선발유형', '계열', '전형명', '모집단위', '(원본)평가단위명', '생년월일', '수험번호', '1단계 합격', '최종 합격', '불합격 사유', '최초 충원번호', '최종 충원번호'],
+            headers: ['대학구분', '재학여부', '재학년도', '반', '번호', '성명', '대학명', '모집시기', '전형유형', '선발유형', '계열', '전형명', '모집단위', '(원본)평가단위명', '생년월일', '수험번호', '1단계 합격', '최종 합격', '불합격 사유', '충원 예측', '최초 충원번호', '최종 충원번호'],
             rows: window.__demoRows.map(record => [
               record.universityType, record.enrollment, '2027', record.classNo,
               String(record.studentNo || '').padStart(2, '0'), record.name, record.university, '수시',
               record.admissionType, record.selectionType, record.track, record.admissionName,
               record.recruitmentUnit, '', record.birthdate, record.examNo, record.stage1, record.finalResult,
-              record.failureReason, record.firstWait, record.finalWait,
+              record.failureReason, record.waitPrediction, record.firstWait, record.finalWait,
             ]),
             totalMatches: window.__demoRows.length,
             serverTime: new Date().toISOString(),
@@ -6299,9 +6337,9 @@
 
     function demoRows() {
       return [
-        { id:'demo-1',version:'1',rowNumber:2,universityType:'일반대학',enrollment:'재학생',classNo:'3',studentNo:'12',name:'김민준',university:'연세대학교',track:'자연',admissionType:'종합',admissionName:'활동우수형',recruitmentUnit:'경영학과',birthdate:'080315',examNo:'Y20270018',selectionType:'단계별전형',stage1Locked:false,stage1:'합격',finalResult:'',failureReason:'',firstWait:'',finalWait:'' },
-        { id:'demo-2',version:'1',rowNumber:3,universityType:'일반대학',enrollment:'재학생',classNo:'2',studentNo:'7',name:'이서연',university:'고려대학교',track:'인문',admissionType:'교과(학생부)',admissionName:'학교추천',recruitmentUnit:'정치외교학과',birthdate:'080921',examNo:'K20270104',selectionType:'일괄합산',stage1Locked:true,stage1:'일괄합산',finalResult:'합격',failureReason:'',firstWait:'',finalWait:'' },
-        { id:'demo-3',version:'1',rowNumber:4,universityType:'일반대학',enrollment:'졸업생',classNo:'1',studentNo:'3',name:'박도윤',university:'성균관대학교',track:'자연',admissionType:'논술',admissionName:'논술우수',recruitmentUnit:'전자전기공학부',birthdate:'070602',examNo:'S20270077',selectionType:'일괄합산',stage1Locked:true,stage1:'일괄합산',finalResult:'',failureReason:'',firstWait:'12',finalWait:'5' },
+        { id:'demo-1',version:'1',rowNumber:2,universityType:'일반대학',enrollment:'재학생',classNo:'3',studentNo:'12',name:'김민준',university:'연세대학교',track:'자연',admissionType:'종합',admissionName:'활동우수형',recruitmentUnit:'경영학과',birthdate:'080315',examNo:'Y20270018',selectionType:'단계별전형',stage1Locked:false,stage1:'합격',finalResult:'',failureReason:'',waitPrediction:false,firstWait:'',finalWait:'' },
+        { id:'demo-2',version:'1',rowNumber:3,universityType:'일반대학',enrollment:'재학생',classNo:'2',studentNo:'7',name:'이서연',university:'고려대학교',track:'인문',admissionType:'교과(학생부)',admissionName:'학교추천',recruitmentUnit:'정치외교학과',birthdate:'080921',examNo:'K20270104',selectionType:'일괄합산',stage1Locked:true,stage1:'일괄합산',finalResult:'합격',failureReason:'',waitPrediction:false,firstWait:'',finalWait:'' },
+        { id:'demo-3',version:'1',rowNumber:4,universityType:'일반대학',enrollment:'졸업생',classNo:'1',studentNo:'3',name:'박도윤',university:'성균관대학교',track:'자연',admissionType:'논술',admissionName:'논술우수',recruitmentUnit:'전자전기공학부',birthdate:'070602',examNo:'S20270077',selectionType:'일괄합산',stage1Locked:true,stage1:'일괄합산',finalResult:'',failureReason:'',waitPrediction:false,firstWait:'12',finalWait:'5' },
       ];
     }
 

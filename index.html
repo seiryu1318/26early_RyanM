@@ -1012,19 +1012,19 @@
     .prediction-indicator {
       display: grid;
       place-items: center;
-      width: 20px;
-      height: 20px;
-      border: 1px solid #a18091;
-      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      border: 1.5px solid #a06a84;
+      border-radius: 7px;
       background: #fffafd;
-      color: #76264e;
       pointer-events: none;
     }
-    .prediction-indicator svg { width: 13px; height: 13px; visibility: hidden; }
+    .prediction-indicator svg { width: 15px; height: 15px; stroke-width: 2.8; visibility: hidden; }
     .inline-result-checkbox:checked + .prediction-indicator {
-      border-color: #a15c7e;
-      background: #fff7fb;
-      box-shadow: 0 1px 2px rgba(118,38,78,.16);
+      border-color: #7d194a;
+      background: linear-gradient(150deg, #a42663, #771443);
+      color: #fff;
+      box-shadow: 0 2px 4px rgba(88,14,52,.24);
     }
     .inline-result-checkbox:checked + .prediction-indicator svg { visibility: visible; }
     .inline-result-checkbox:focus-visible + .prediction-indicator {
@@ -1035,7 +1035,14 @@
       .prediction-toggle:hover .prediction-indicator { border-color: #76264e; }
     }
     @media (forced-colors: active) {
-      .prediction-indicator { border-color: ButtonText; color: ButtonText; }
+      .prediction-indicator { border-color: ButtonText; }
+      .inline-result-checkbox:checked + .prediction-indicator {
+        forced-color-adjust: none;
+        border-color: Highlight;
+        background: Highlight;
+        color: HighlightText;
+        box-shadow: none;
+      }
       .inline-result-checkbox:focus-visible + .prediction-indicator { outline-color: Highlight; }
     }
     input.inline-result-control::placeholder { color: #85757d; font-weight: 750; opacity: 1; }
@@ -1104,7 +1111,8 @@
     .result-table :is(th, td):nth-child(12),
     .result-table :is(th, td):nth-child(13) { width: 90px; }
     .result-table :is(th, td):nth-child(14) { width: 103px; }
-    .result-table :is(th, td):nth-child(15) { width: 72px; }
+    .result-table :is(th, td):nth-child(15) { width: 96px; }
+    .sort-button[data-sort-key="waitPrediction"] { gap: 3px; padding-inline: 3px; font-size: 12px; }
     .result-table :is(th, td):nth-child(16),
     .result-table :is(th, td):nth-child(17) { width: 82px; }
     .result-table th:nth-child(n+12) {
@@ -2832,7 +2840,7 @@
       { key: 'stage1', label: '1단계 합격', result: true },
       { key: 'finalResult', label: '최종 합격', result: true },
       { key: 'failureReason', label: '불합격 사유', result: true },
-      { key: 'waitPrediction', label: '예측 결과', result: true },
+      { key: 'waitPrediction', label: '충원예측 입력', result: true },
       { key: 'firstWait', label: '최초 충원번호', result: true },
       { key: 'finalWait', label: '최종 충원번호', result: true },
     ];
@@ -2841,7 +2849,7 @@
       finalResult: { label: '최종 합격', type: 'select', options: ['', '합격', '불합격', '충원합격'] },
       failureReason: { label: '불합격 사유', type: 'select', options: ['', '미응시', '최저미충족', '불합격', '1단계 불합격'] },
       waitPrediction: {
-        label: '예측 결과', type: 'checkbox',
+        label: '충원예측 입력', type: 'checkbox',
         help: '최종 합격 칸에 예측값을 입력한 경우 체크합니다.',
       },
       firstWait: { label: '최초 충원번호', type: 'rank' },
@@ -6348,7 +6356,7 @@
           }
           else if (action === 'export') resolve({
             ok: true,
-            headers: ['대학구분', '재학여부', '재학년도', '반', '번호', '성명', '대학명', '모집시기', '전형유형', '선발유형', '계열', '전형명', '모집단위', '(원본)평가단위명', '생년월일', '수험번호', '1단계 합격', '최종 합격', '불합격 사유', '예측 결과', '최초 충원번호', '최종 충원번호'],
+            headers: ['대학구분', '재학여부', '재학년도', '반', '번호', '성명', '대학명', '모집시기', '전형유형', '선발유형', '계열', '전형명', '모집단위', '(원본)평가단위명', '생년월일', '수험번호', '1단계 합격', '최종 합격', '불합격 사유', '충원예측 입력', '최초 충원번호', '최종 충원번호'],
             rows: window.__demoRows.map(record => [
               record.universityType, record.enrollment, '2027', record.classNo,
               String(record.studentNo || '').padStart(2, '0'), record.name, record.university, '수시',

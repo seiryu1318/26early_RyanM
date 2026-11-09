@@ -4395,7 +4395,7 @@
         const data = await api('export', { filters: { ...state.lastFilters } });
         const headers = Array.isArray(data.headers) ? data.headers : [];
         const rows = Array.isArray(data.rows) ? data.rows : [];
-        if (headers.length !== 21 || rows.some(row => !Array.isArray(row) || row.length !== 21)) {
+        if (headers.length !== 22 || rows.some(row => !Array.isArray(row) || row.length !== 22)) {
           throw new ApiError('INVALID_EXPORT', '엑셀 데이터 형식을 확인할 수 없습니다.');
         }
         const workbook = createXlsxWorkbook(headers, rows);
@@ -4514,7 +4514,7 @@
       const parts = [
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
         '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
-        '<dimension ref="A1:U', String(lastRow), '"/>',
+        '<dimension ref="A1:V', String(lastRow), '"/>',
         '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A2" sqref="A2"/></sheetView></sheetViews>',
         '<sheetFormatPr defaultRowHeight="20"/>',
         '<cols>',
@@ -4530,12 +4530,12 @@
       rows.forEach((row, rowIndex) => {
         const excelRow = rowIndex + 2;
         parts.push(`<row r="${excelRow}">`);
-        for (let columnIndex = 0; columnIndex < 21; columnIndex += 1) {
+        for (let columnIndex = 0; columnIndex < 22; columnIndex += 1) {
           parts.push(xlsxInlineCell(columnName(columnIndex + 1) + excelRow, row[columnIndex], 2));
         }
         parts.push('</row>');
       });
-      parts.push(`</sheetData><autoFilter ref="A1:U${lastRow}"/>`);
+      parts.push(`</sheetData><autoFilter ref="A1:V${lastRow}"/>`);
       parts.push('<pageMargins left="0.3" right="0.3" top="0.5" bottom="0.5" header="0.2" footer="0.2"/>');
       parts.push('</worksheet>');
       return parts.join('');

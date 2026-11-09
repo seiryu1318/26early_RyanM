@@ -1,6 +1,6 @@
 /**
  * 수시모집 합불 조회/입력 API
- * Google Sheets "편집" 탭(A:U)을 읽고 Q:U만 갱신합니다.
+ * Google Sheets "편집" 탭(A:V)을 읽고 Q:V만 갱신합니다.
  *
  * 배포 전 Apps Script 프로젝트 설정 > 스크립트 속성에
  * ACCESS_PASSWORD와 SESSION_SECRET을 반드시 등록하세요.
@@ -11,7 +11,7 @@ const CONFIG = Object.freeze({
   sheetName: '편집',
   headerRow: 1,
   firstDataRow: 2,
-  totalColumns: 21,
+  totalColumns: 22,
   maxSearchResults: 250,
   maxSuggestions: 12,
   lockWaitMs: 20000,
@@ -31,7 +31,7 @@ const CONFIG = Object.freeze({
   // v2 starts a fresh public revision generation so already-open clients
   // immediately discard the pre-normalization rows snapshot after deployment.
   dataRevisionProperty: 'DATA_REVISION_V2',
-  // A:P 검색 원자료와 Q:U 결과 리비전을 분리합니다. 결과 저장은 공개
+  // A:P 검색 원자료와 Q:V 결과 리비전을 분리합니다. 결과 저장은 공개
   // data revision만 바꾸고, 검색 인덱스는 source revision을 계속 재사용합니다.
   sourceRevisionProperty: 'SOURCE_REVISION_V1',
   passwordProperty: 'ACCESS_PASSWORD',
@@ -43,7 +43,7 @@ const EXPECTED_HEADERS = Object.freeze([
   '대학구분', '재학여부', '재학년도', '반', '번호', '성명', '대학명',
   '모집시기', '전형유형', '선발유형', '계열', '전형명', '모집단위',
   '(원본)평가단위명', '생년월일', '수험번호', '1단계 합격', '최종 합격',
-  '불합격 사유', '최초 충원번호', '최종 충원번호',
+  '불합격 사유', '충원예측 입력', '최초 충원번호', '최종 충원번호',
 ]);
 
 const COL = Object.freeze({
@@ -66,8 +66,9 @@ const COL = Object.freeze({
   stage1: 16,        // Q 1단계 합격
   finalResult: 17,   // R 최종 합격
   failureReason: 18, // S 불합격 사유
-  firstWait: 19,     // T 최초 충원번호
-  finalWait: 20,     // U 최종 충원번호
+  waitPrediction: 19,// T 충원예측 입력
+  firstWait: 20,     // U 최초 충원번호
+  finalWait: 21,     // V 최종 충원번호
 });
 
 const ALLOWED = Object.freeze({
@@ -75,7 +76,7 @@ const ALLOWED = Object.freeze({
   finalResult: ['', '합격', '불합격', '충원합격'],
   failureReason: ['', '미응시', '최저미충족', '불합격', '1단계 불합격'],
 });
-const RESULT_KEYS = Object.freeze(['stage1', 'finalResult', 'failureReason', 'firstWait', 'finalWait']);
+const RESULT_KEYS = Object.freeze(['stage1', 'finalResult', 'failureReason', 'waitPrediction', 'firstWait', 'finalWait']);
 const SEARCH_FILTER_KEYS = Object.freeze([
   'university', 'name', 'admissionName', 'recruitmentUnit', 'universityType', 'enrollment', 'classNo',
   'detailName', 'detailUniversity', 'track', 'admissionType', 'detailAdmissionName',
@@ -302,7 +303,7 @@ function getMeta_() {
   const properties = PropertiesService.getScriptProperties().getProperties();
   const revision = properties[CONFIG.dataRevisionProperty] || '0';
   const sourceRevision = properties[CONFIG.sourceRevisionProperty] || revision;
-  // 메타는 A:P에서만 만들어지므로 Q:U 결과 저장 뒤에도 그대로 유효합니다.
+  // 메타는 A:P에서만 만들어지므로 Q:V 결과 저장 뒤에도 그대로 유효합니다.
   // source revision으로 바로 조회하면 rows manifest와 압축 rows를 읽지 않습니다.
   const earlyCached = readMetaCache_(sourceRevision, '');
   if (earlyCached) {
@@ -621,6 +622,7 @@ function save_(payload) {
       stage1: lockedStage1 ? '일괄합산' : validateEnum_(values.stage1, ALLOWED.stage1, '1단계 합격'),
       finalResult: validateEnum_(values.finalResult, ALLOWED.finalResult, '최종 합격'),
       failureReason: validateEnum_(values.failureReason, ALLOWED.failureReason, '불합격 사유'),
+      waitPrediction: cleanBoolean_(values.waitPrediction),
       firstWait: validateRank_(values.firstWait, '최초 충원번호'),
       finalWait: validateRank_(values.finalWait, '최종 충원번호'),
     };
@@ -680,14 +682,11 @@ function save_(payload) {
       };
     }
 
-    sheet.getRange(sheetRow, COL.stage1 + 1, 1, 5)
-      .setValues([[
-        merged.stage1,
-        merged.finalResult,
-        merged.failureReason,
-        merged.firstWait,
-        merged.finalWait,
-      ]]);
+    // 변경된 결과 셀만 기록합니다. 새 결과 열이 추가되거나 오래 열린
+    // 클라이언트가 일부 필드만 보낼 때에도, 무관한 셀의 데이터 확인 규칙을
+    // 다시 통과시키지 않아 정상 입력까지 함께 거부되는 일을 막습니다.
+    const resultKeysToWrite = RESULT_KEYS.filter(key => merged[key] !== currentValues[key]);
+    writeChangedResultValues_(sheet, sheetRow, resultKeysToWrite, merged);
     SpreadsheetApp.flush();
     // 구 배포에서 source revision 속성이 아직 없을 수 있습니다. 공개 data
     // revision을 바꾸기 전에 현재 세대를 고정해야 결과 저장이 검색 인덱스
@@ -698,11 +697,12 @@ function save_(payload) {
     current[COL.stage1] = merged.stage1;
     current[COL.finalResult] = merged.finalResult;
     current[COL.failureReason] = merged.failureReason;
+    current[COL.waitPrediction] = merged.waitPrediction;
     current[COL.firstWait] = merged.firstWait;
     current[COL.finalWait] = merged.finalWait;
 
     // 전체 rows를 다시 inflate/gzip하지 않습니다. 이전 A:P 압축 snapshot을
-    // 참조하고 Q:U 한 행 patch만 새 revision에 게시합니다. ScriptLock 안에서
+    // 참조하고 Q:V 한 행 patch만 새 revision에 게시합니다. ScriptLock 안에서
     // descriptor를 마지막에 게시하므로 연속 저장도 patch를 잃지 않습니다.
     promoteRowsCacheWithResultPatch_(
       previousRevision,
@@ -721,6 +721,33 @@ function save_(payload) {
   } finally {
     if (lockHeld) lock.releaseLock();
   }
+}
+
+function writeChangedResultValues_(sheet, sheetRow, changedKeys, values) {
+  const cells = changedKeys
+    .map(key => ({ key, columnIndex: COL[key] }))
+    .filter(cell => Number.isInteger(cell.columnIndex))
+    .sort((left, right) => left.columnIndex - right.columnIndex);
+  if (!cells.length) return;
+
+  let group = [cells[0]];
+  const writeGroup = items => {
+    const startColumn = items[0].columnIndex + 1;
+    sheet.getRange(sheetRow, startColumn, 1, items.length)
+      .setValues([items.map(item => values[item.key])]);
+  };
+
+  for (let index = 1; index < cells.length; index += 1) {
+    const cell = cells[index];
+    const previous = group[group.length - 1];
+    if (cell.columnIndex === previous.columnIndex + 1) {
+      group.push(cell);
+    } else {
+      writeGroup(group);
+      group = [cell];
+    }
+  }
+  writeGroup(group);
 }
 
 function getAllRows_() {
@@ -987,7 +1014,7 @@ function readRowsResultPatches_(descriptor) {
   for (let index = 0; index < patches.length; index += 1) {
     const patch = patches[index];
     if (!Array.isArray(patch) || !Number.isInteger(patch[0]) || patch[0] < 0 ||
-        !Array.isArray(patch[1]) || patch[1].length !== 5) return null;
+        !Array.isArray(patch[1]) || patch[1].length !== 6) return null;
   }
   return patches;
 }
@@ -1040,7 +1067,7 @@ function readRowsCache_(revision) {
     if (patches.some(patch => patch[0] >= rows.length || !Array.isArray(rows[patch[0]]))) return null;
     patches.forEach(patch => {
       const rowIndex = patch[0];
-      for (let offset = 0; offset < 5; offset += 1) {
+      for (let offset = 0; offset < 6; offset += 1) {
         rows[rowIndex][COL.stage1 + offset] = patch[1][offset];
       }
     });
@@ -1103,7 +1130,7 @@ function promoteRowsCacheWithResultPatch_(previousRevision, revision, rowIndex, 
     if (resultPatchChunks < 0) return false;
 
     // 기존 압축 rows chunk를 복사하거나 다시 압축하지 않습니다. 새 descriptor가
-    // 같은 base generation을 참조하고, Q:U patch chunk만 새로 가리킵니다.
+    // 같은 base generation을 참조하고, Q:V patch chunk만 새로 가리킵니다.
     // descriptor는 마지막에 게시되어 부분적으로 작성된 cache가 노출되지 않습니다.
     CacheService.getScriptCache().put(
       rowsCacheKey_(revision, 'meta'),
@@ -1242,7 +1269,7 @@ function getRuntimeSearchIndex_(snapshot) {
     now - RUNTIME_SEARCH_INDEX_.createdAt < maxAgeMs
   ) {
     // 후보/정규화 인덱스는 A:P 기준으로 재사용하되, record 생성은 항상
-    // 최신 Q:U가 적용된 rows snapshot을 사용합니다.
+    // 최신 Q:V가 적용된 rows snapshot을 사용합니다.
     RUNTIME_SEARCH_INDEX_.rows = snapshot.rows;
     RUNTIME_SEARCH_INDEX_.revision = snapshot.revision;
     RUNTIME_SEARCH_INDEX_.snapshotToken = snapshot.snapshotToken;
@@ -1779,6 +1806,10 @@ function getSheet_() {
 
 function assertSchemaValues_(headerValues) {
   const actual = (headerValues || []).map(value => text_(value).trim());
+  // Keep previous headers valid while the live Sheet and app deploy separately.
+  if (['충원 예측', '예측 결과'].includes(actual[COL.waitPrediction])) {
+    actual[COL.waitPrediction] = EXPECTED_HEADERS[COL.waitPrediction];
+  }
   const mismatch = EXPECTED_HEADERS.findIndex((expected, index) => actual[index] !== expected);
   if (mismatch !== -1) {
     throw apiError_(
@@ -1862,6 +1893,7 @@ function resultValuesFromRow_(row, lockedStage1) {
     stage1: lockedStage1 ? '일괄합산' : text_(row[COL.stage1]),
     finalResult: text_(row[COL.finalResult]),
     failureReason: text_(row[COL.failureReason]),
+    waitPrediction: cleanBoolean_(row[COL.waitPrediction]),
     firstWait: text_(row[COL.firstWait]),
     finalWait: text_(row[COL.finalWait]),
   };
@@ -1879,6 +1911,7 @@ function normalizeMergeRequest_(payload, currentValues, requested, lockedStage1)
     stage1: lockedStage1 ? '일괄합산' : text_(rawBase.stage1),
     finalResult: text_(rawBase.finalResult),
     failureReason: text_(rawBase.failureReason),
+    waitPrediction: cleanBoolean_(rawBase.waitPrediction),
     firstWait: text_(rawBase.firstWait),
     finalWait: text_(rawBase.finalWait),
   };
@@ -1946,6 +1979,7 @@ function toRecord_(row, rowNumber) {
     stage1: stage1Locked ? '일괄합산' : text_(row[COL.stage1]),
     finalResult: text_(row[COL.finalResult]),
     failureReason: text_(row[COL.failureReason]),
+    waitPrediction: cleanBoolean_(row[COL.waitPrediction]),
     firstWait: text_(row[COL.firstWait]),
     finalWait: text_(row[COL.finalWait]),
   };
@@ -1963,7 +1997,7 @@ function makeRecordId_(row) {
 
 function makeVersion_(row) {
   const values = [
-    row[COL.stage1], row[COL.finalResult], row[COL.failureReason],
+    row[COL.stage1], row[COL.finalResult], row[COL.failureReason], row[COL.waitPrediction],
     row[COL.firstWait], row[COL.finalWait],
   ].map(text_).join('\u001f');
   return digestHex_(values);

@@ -2929,6 +2929,8 @@
       retryTimers: new Map(),
       retryAttempts: new Map(),
       saveErrors: new Map(),
+      resultPointerActive: false,
+      deferredResultsRender: null,
       saving: new Set(),
     };
 
@@ -4061,7 +4063,7 @@
 
         if (!data) data = await api('search', { filters }, { signal: controller.signal });
         if (controller.signal.aborted) return;
-        if (silent && hasActiveInlineWork()) {
+        if (silent && hasActiveUserInput()) {
           setSyncState('online', timeLabel(data.serverTime));
           return;
         }
@@ -4138,7 +4140,7 @@
           setSyncState('online', timeLabel(data.serverTime));
           return;
         }
-        if (hasActiveInlineWork()) {
+        if (hasActiveUserInput()) {
           setSyncState('online', timeLabel(data.serverTime));
           return;
         }
@@ -4162,13 +4164,55 @@
     }
 
     function hasActiveUserInput() {
-      return hasActiveInlineWork();
+      return hasActiveInlineWork() || hasFocusedResultControl();
+    }
+
+    function hasFocusedResultControl() {
+      const active = document.activeElement;
+      return state.resultPointerActive || Boolean(active?.matches?.('.inline-result-control'));
+    }
+
+    function isEditingRank(recordId) {
+      const active = document.activeElement;
+      return Boolean(active?.matches?.('.inline-result-control')
+        && active.dataset.recordId === recordId
+        && RESULT_DEFINITIONS[active.dataset.resultKey]?.type === 'rank');
+    }
+
+    function refreshInlineResultControls(recordId) {
+      if (recordId) {
+        const record = findResultRecord(recordId);
+        if (record) syncDraftControls(recordId, currentResultValues(record), record, { preserveActive: true });
+        return;
+      }
+      const records = new Map(state.records.map(record => [record.id, record]));
+      const valuesById = new Map();
+      document.querySelectorAll('.inline-result-control').forEach(control => {
+        const id = control.dataset.recordId;
+        const record = records.get(id);
+        if (!record) return;
+        if (!valuesById.has(id)) valuesById.set(id, currentResultValues(record));
+        syncInlineResultControl(control, valuesById.get(id), record, { preserveActive: true });
+      });
+    }
+
+    function flushDeferredResultsRender() {
+      if (!state.deferredResultsRender || hasFocusedResultControl()) return;
+      const pending = state.deferredResultsRender;
+      state.deferredResultsRender = null;
+      renderResults(pending.totalMatches, pending.truncated);
     }
 
     function renderResults(
       totalMatches = state.lastTotalMatches || state.records.length,
       truncated = state.lastTruncated
     ) {
+      if (hasFocusedResultControl()) {
+        state.deferredResultsRender = { totalMatches, truncated };
+        refreshInlineResultControls();
+        return;
+      }
+      state.deferredResultsRender = null;
       const sorted = sortedRecords();
       const visible = sorted.slice(0, state.visibleCount);
       const shownCount = Math.min(state.visibleCount, sorted.length);
@@ -4764,7 +4808,11 @@
       const record = raw.record && typeof raw.record === 'object'
         ? recoveryRecordSnapshot({ ...raw.record, id: recordId, version: expectedVersion })
         : null;
-      return { recordId, values, baseValues, changedKeys, expectedVersion, updatedAt, record };
+      const hasMutationId = /^[A-Za-z0-9_-]{16,128}$/.test(String(raw.mutationId || ''));
+      const mutationId = hasMutationId ? String(raw.mutationId) : createMutationId();
+      return { recordId, values, baseValues, changedKeys, expectedVersion, updatedAt, record,
+        mutationId, uncertainRetry: raw.uncertainRetry === true || !hasMutationId,
+        verificationRequired: raw.verificationRequired === true };
     }
 
     function persistPendingDrafts() {
@@ -4787,6 +4835,9 @@
           baseValues: { ...draft.baseValues },
           changedKeys: [...draft.changedKeys],
           expectedVersion: draft.expectedVersion,
+          mutationId: draft.mutationId || (draft.mutationId = createMutationId()),
+          uncertainRetry: draft.uncertainRetry === true,
+          verificationRequired: draft.verificationRequired === true,
           updatedAt: Number(draft.updatedAt) || Date.now(),
           record: recoveryRecordSnapshot(findResultRecord(recordId) || draft.record),
         });
@@ -4942,6 +4993,8 @@
               baseValues: { ...recovered.baseValues },
               changedKeys,
               expectedVersion: recovered.expectedVersion,
+              mutationId: recovered.mutationId || createMutationId(),
+              uncertainRetry: recovered.uncertainRetry === true,
               updatedAt: recovered.updatedAt,
             });
             adopted += 1;
@@ -4964,6 +5017,7 @@
           baseValues: serverValues,
           changedKeys: conflictKeys,
           expectedVersion: record.version,
+          verificationRequired: recoveredConflict.verificationRequired === true,
           updatedAt: recoveredConflict.updatedAt,
         });
         adoptedConflicts += 1;
@@ -5014,7 +5068,7 @@
         state.reconcileTimer = null;
         if (!state.lastFilters) return;
         if (state.conflictedDrafts.size) return;
-        if (hasActiveInlineWork() || state.searching) {
+        if (hasActiveUserInput() || state.searching) {
           scheduleResultReconciliation(350);
           return;
         }
@@ -5169,6 +5223,12 @@
       if (cell) cell.classList.toggle('is-filled', filled);
     }
 
+    function createMutationId() {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    }
+
     function setDraftValue(recordId, key, value) {
       const record = findResultRecord(recordId);
       if (!record) return;
@@ -5211,6 +5271,8 @@
         baseValues: existing ? existing.baseValues : (inFlight ? inFlight.baseValues : resultValues(record)),
         changedKeys: [...changedKeys],
         expectedVersion: existing ? existing.expectedVersion : (inFlight ? inFlight.expectedVersion : record.version),
+        mutationId: createMutationId(),
+        uncertainRetry: Boolean(existing?.uncertainRetry || inFlight?.uncertainRetry),
         updatedAt: Date.now(),
       });
       persistPendingDrafts();
@@ -5218,20 +5280,25 @@
       setExportBusy(state.exporting);
     }
 
-    function syncDraftControls(recordId, values, record) {
+    function syncDraftControls(recordId, values, record, { preserveActive = false } = {}) {
       document.querySelectorAll('.inline-result-control').forEach(control => {
         if (control.dataset.recordId !== recordId) return;
-        const key = control.dataset.resultKey;
-        if (!key || !(key in values)) return;
-        if (control.type === 'checkbox') control.checked = Boolean(values[key]);
-        else if (control.value !== values[key]) control.value = values[key];
-        control.classList.toggle('is-filled', Boolean(values[key]));
-        const field = control.closest('.result-input-wrap, .card-result-field');
-        if (field) syncResultFieldFilledState(field, Boolean(values[key]));
-        control.disabled = isStepwiseSelection(record) && values.stage1 === '불합격' &&
-          (key === 'finalResult' || key === 'failureReason');
-        control.title = control.disabled ? '1단계 불합격으로 자동 입력됨' : '';
+        syncInlineResultControl(control, values, record, { preserveActive });
       });
+    }
+
+    function syncInlineResultControl(control, values, record, { preserveActive = false } = {}) {
+      if (preserveActive && (control === document.activeElement || state.resultPointerActive)) return;
+      const key = control.dataset.resultKey;
+      if (!key || !(key in values)) return;
+      if (control.type === 'checkbox') control.checked = Boolean(values[key]);
+      else if (control.value !== values[key]) control.value = values[key];
+      control.classList.toggle('is-filled', Boolean(values[key]));
+      const field = control.closest('.result-input-wrap, .card-result-field');
+      if (field) syncResultFieldFilledState(field, Boolean(values[key]));
+      control.disabled = isStepwiseSelection(record) && values.stage1 === '불합격' &&
+        (key === 'finalResult' || key === 'failureReason');
+      control.title = control.disabled ? '1단계 불합격으로 자동 입력됨' : '';
     }
 
     function setRecordControlsBusy(recordId, busy) {
@@ -5283,6 +5350,8 @@
         baseValues,
         changedKeys: [...changedKeys],
         expectedVersion: currentRecord.version,
+        mutationId: createMutationId(),
+        uncertainRetry: false,
         updatedAt: intent.updatedAt || Date.now(),
       };
     }
@@ -5353,7 +5422,9 @@
       const conflict = state.conflictedDrafts.get(recordId);
       const record = findResultRecord(recordId);
       if (!conflict || !record) return false;
-      elements.conflictMessage.textContent = `${record.name} · ${record.university}의 같은 항목이 다른 화면에서도 변경되었습니다.`;
+      elements.conflictMessage.textContent = conflict.verificationRequired
+        ? `${record.name} ${record.university}의 이전 저장 결과를 확인할 수 없습니다. 현재 값과 내 입력을 확인해 주세요.`
+        : `${record.name} ${record.university}의 같은 항목이 다른 화면에서도 변경되었습니다.`;
       const fragment = document.createDocumentFragment();
       conflict.changedKeys.forEach(key => {
         const definition = RESULT_DEFINITIONS[key];
@@ -5424,6 +5495,8 @@
         baseValues: queued ? queued.baseValues : (inFlight ? inFlight.baseValues : resultValues(record)),
         changedKeys: [...changedKeys],
         expectedVersion: queued ? queued.expectedVersion : (inFlight ? inFlight.expectedVersion : record.version),
+        mutationId: createMutationId(),
+        uncertainRetry: false,
         updatedAt: Date.now(),
       });
       state.conflictedDrafts.delete(recordId);
@@ -5434,6 +5507,9 @@
 
     async function saveInlineResult(recordId) {
       if (state.saving.has(recordId)) return;
+      // Rank input is committed on change/blur. Another row's completed save
+      // must not submit the number halfway through typing it.
+      if (isEditingRank(recordId)) return;
       // A single browser can otherwise launch many Apps Script executions at
       // once. Every save is durable in state.drafts/localStorage; two active
       // requests keep the UI responsive without building a global lock queue.
@@ -5441,6 +5517,7 @@
       const record = findResultRecord(recordId);
       const draft = state.drafts.get(recordId);
       if (!record || !draft) return;
+      if (!draft.mutationId) draft.mutationId = createMutationId();
       clearDraftRetry(recordId);
       const values = { ...draft.values };
       if (!/^\d{0,6}$/.test(values.firstWait) || !/^\d{0,6}$/.test(values.finalWait)) {
@@ -5466,6 +5543,8 @@
           recordId: record.id,
           rowNumber: record.rowNumber,
           expectedVersion: draft.expectedVersion,
+          mutationId: draft.mutationId,
+          uncertainRetry: draft.uncertainRetry === true,
           values,
           baseValues: draft.baseValues,
           changedKeys: draft.changedKeys,
@@ -5496,6 +5575,9 @@
               error.details.current,
               error.details.conflictingFields
             );
+            if (error.details.uncertainRetry && state.conflictedDrafts.has(recordId)) {
+              state.conflictedDrafts.get(recordId).verificationRequired = true;
+            }
             needsConflictChoice = state.conflictedDrafts.has(recordId);
           } else {
             shouldRetry = restoreDraftAfterConflict(recordId, draft, error.details.current);
@@ -5506,8 +5588,10 @@
             queued.changedKeys = [...new Set([...draft.changedKeys, ...queued.changedKeys])];
             queued.baseValues = draft.baseValues;
             queued.expectedVersion = draft.expectedVersion;
+            queued.uncertainRetry = true;
             queued.updatedAt = Math.max(Number(queued.updatedAt) || 0, Number(draft.updatedAt) || 0);
           } else {
+            draft.uncertainRetry = true;
             state.drafts.set(recordId, draft);
           }
           shouldRetry = true;
@@ -5520,7 +5604,9 @@
       } finally {
         state.inFlightDrafts.delete(recordId);
         state.saving.delete(recordId);
-        renderResults();
+        setRecordControlsBusy(recordId, false);
+        refreshInlineResultControls(recordId);
+        setExportBusy(state.exporting);
         syncSavingOverlay();
         persistPendingDrafts();
         if (needsConflictChoice) openNextConflictDialog();
@@ -6290,6 +6376,26 @@
     }
 
     function wireEvents() {
+      // Native menus and text selection must keep the same DOM node while
+      // another request finishes. Wait until focus has moved before flushing
+      // any deferred structural render.
+      document.addEventListener('pointerdown', event => {
+        if (event.target?.closest?.('.inline-result-control')) state.resultPointerActive = true;
+      }, true);
+      const releaseResultPointer = () => {
+        state.resultPointerActive = false;
+        setTimeout(flushDeferredResultsRender, 0);
+      };
+      document.addEventListener('pointerup', releaseResultPointer, true);
+      document.addEventListener('pointercancel', releaseResultPointer, true);
+      document.addEventListener('focusout', event => {
+        if (!event.target?.matches?.('.inline-result-control')) return;
+        setTimeout(() => {
+          flushDeferredResultsRender();
+          refreshInlineResultControls();
+          drainQueuedSaves();
+        }, 0);
+      });
       elements.searchForm.addEventListener('submit', event => {
         event.preventDefault();
         performSearch({ silent: false, manual: true });

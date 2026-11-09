@@ -28,6 +28,8 @@ const CONFIG = Object.freeze({
   searchResponseCacheTtlSeconds: 600,
   searchResponseCacheSlots: 64,
   searchCacheMaxValueBytes: 90000,
+  mutationReceiptCachePrefix: 'admissions-mutation-receipt-v1',
+  mutationReceiptTtlSeconds: 21600,
   // v2 starts a fresh public revision generation so already-open clients
   // immediately discard the pre-normalization rows snapshot after deployment.
   dataRevisionProperty: 'DATA_REVISION_V2',
@@ -374,6 +376,7 @@ function buildMetaOptions_(rows) {
     if (cleaned) bucket.add(cleaned);
   };
   rows.forEach(row => {
+    const admissionName = resolveAdmissionName_(row);
     add(buckets.universityTypes, row[COL.universityType]);
     add(buckets.enrollments, row[COL.enrollment]);
     add(buckets.classes, row[COL.classNo]);
@@ -381,7 +384,7 @@ function buildMetaOptions_(rows) {
     add(buckets.admissionTypes, normalizeAdmissionTypeForRow_(row));
     add(buckets.universities, row[COL.university]);
     add(buckets.names, row[COL.name]);
-    add(buckets.admissionNames, resolveAdmissionName_(row));
+    add(buckets.admissionNames, admissionName);
     add(buckets.recruitmentUnits, row[COL.department]);
     const university = text_(row[COL.university]).trim();
     if (university) {
@@ -391,7 +394,7 @@ function buildMetaOptions_(rows) {
           recruitmentUnits: new Set(),
         };
       }
-      add(universityContexts[university].admissionNames, resolveAdmissionName_(row));
+      add(universityContexts[university].admissionNames, admissionName);
       add(universityContexts[university].recruitmentUnits, row[COL.department]);
     }
   });
@@ -571,6 +574,7 @@ function export_(rawFilters) {
 function save_(payload) {
   const recordId = cleanText_(payload.recordId, 128);
   const expectedVersion = cleanText_(payload.expectedVersion, 128);
+  const mutationId = validateMutationId_(payload.mutationId);
   const requestedRowNumber = Number(payload.rowNumber);
   const values = payload.values || {};
   if (!recordId) throw apiError_('RECORD_ID_REQUIRED', '저장할 학생 정보가 없습니다.');
@@ -615,6 +619,19 @@ function save_(payload) {
     }
     if (rowIndex === -1) throw apiError_('NOT_FOUND', '자료가 변경되었거나 해당 행을 찾지 못했습니다. 다시 검색해 주세요.');
 
+    const sheetRow = CONFIG.firstDataRow + rowIndex;
+    if (mutationId && hasMutationReceipt_(recordId, mutationId)) {
+      // A response can be lost after the write commits. A completed operation
+      // is acknowledged with the CURRENT row, never replayed over later edits.
+      return {
+        ok: true,
+        record: toRecord_(current, sheetRow),
+        revision: getDataRevision_(),
+        sourceRevision: getSourceRevision_(),
+        serverTime: new Date().toISOString(),
+      };
+    }
+
     const currentVersion = makeVersion_(current);
     const lockedStage1 = normalize_(current[COL.selectionType]) === '일괄합산' ||
       normalize_(current[COL.stage1]) === '일괄합산';
@@ -637,6 +654,25 @@ function save_(payload) {
     );
     const effectiveChangedKeys = effectiveMerge.changedKeys;
     const effectiveRequested = effectiveMerge.requested;
+
+    if (mutationId && payload.uncertainRetry === true) {
+      const uncertainFields = effectiveChangedKeys.filter(key => currentValues[key] !== effectiveRequested[key]);
+      if (uncertainFields.length) {
+        // Receipt caches can expire or be evicted. Without proof that an
+        // ambiguous prior attempt completed, never reapply its intent over
+        // another user's later value, including a change back to the base.
+        const conflict = apiError_(
+          'FIELD_CONFLICT',
+          '이전 저장의 완료 여부를 확인할 수 없습니다. 현재 값과 내 입력을 확인해 주세요.'
+        );
+        conflict.details = {
+          current: toRecord_(current, sheetRow),
+          conflictingFields: uncertainFields,
+          uncertainRetry: true,
+        };
+        throw conflict;
+      }
+    }
 
     if (currentVersion !== expectedVersion && mergeRequest.supportsFieldMerge) {
       const conflictingFields = effectiveChangedKeys.filter(key => (
@@ -670,9 +706,9 @@ function save_(payload) {
     merged.finalResult = cascaded.finalResult;
     merged.failureReason = cascaded.failureReason;
 
-    const sheetRow = CONFIG.firstDataRow + rowIndex;
     const noChange = RESULT_KEYS.every(key => merged[key] === currentValues[key]);
     if (noChange) {
+      rememberMutationReceipt_(recordId, mutationId);
       return {
         ok: true,
         record: toRecord_(current, sheetRow),
@@ -693,6 +729,7 @@ function save_(payload) {
     // 세대까지 바꾸지 않습니다.
     ensureSourceRevision_();
     const revision = bumpDataRevision_();
+    rememberMutationReceipt_(recordId, mutationId);
 
     current[COL.stage1] = merged.stage1;
     current[COL.finalResult] = merged.finalResult;
@@ -720,6 +757,39 @@ function save_(payload) {
     };
   } finally {
     if (lockHeld) lock.releaseLock();
+  }
+}
+
+function validateMutationId_(value) {
+  if (value === undefined || value === null || value === '') return '';
+  if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{16,128}$/.test(value)) {
+    throw apiError_('INVALID_MUTATION_ID', '입력 요청 식별자를 확인할 수 없습니다.');
+  }
+  return value;
+}
+
+function mutationReceiptKey_(recordId, mutationId) {
+  return CONFIG.mutationReceiptCachePrefix + ':' + digestHex_(recordId + '\u001f' + mutationId);
+}
+
+function hasMutationReceipt_(recordId, mutationId) {
+  if (!mutationId) return false;
+  try {
+    return CacheService.getScriptCache().get(mutationReceiptKey_(recordId, mutationId)) === '1';
+  } catch (_) {
+    return false;
+  }
+}
+
+function rememberMutationReceipt_(recordId, mutationId) {
+  if (!mutationId) return;
+  try {
+    CacheService.getScriptCache().put(
+      mutationReceiptKey_(recordId, mutationId), '1', CONFIG.mutationReceiptTtlSeconds
+    );
+  } catch (_) {
+    // The cell write already committed. A later uncertain retry without its
+    // receipt takes the conservative conflict path instead of replaying it.
   }
 }
 

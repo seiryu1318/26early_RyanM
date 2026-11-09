@@ -24,7 +24,7 @@ const CONFIG = Object.freeze({
   searchMatchCachePrefix: 'admissions-search-match-v10',
   metaCachePrefix: 'admissions-meta-v9',
   searchMatchCacheTtlSeconds: 600,
-  searchResponseCachePrefix: 'admissions-search-response-v3',
+  searchResponseCachePrefix: 'admissions-search-response-v4',
   searchResponseCacheTtlSeconds: 600,
   searchResponseCacheSlots: 64,
   searchCacheMaxValueBytes: 90000,
@@ -511,6 +511,7 @@ function search_(rawFilters) {
     records: matches,
     totalMatches,
     truncated: totalMatches > matches.length,
+    summary: summarizeResultRows_(rows, match.rowIndexes),
   };
   writeSearchResponseCache_(snapshot.revision, snapshot.snapshotToken, filters, result);
   return {
@@ -520,6 +521,42 @@ function search_(rawFilters) {
     sourceRevision: sourceIdentityForSnapshot_(snapshot),
     serverTime: new Date().toISOString(),
   };
+}
+
+function summarizeResultRows_(rows, rowIndexes) {
+  const summary = {
+    applications: rowIndexes.length,
+    unentered: 0,
+    initial: { total: 0, enrolled: 0, graduates: 0 },
+    waitlist: { total: 0, enrolled: 0, graduates: 0 },
+  };
+  // Reuse the already-filtered row indexes. Read only B/R; no record
+  // normalization, source-index rebuild, or additional Sheets request.
+  for (let index = 0; index < rowIndexes.length; index += 1) {
+    const row = rows[rowIndexes[index]];
+    const enrollment = text_(row[COL.enrollment]).trim();
+    const finalResult = text_(row[COL.finalResult]).trim();
+    if (!finalResult || finalResult === '미입력') summary.unentered += 1;
+    const group = finalResult === '합격' ? summary.initial
+      : (finalResult === '충원합격' ? summary.waitlist : null);
+    if (!group) continue;
+    group.total += 1;
+    if (enrollment === '재학생') group.enrolled += 1;
+    else if (enrollment === '졸업생') group.graduates += 1;
+  }
+  return summary;
+}
+
+function validSearchSummary_(summary, totalMatches) {
+  if (!summary || typeof summary !== 'object' || summary.applications !== totalMatches) return false;
+  const validCount = count => Number.isInteger(count) && count >= 0 && count <= totalMatches;
+  if (!validCount(summary.unentered)) return false;
+  for (const key of ['initial', 'waitlist']) {
+    const group = summary[key];
+    if (!group || !validCount(group.total) || !validCount(group.enrolled)
+      || !validCount(group.graduates) || group.enrolled + group.graduates > group.total) return false;
+  }
+  return summary.unentered + summary.initial.total + summary.waitlist.total <= totalMatches;
 }
 
 function syncSearch_(rawFilters, knownRevision, force, properties) {
@@ -1456,10 +1493,12 @@ function readSearchResponseCache_(revision, snapshotToken, filters) {
     const totalMatches = Number(parsed.totalMatches);
     if (!Number.isInteger(totalMatches) || totalMatches < parsed.records.length
         || parsed.records.length > CONFIG.maxSearchResults) return null;
+    if (!validSearchSummary_(parsed.summary, totalMatches)) return null;
     return {
       records: parsed.records,
       totalMatches,
       truncated: Boolean(parsed.truncated),
+      summary: parsed.summary,
     };
   } catch (_) {
     return null;
@@ -1474,6 +1513,7 @@ function writeSearchResponseCache_(revision, snapshotToken, filters, result) {
       records: result.records,
       totalMatches: result.totalMatches,
       truncated: Boolean(result.truncated),
+      summary: result.summary,
     });
     const plain = 'j:' + json;
     if (cacheValueFits_(plain)) {

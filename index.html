@@ -823,9 +823,62 @@
       background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,232,243,.37));
       box-shadow: inset 0 1px 0 rgba(255,255,255,.94);
     }
-    .results-count { font-weight: 850; letter-spacing: -.02em; }
-    .results-count strong { color: var(--pink-700); font-variant-numeric: tabular-nums; }
-    .results-actions { display: flex; align-items: center; gap: 8px; }
+    .results-count {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 7px 24px;
+      min-width: 0;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+    .summary-basic, .summary-group, .summary-values, .summary-values > span {
+      display: inline-flex;
+      align-items: baseline;
+      white-space: nowrap;
+    }
+    .summary-basic { gap: 4px; }
+    .summary-group { gap: 8px; }
+    .summary-name { font-weight: 850; }
+    .summary-values { gap: 9px; }
+    .summary-values > span { gap: 3px; font-size: 12px; color: #70505f; }
+    .summary-values small { font-size: inherit; font-weight: 650; }
+    .results-count strong { color: var(--pink-700); font-size: 16px; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .summary-values > span:not(:first-child) strong { color: #654150; font-size: 13px; }
+    .summary-basic.is-missing strong { color: #8b6071; }
+    .results-actions { display: flex; flex-shrink: 0; align-items: center; gap: 8px; }
+    @media (max-width: 1120px) {
+      .results-count { column-gap: 17px; }
+      .summary-group { align-items: flex-start; flex-direction: column; gap: 2px; }
+    }
+    @media (max-width: 760px) {
+      body.pc-edition .results-count { display: grid; grid-template-columns: auto auto; column-gap: 18px; }
+    }
+    body.mobile-edition .results-count {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      width: 100%;
+      gap: 8px 12px;
+      font-size: 13px;
+    }
+    body.mobile-edition .summary-group {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: baseline;
+      gap: 3px 4px;
+    }
+    body.mobile-edition .summary-name { font-size: 13px; }
+    body.mobile-edition .summary-values { display: contents; }
+    body.mobile-edition .summary-values > span { gap: 2px; font-size: 11px; }
+    body.mobile-edition .summary-values > span:first-child,
+    body.mobile-edition .summary-values > span:last-child { justify-self: end; }
+    body.mobile-edition .summary-values strong { font-size: 14px; }
+    body.mobile-edition .summary-values > span:not(:first-child) strong { font-size: 12px; }
+    @media (max-width: 350px) {
+      body.mobile-edition .results-count { column-gap: 8px; }
+      body.mobile-edition .summary-values > span { font-size: 10px; }
+    }
     .results-actions .small-button { min-height: 38px; padding: 0 12px; color: var(--pink-800); }
     .export-button {
       min-height: 36px !important;
@@ -1768,7 +1821,7 @@
       position: sticky;
       top: calc(var(--topbar-height) + var(--sticky-search-gap) + var(--sticky-search-height) + 10px);
       z-index: 60;
-      min-height: var(--sticky-results-bar-height);
+      min-height: 58px;
       background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,232,243,.9));
       box-shadow: inset 0 1px 0 rgba(255,255,255,.98), 0 6px 14px rgba(88,20,52,.08);
       backdrop-filter: blur(16px);
@@ -2356,7 +2409,12 @@
 
     <section id="resultsSection" class="results-section glass-panel" aria-label="검색 결과" hidden>
       <div class="results-bar">
-        <div id="resultsCount" class="results-count" aria-live="polite">검색 결과 <strong>0</strong></div>
+        <div id="resultsCount" class="results-count" aria-live="polite" aria-label="검색 결과 집계">
+          <span class="summary-basic">지원 <strong id="summaryApplications">0</strong>건</span>
+          <span class="summary-basic is-missing">미입력 <strong id="summaryUnentered">0</strong>건</span>
+          <span class="summary-group"><span class="summary-name">최초합격</span><span class="summary-values"><span><small>총합</small><strong id="summaryInitialTotal">0</strong>건</span><span><small>재학</small><strong id="summaryInitialEnrolled">0</strong>건</span><span><small>졸업</small><strong id="summaryInitialGraduates">0</strong>건</span></span></span>
+          <span class="summary-group"><span class="summary-name">충원합격</span><span class="summary-values"><span><small>총합</small><strong id="summaryWaitlistTotal">0</strong>건</span><span><small>재학</small><strong id="summaryWaitlistEnrolled">0</strong>건</span><span><small>졸업</small><strong id="summaryWaitlistGraduates">0</strong>건</span></span></span>
+        </div>
         <div class="results-actions">
           <button id="exportButton" class="small-button export-button" type="button" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
@@ -2889,6 +2947,8 @@
       recordsSignature: '',
       lastTotalMatches: 0,
       lastTruncated: false,
+      resultSummary: null,
+      resultSummarySignature: '',
       universities: [],
       universitySearchIndex: [],
       universitySuggestionCache: new Map(),
@@ -2970,6 +3030,12 @@
       scheduleDialogCloseButton: $('scheduleDialogCloseButton'),
       scheduleDialogDoneButton: $('scheduleDialogDoneButton'),
       resultsCount: $('resultsCount'),
+      resultsBar: document.querySelector('.results-bar'),
+      summaryCounts: {
+        applications: $('summaryApplications'), unentered: $('summaryUnentered'),
+        initialTotal: $('summaryInitialTotal'), initialEnrolled: $('summaryInitialEnrolled'), initialGraduates: $('summaryInitialGraduates'),
+        waitlistTotal: $('summaryWaitlistTotal'), waitlistEnrolled: $('summaryWaitlistEnrolled'), waitlistGraduates: $('summaryWaitlistGraduates'),
+      },
       resultsSection: $('resultsSection'),
       emptyState: $('emptyState'),
       tableWrap: $('tableWrap'),
@@ -3933,12 +3999,77 @@
       if (canonical) input.value = canonical;
     }
 
+    function normalizeResultSummary(raw) {
+      if (!raw || typeof raw !== 'object') return null;
+      const keys = ['total', 'enrolled', 'graduates'];
+      const validCount = value => Number.isSafeInteger(value) && value >= 0;
+      if (!validCount(raw.applications) || !validCount(raw.unentered)
+        || !raw.initial || !raw.waitlist
+        || !keys.every(key => validCount(raw.initial[key]) && validCount(raw.waitlist[key]))) return null;
+      if (raw.unentered + raw.initial.total + raw.waitlist.total > raw.applications
+        || raw.initial.enrolled + raw.initial.graduates > raw.initial.total
+        || raw.waitlist.enrolled + raw.waitlist.graduates > raw.waitlist.total) return null;
+      return {
+        applications: raw.applications, unentered: raw.unentered,
+        initial: { total: raw.initial.total, enrolled: raw.initial.enrolled, graduates: raw.initial.graduates },
+        waitlist: { total: raw.waitlist.total, enrolled: raw.waitlist.enrolled, graduates: raw.waitlist.graduates },
+      };
+    }
+
+    function adjustResultSummary(summary, record, direction) {
+      const result = String(record.finalResult || '').trim();
+      if (!result || result === '미입력') summary.unentered += direction;
+      const bucket = result === '합격' ? summary.initial : result === '충원합격' ? summary.waitlist : null;
+      if (!bucket) return;
+      bucket.total += direction;
+      if (record.enrollment === '재학생') bucket.enrolled += direction;
+      else if (record.enrollment === '졸업생') bucket.graduates += direction;
+    }
+
+    function summarizeRecords(records, applications = records.length) {
+      const summary = { applications, unentered: 0,
+        initial: { total: 0, enrolled: 0, graduates: 0 },
+        waitlist: { total: 0, enrolled: 0, graduates: 0 } };
+      records.forEach(record => adjustResultSummary(summary, record, 1));
+      return summary;
+    }
+
+    function renderResultSummary() {
+      const summary = state.resultSummary;
+      const empty = !state.lastTotalMatches && !state.records.length;
+      const counts = {
+        applications: summary?.applications ?? state.lastTotalMatches,
+        unentered: summary?.unentered ?? (empty ? 0 : null),
+        initialTotal: summary?.initial.total ?? (empty ? 0 : null),
+        initialEnrolled: summary?.initial.enrolled ?? (empty ? 0 : null),
+        initialGraduates: summary?.initial.graduates ?? (empty ? 0 : null),
+        waitlistTotal: summary?.waitlist.total ?? (empty ? 0 : null),
+        waitlistEnrolled: summary?.waitlist.enrolled ?? (empty ? 0 : null),
+        waitlistGraduates: summary?.waitlist.graduates ?? (empty ? 0 : null),
+      };
+      const signature = JSON.stringify(counts);
+      if (state.resultSummarySignature === signature) return;
+      state.resultSummarySignature = signature;
+      Object.entries(counts).forEach(([key, value]) => {
+        const node = elements.summaryCounts[key];
+        if (node) node.textContent = value === null ? '—' : value.toLocaleString('ko-KR');
+      });
+    }
+
+    function updateSummaryForRecord(previous, next) {
+      if (!state.resultSummary || (previous.finalResult === next.finalResult && previous.enrollment === next.enrollment)) return;
+      adjustResultSummary(state.resultSummary, previous, -1);
+      adjustResultSummary(state.resultSummary, next, 1);
+      renderResultSummary();
+    }
+
     function cloneSearchResponse(data) {
       const records = Array.isArray(data && data.records) ? data.records : [];
       return {
         records: records.map(record => ({ ...record })),
         totalMatches: Number(data && data.totalMatches) || 0,
         truncated: Boolean(data && data.truncated),
+        summary: normalizeResultSummary(data && data.summary),
         revision: String(data && data.revision != null ? data.revision : ''),
         sourceRevision: String(data && data.sourceRevision != null ? data.sourceRevision : ''),
         serverTime: data && data.serverTime,
@@ -3977,6 +4108,10 @@
       const nextRecords = Array.isArray(data.records) ? data.records : [];
       const nextSignature = makeRecordsSignature(nextRecords, data.totalMatches, data.truncated);
       const unchanged = silent && nextSignature === state.recordsSignature;
+      state.resultSummary = normalizeResultSummary(data.summary)
+        || (!data.truncated ? summarizeRecords(nextRecords, Number(data.totalMatches) || 0) : null);
+      state.lastTotalMatches = Number(data.totalMatches) || 0;
+      renderResultSummary();
       state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
       scheduleMetaRefresh(data.sourceRevision || data.revision);
       if (verified) state.lastFullSyncAt = Date.now();
@@ -4105,7 +4240,6 @@
       elements.searchForm.setAttribute('aria-busy', String(busy));
       elements.loadingOverlay.hidden = !busy;
       if (busy && !state.records.length && !elements.resultsSection.hidden) {
-        elements.resultsCount.textContent = '검색 중';
         elements.emptyState.querySelector('span').textContent = '검색 중';
       } else if (!busy && !state.records.length && state.lastFilters) {
         renderResults();
@@ -4207,6 +4341,7 @@
       totalMatches = state.lastTotalMatches || state.records.length,
       truncated = state.lastTruncated
     ) {
+      renderResultSummary();
       if (hasFocusedResultControl()) {
         state.deferredResultsRender = { totalMatches, truncated };
         refreshInlineResultControls();
@@ -4216,11 +4351,6 @@
       const sorted = sortedRecords();
       const visible = sorted.slice(0, state.visibleCount);
       const shownCount = Math.min(state.visibleCount, sorted.length);
-      elements.resultsCount.replaceChildren(
-        document.createTextNode('검색 결과 '),
-        makeElement('strong', String(totalMatches)),
-        truncated ? document.createTextNode(' · 일부 표시') : document.createTextNode('')
-      );
 
       const hasRecords = sorted.length > 0;
       elements.resultsSection.hidden = !state.lastFilters && !hasRecords;
@@ -5629,6 +5759,7 @@
       if (state.recoveryRecords.has(next.id)) state.recoveryRecords.set(next.id, next);
       const index = state.records.findIndex(item => item.id === next.id);
       if (index >= 0) {
+        updateSummaryForRecord(state.records[index], next);
         state.records.splice(index, 1, next);
         state.recordsSignature = makeRecordsSignature(
           state.records,
@@ -5639,6 +5770,10 @@
     }
 
     function updateStickySearchMetrics() {
+      const resultBarHeight = Math.ceil(elements.resultsBar?.getBoundingClientRect().height || 0);
+      if (resultBarHeight > 0 && document.documentElement.style.getPropertyValue('--sticky-results-bar-height') !== `${resultBarHeight}px`) {
+        document.documentElement.style.setProperty('--sticky-results-bar-height', `${resultBarHeight}px`);
+      }
       const isActive = document.body.classList.contains('has-searched');
       const height = isActive && elements.searchPanel
         ? Math.ceil(elements.searchPanel.getBoundingClientRect().height)
@@ -5743,6 +5878,7 @@
       state.recordsSignature = '';
       state.lastTotalMatches = 0;
       state.lastTruncated = false;
+      state.resultSummary = null;
       state.visibleCount = INITIAL_PAGE_SIZE;
       state.sortKey = DEFAULT_SORT_KEY;
       state.sortDirection = DEFAULT_SORT_DIRECTION;
@@ -6607,6 +6743,7 @@
       if ('ResizeObserver' in window) {
         state.searchPanelObserver = new ResizeObserver(updateStickySearchMetrics);
         state.searchPanelObserver.observe(elements.searchPanel);
+        state.searchPanelObserver.observe(elements.resultsBar);
       }
       window.addEventListener('resize', updateStickySearchMetrics, { passive: true });
       setupAutocomplete(elements.universityInput, $('universitySuggestions'));

@@ -2787,7 +2787,6 @@
     const DEFAULT_SORT_KEY = 'classNo';
     const DEFAULT_SORT_DIRECTION = 'asc';
     const PENDING_DRAFTS_KEY = `admissionsPendingDraftsV1:${EDITION}`;
-    const PENDING_DRAFT_TTL_MS = 3 * 60 * 60 * 1000;
     const SAVE_RETRY_BASE_MS = 1000;
     const SAVE_RETRY_MAX_MS = 15000;
     const SAVE_RETRY_MAX_ATTEMPTS = 5;
@@ -2920,6 +2919,8 @@
       drafts: new Map(),
       inFlightDrafts: new Map(),
       recoveredDrafts: new Map(),
+      recoveryRecords: new Map(),
+      recoveryPromise: null,
       conflictedDrafts: new Map(),
       recoveredConflicts: new Map(),
       activeConflictRecordId: '',
@@ -2927,6 +2928,7 @@
       recoveryToastShown: false,
       retryTimers: new Map(),
       retryAttempts: new Map(),
+      saveErrors: new Map(),
       saving: new Set(),
     };
 
@@ -4737,7 +4739,7 @@
       const recordId = String(raw.recordId || '').slice(0, 128);
       const expectedVersion = String(raw.expectedVersion || '').slice(0, 128);
       const updatedAt = Number(raw.updatedAt) || Date.now();
-      if (!recordId || !expectedVersion || Date.now() - updatedAt > PENDING_DRAFT_TTL_MS) return null;
+      if (!recordId || !expectedVersion) return null;
 
       const values = {};
       const baseValues = {};
@@ -4759,7 +4761,10 @@
         .map(key => String(key || ''))
         .filter(key => RESULT_KEYS.includes(key)))];
       if (!changedKeys.length) return null;
-      return { recordId, values, baseValues, changedKeys, expectedVersion, updatedAt };
+      const record = raw.record && typeof raw.record === 'object'
+        ? recoveryRecordSnapshot({ ...raw.record, id: recordId, version: expectedVersion })
+        : null;
+      return { recordId, values, baseValues, changedKeys, expectedVersion, updatedAt, record };
     }
 
     function persistPendingDrafts() {
@@ -4783,6 +4788,7 @@
           changedKeys: [...draft.changedKeys],
           expectedVersion: draft.expectedVersion,
           updatedAt: Number(draft.updatedAt) || Date.now(),
+          record: recoveryRecordSnapshot(findResultRecord(recordId) || draft.record),
         });
         const drafts = [...pending.entries()].map(serializeDraft);
         const conflictDrafts = [...conflicts.entries()].map(serializeDraft);
@@ -4840,15 +4846,83 @@
       elements.includeCampusesToggle.checked = Boolean(values.includeCampuses);
     }
 
-    function resumeRecoveredDrafts() {
-      if ((!state.recoveredDrafts.size && !state.recoveredConflicts.size) || state.searching || state.lastFilters
-        || !hasFilter(state.recoveryFilters || {}) || !navigator.onLine
-        || (!DEMO_MODE && !currentSessionToken())) return;
-      applyFilterSnapshot(state.recoveryFilters);
-      performSearch({ silent: false, manual: false });
+    function findResultRecord(recordId) {
+      return state.records.find(record => record.id === recordId)
+        || state.recoveryRecords.get(recordId);
     }
 
-    function adoptRecoveredDrafts(records) {
+    function recoveryRecordSnapshot(record) {
+      if (!record || typeof record !== 'object' || !record.id) return null;
+      const rowNumber = Number(record.rowNumber);
+      return {
+        id: String(record.id).slice(0, 128),
+        version: String(record.version || '').slice(0, 128),
+        rowNumber: Number.isInteger(rowNumber) && rowNumber >= 2 ? rowNumber : 0,
+        name: String(record.name || '').slice(0, 120),
+        university: String(record.university || '').slice(0, 240),
+        selectionType: String(record.selectionType || '').slice(0, 120),
+        stage1Locked: Boolean(record.stage1Locked),
+        ...resultValues(record),
+      };
+    }
+
+    function resumeRecoveredDrafts() {
+      if ((!state.recoveredDrafts.size && !state.recoveredConflicts.size) || !navigator.onLine
+        || (!DEMO_MODE && !currentSessionToken())) return state.recoveryPromise;
+      if (state.recoveryPromise) return state.recoveryPromise;
+
+      // Saving already supports finding an existing row by record ID. Resume
+      // durable patches directly, without restoring the user's old search UI.
+      const pendingRecords = [];
+      state.recoveredDrafts.forEach((draft, recordId) => {
+        const record = findResultRecord(recordId) || {
+          ...(draft.record || {}),
+          ...draft.baseValues,
+          id: recordId,
+          version: draft.expectedVersion,
+          rowNumber: draft.record?.rowNumber || 0,
+          stage1Locked: Boolean(draft.record?.stage1Locked || draft.baseValues.stage1 === '일괄합산'),
+        };
+        state.recoveryRecords.set(recordId, record);
+        pendingRecords.push(record);
+      });
+      if (pendingRecords.length) adoptRecoveredDrafts(pendingRecords, { includeConflicts: false });
+      if (!state.recoveredConflicts.size) return null;
+
+      // A previously unresolved conflict needs current server values before
+      // offering the same explicit choice again. This read stays off-screen.
+      const task = (async () => {
+        const groups = new Map();
+        state.recoveredConflicts.forEach((draft, recordId) => {
+          const snapshot = draft.record;
+          const filters = snapshot?.name && snapshot?.university
+            ? normalizeFilterSnapshot({ name: snapshot.name, university: snapshot.university })
+            : normalizeFilterSnapshot(state.recoveryFilters || {});
+          if (!hasFilter(filters)) return;
+          const key = JSON.stringify(filters);
+          if (!groups.has(key)) groups.set(key, filters);
+        });
+        for (const filters of groups.values()) {
+          try {
+            const data = await api('search', { filters });
+            const records = (Array.isArray(data.records) ? data.records : [])
+              .filter(record => state.recoveredConflicts.has(record.id));
+            records.forEach(record => state.recoveryRecords.set(record.id, record));
+            adoptRecoveredDrafts(records);
+          } catch (_) {
+            // Keep unresolved drafts persisted for the next online/session
+            // recovery attempt. A failed read must never discard local input.
+          }
+        }
+      })();
+      const wrapped = task.finally(() => {
+        if (state.recoveryPromise === wrapped) state.recoveryPromise = null;
+      });
+      state.recoveryPromise = wrapped;
+      return wrapped;
+    }
+
+    function adoptRecoveredDrafts(records, { includeConflicts = true } = {}) {
       let adopted = 0;
       let adoptedConflicts = 0;
       records.forEach(record => {
@@ -4874,6 +4948,7 @@
           }
         }
 
+        if (!includeConflicts) return;
         const recoveredConflict = state.recoveredConflicts.get(record.id);
         if (!recoveredConflict || state.conflictedDrafts.has(record.id)) return;
         const conflictKeys = recoveredConflict.changedKeys
@@ -5095,7 +5170,7 @@
     }
 
     function setDraftValue(recordId, key, value) {
-      const record = state.records.find(item => item.id === recordId);
+      const record = findResultRecord(recordId);
       if (!record) return;
       const conflict = state.conflictedDrafts.get(recordId);
       if (conflict && conflict.changedKeys.includes(key)) {
@@ -5276,7 +5351,7 @@
 
     function renderConflictDialog(recordId) {
       const conflict = state.conflictedDrafts.get(recordId);
-      const record = state.records.find(item => item.id === recordId);
+      const record = findResultRecord(recordId);
       if (!conflict || !record) return false;
       elements.conflictMessage.textContent = `${record.name} · ${record.university}의 같은 항목이 다른 화면에서도 변경되었습니다.`;
       const fragment = document.createDocumentFragment();
@@ -5302,7 +5377,7 @@
         return;
       }
       const next = [...state.conflictedDrafts.keys()]
-        .find(recordId => state.records.some(record => record.id === recordId));
+        .find(recordId => Boolean(findResultRecord(recordId)));
       if (!next || !renderConflictDialog(next)) {
         state.activeConflictRecordId = '';
         return;
@@ -5334,7 +5409,7 @@
     function applyLocalConflictValue() {
       const recordId = state.activeConflictRecordId;
       const conflict = state.conflictedDrafts.get(recordId);
-      const record = state.records.find(item => item.id === recordId);
+      const record = findResultRecord(recordId);
       if (!conflict || !record) return;
       const queued = state.drafts.get(recordId);
       const inFlight = state.inFlightDrafts.get(recordId);
@@ -5363,7 +5438,7 @@
       // once. Every save is durable in state.drafts/localStorage; two active
       // requests keep the UI responsive without building a global lock queue.
       if (state.saving.size >= MAX_CONCURRENT_SAVES) return;
-      const record = state.records.find(item => item.id === recordId);
+      const record = findResultRecord(recordId);
       const draft = state.drafts.get(recordId);
       if (!record || !draft) return;
       clearDraftRetry(recordId);
@@ -5406,10 +5481,12 @@
         );
         rebaseQueuedDraft(recordId, data.record);
         rebaseConflictedDraft(recordId, data.record);
+        state.saveErrors.delete(recordId);
         saved = true;
         if (state.conflictedDrafts.size) setSyncState('error', '입력 확인 필요');
         else setSyncState('online', timeLabel(data.serverTime));
       } catch (error) {
+        state.saveErrors.set(recordId, { code: String(error.code || 'SAVE_FAILED'), message: error.message || '입력을 반영하지 못했습니다.' });
         if ((error.code === 'CONFLICT' || error.code === 'FIELD_CONFLICT') && error.details && error.details.current) {
           replaceRecord(error.details.current);
           if (error.code === 'FIELD_CONFLICT') {
@@ -5463,6 +5540,7 @@
     }
 
     function replaceRecord(next) {
+      if (state.recoveryRecords.has(next.id)) state.recoveryRecords.set(next.id, next);
       const index = state.records.findIndex(item => item.id === next.id);
       if (index >= 0) {
         state.records.splice(index, 1, next);
@@ -5564,6 +5642,7 @@
       state.inFlightDrafts.clear();
       state.conflictedDrafts.clear();
       state.recoveredConflicts.clear();
+      state.recoveryRecords.clear();
       state.activeConflictRecordId = '';
       state.saving.clear();
       state.retryTimers.forEach(timer => clearTimeout(timer));
@@ -6119,8 +6198,21 @@
     }
 
     function setSyncState(stateName, label) {
+      for (const recordId of state.saveErrors.keys()) {
+        if (!state.drafts.has(recordId) && !state.inFlightDrafts.has(recordId)
+          && !state.conflictedDrafts.has(recordId)) state.saveErrors.delete(recordId);
+      }
+      const saveError = state.saveErrors.values().next().value;
+      if (saveError && stateName === 'online') {
+        stateName = 'error';
+        label = '저장 대기';
+      }
       elements.syncPill.dataset.state = stateName;
       elements.syncText.textContent = label;
+      elements.syncPill.title = saveError ? `${label}: ${saveError.message} 입력값은 임시 저장되어 있습니다.` : label;
+      elements.syncPill.setAttribute('aria-label', elements.syncPill.title);
+      if (saveError) elements.syncPill.dataset.errorCode = saveError.code;
+      else delete elements.syncPill.dataset.errorCode;
     }
 
     function timeLabel(dateText) {

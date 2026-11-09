@@ -730,6 +730,12 @@ function writeChangedResultValues_(sheet, sheetRow, changedKeys, values) {
     .sort((left, right) => left.columnIndex - right.columnIndex);
   if (!cells.length) return;
 
+  if (changedKeys.indexOf('waitPrediction') >= 0) {
+    // Plain-text formatting can make a Boolean write fail the checkbox rule.
+    // Repair only T; rank fields and their text formatting remain untouched.
+    sheet.getRange(sheetRow, COL.waitPrediction + 1, 1, 1).setNumberFormat('General');
+  }
+
   let group = [cells[0]];
   const writeGroup = items => {
     const startColumn = items[0].columnIndex + 1;

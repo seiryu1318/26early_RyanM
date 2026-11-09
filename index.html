@@ -4018,12 +4018,13 @@
 
     function adjustResultSummary(summary, record, direction) {
       const result = String(record.finalResult || '').trim();
+      const enrollment = String(record.enrollment || '').trim();
       if (!result || result === '미입력') summary.unentered += direction;
       const bucket = result === '합격' ? summary.initial : result === '충원합격' ? summary.waitlist : null;
       if (!bucket) return;
       bucket.total += direction;
-      if (record.enrollment === '재학생') bucket.enrolled += direction;
-      else if (record.enrollment === '졸업생') bucket.graduates += direction;
+      if (enrollment === '재학생') bucket.enrolled += direction;
+      else if (enrollment === '졸업생') bucket.graduates += direction;
     }
 
     function summarizeRecords(records, applications = records.length) {

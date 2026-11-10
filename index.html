@@ -877,7 +877,9 @@
     .summary-rate-chart :is(.summary-chart-row, .summary-chart-axis) { grid-template-columns: 34px minmax(0, 1fr) 48px; }
     .summary-rate-chart .summary-chart-row { min-height: 34px; }
     .results-actions { display: flex; flex-shrink: 0; align-items: center; gap: 8px; }
-    body.pc-edition .results-actions { align-self: flex-start; }
+    body.pc-edition .results-bar { position: relative; }
+    body.pc-edition .results-actions { position: absolute; top: 11px; right: 18px; }
+    body.pc-edition .summary-heading { padding-right: 172px; }
     @media (max-width: 1180px) {
       .summary-charts { grid-template-columns: 1fr; gap: 12px; }
       .summary-rate-chart { max-width: 420px; }
@@ -2273,6 +2275,23 @@
     }
     body.mobile-edition .card-quick-meta .meta-row :is(small, span) { font-size: 13.5px; line-height: 1.35; }
     body.mobile-edition .card-quick-meta .meta-row small { flex-shrink: 0; }
+    /* Use the same header/value rows for every result field. Symmetric select
+       padding keeps its text centered under the label despite the arrow. */
+    body.mobile-edition .card-result-field { display: grid; grid-template-rows: 16px 44px; align-content: start; gap: 4px; }
+    body.mobile-edition .card-result-field label { margin: 0; line-height: 16px; }
+    body.mobile-edition .card-inline-results .inline-result-control:not(.inline-result-checkbox),
+    body.mobile-edition .card-inline-results .stage1-locked { display: block; height: 44px; min-height: 44px; margin: 0; line-height: 44px; }
+    body.mobile-edition .card-inline-results .stage1-locked { display: flex; }
+    body.mobile-edition .card-inline-results select.inline-result-control {
+      padding-inline: 8px;
+      text-align: center;
+      text-align-last: center;
+      background-position: right 0 center;
+      background-size: 8px;
+    }
+    @media (max-width: 430px) {
+      body.mobile-edition .card-result-field { padding-inline: 2px; }
+    }
     @media (max-width: 350px) {
       body.mobile-edition .card-quick-meta .meta-row { display: block; }
     }

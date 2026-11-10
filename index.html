@@ -823,15 +823,10 @@
       background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,232,243,.37));
       box-shadow: inset 0 1px 0 rgba(255,255,255,.94);
     }
-    .results-count {
-      display: grid;
-      gap: 7px;
-      min-width: 0;
-      font-size: 13px;
-      font-weight: 800;
-      letter-spacing: -.02em;
-    }
+    .results-count { min-width: 0; color: #553642; font-size: 12px; letter-spacing: -.02em; }
     .results-summary { flex: 1; min-width: 0; }
+    .summary-toolbar-title { display: inline-flex; align-items: center; flex-shrink: 0; gap: 6px; margin: 0; color: #8d315b; font-size: 13px; font-weight: 850; }
+    .summary-toolbar-title .button-icon { width: 16px; height: 16px; }
     .summary-disclosure {
       display: flex;
       align-items: center;
@@ -850,88 +845,54 @@
     .summary-disclosure .summary-chevron { width: 13px; height: 13px; transition: transform .16s; }
     .results-summary[open] .summary-chevron { transform: rotate(180deg); }
     body.pc-edition .summary-disclosure { display: none; }
-    body.pc-edition .results-count { display: flex; flex-wrap: nowrap; gap: 16px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #d8adbf transparent; }
-    body.pc-edition :is(.summary-overview, .summary-total, .summary-breakdown) { display: contents; }
-    body.pc-edition .summary-basic, body.pc-edition .summary-total-count { flex-shrink: 0; }
-    body.pc-edition .results-count strong { font-size: 15px; }
-    body.pc-edition .summary-rates { font-size: 11.5px; gap: 8px; }
-    body.pc-edition .summary-rates strong { font-size: 12px; }
-    body.pc-edition .summary-group { flex-shrink: 0; }
-    body.pc-edition .summary-values { gap: 6px; }
-    body.pc-edition .summary-values strong { font-size: 12px; }
-    .summary-overview, .summary-breakdown {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 6px 24px;
-    }
-    .summary-basic, .summary-primary-value, .summary-total, .summary-total-count,
-    .summary-rates, .summary-rates > span, .summary-group, .summary-values, .summary-values > span {
-      display: inline-flex;
-      align-items: baseline;
-      white-space: nowrap;
-    }
-    .summary-basic, .summary-total-count { gap: 6px; }
-    .summary-primary-value { gap: 3px; }
-    .summary-total { gap: 14px; }
-    .summary-total-count .summary-name { color: #85134a; }
-    .summary-rates { gap: 12px; color: #86566d; font-size: 12px; font-weight: 650; }
-    .summary-rates > span { gap: 5px; }
-    .summary-rates small { font-size: inherit; }
-    .summary-breakdown { gap: 5px 22px; color: #795866; }
-    .summary-group { gap: 7px; }
-    .summary-name { font-weight: 850; }
-    .summary-breakdown .summary-name { font-size: 12px; font-weight: 750; }
-    .summary-values { gap: 8px; }
-    .summary-values > span { gap: 3px; font-size: 11.5px; color: #866c78; }
-    .summary-values small { font-size: inherit; font-weight: 650; }
-    .results-count strong { color: var(--pink-700); font-size: 17px; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .summary-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 20px; margin-bottom: 10px; }
+    .summary-basic { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-weight: 750; }
+    .results-count strong { color: #a21858; font-size: inherit; font-weight: 850; font-variant-numeric: tabular-nums; }
+    .summary-basic strong { font-size: 15px; }
     .summary-basic.is-missing strong { color: #8b6071; }
-    .summary-total-count strong { color: #a20c55; font-size: 17px; }
-    .summary-rates strong { color: #8c315b; font-size: 13px; font-weight: 850; }
-    .summary-values strong { color: #77515f; font-size: 12px; font-weight: 800; }
-    .summary-values > span:first-child strong { color: #964268; font-size: 13px; }
+    body.mobile-edition .summary-header-total { display: none; }
+    .summary-legend { display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 7px; color: #705663; font-size: 11px; font-weight: 700; }
+    .summary-legend > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+    .summary-swatch { width: 12px; height: 6px; border-radius: 2px; }
+    .summary-enrolled { background: #bc3576; }
+    .summary-graduates { background: #9b7a91; }
+    .summary-other { background: #a5a0a8; }
+    .summary-charts { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 26px; }
+    .summary-chart { min-width: 0; }
+    .summary-chart-title { margin: 0 0 5px; color: #765363; font-size: 11px; font-weight: 750; }
+    .summary-chart-row { display: grid; grid-template-columns: 62px minmax(0, 1fr) 58px 112px; align-items: center; column-gap: 9px; min-height: 27px; }
+    .summary-chart-label { color: #4f303e; font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .summary-chart-track { display: flex; height: 9px; overflow: hidden; background: rgba(120,61,91,.075); border-radius: 3px; }
+    .summary-chart-fill { height: 100%; flex-shrink: 0; }
+    .summary-chart-value { text-align: right; white-space: nowrap; }
+    .summary-chart-value strong { font-size: 13px; }
+    .summary-chart-detail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; color: #795d6a; font-size: 10.5px; white-space: nowrap; }
+    .summary-chart-detail > span { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 3px; align-items: baseline; }
+    .summary-chart-detail strong { color: #684250; text-align: right; }
+    .summary-chart-detail .summary-other-count { color: #776f7a; }
+    .summary-chart-detail:has(.summary-other-count:not([hidden])) { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; font-size: 9.5px; }
+    .summary-chart-detail:has(.summary-other-count:not([hidden])) > span { grid-template-columns: auto minmax(0, 1fr); gap: 2px; }
+    .summary-chart-axis { display: grid; grid-template-columns: 62px minmax(0, 1fr) 58px 112px; column-gap: 9px; margin-top: 1px; }
+    .summary-chart-ticks { grid-column: 2; display: flex; justify-content: space-between; color: #8e7682; font-size: 10px; font-variant-numeric: tabular-nums; }
+    .summary-rate-chart :is(.summary-chart-row, .summary-chart-axis) { grid-template-columns: 34px minmax(0, 1fr) 48px; }
+    .summary-rate-chart .summary-chart-row { min-height: 34px; }
     .results-actions { display: flex; flex-shrink: 0; align-items: center; gap: 8px; }
-    @media (max-width: 1120px) {
-      .summary-overview { column-gap: 18px; }
-      .summary-total { gap: 10px; }
+    body.pc-edition .results-actions { align-self: flex-start; }
+    @media (max-width: 1180px) {
+      .summary-charts { grid-template-columns: 1fr; gap: 12px; }
+      .summary-rate-chart { max-width: 420px; }
     }
-    body.mobile-edition .results-count {
-      display: grid;
-      width: 100%;
-      gap: 9px;
-      font-size: 13px;
-    }
-    body.mobile-edition .summary-overview { display: grid; grid-template-columns: 1fr 1fr 1.25fr; gap: 5px 10px; align-items: start; }
-    body.mobile-edition .summary-basic,
-    body.mobile-edition .summary-total-count { flex-direction: column; align-items: center; gap: 1px; }
-    body.mobile-edition .summary-basic .summary-name { color: #826270; font-size: 11px; font-weight: 750; }
-    body.mobile-edition .summary-total-count .summary-name { font-size: 11px; }
-    body.mobile-edition .summary-total { display: contents; }
-    body.mobile-edition .summary-rates { grid-column: 1 / -1; justify-content: center; gap: 15px; font-size: 11px; }
-    body.mobile-edition .summary-rates strong { font-size: 12px; }
-    body.mobile-edition .summary-primary-value strong { font-size: 18px; }
-    body.mobile-edition .summary-total-count strong { font-size: 18px; }
-    body.mobile-edition .summary-breakdown { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
-    body.mobile-edition .summary-group {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      align-items: baseline;
-      gap: 2px 4px;
-    }
-    body.mobile-edition .summary-breakdown .summary-name { font-size: 11px; }
-    body.mobile-edition .summary-values { display: contents; }
-    body.mobile-edition .summary-values > span { gap: 2px; font-size: 10px; }
-    body.mobile-edition .summary-values > span:first-child,
-    body.mobile-edition .summary-values > span:last-child { justify-self: end; }
-    body.mobile-edition .summary-values strong { font-size: 11px; }
-    body.mobile-edition .summary-values > span:first-child strong { font-size: 13px; }
     body.mobile-edition .results-summary[open] .results-count { padding: 8px 0 5px; }
+    body.mobile-edition .summary-heading { justify-content: center; gap: 8px 18px; }
+    body.mobile-edition .summary-toolbar-title { display: none; }
+    body.mobile-edition .summary-legend { width: 100%; justify-content: center; margin-left: 0; }
+    body.mobile-edition .summary-charts { grid-template-columns: 1fr; gap: 14px; }
+    body.mobile-edition .summary-chart-row { grid-template-columns: 59px minmax(0, 1fr) 53px; column-gap: 7px; min-height: 44px; }
+    body.mobile-edition .summary-chart-detail { grid-column: 2 / -1; width: min(160px, 100%); gap: 14px; padding-bottom: 4px; font-size: 11px; }
+    body.mobile-edition .summary-chart-axis { grid-template-columns: 59px minmax(0, 1fr) 53px; column-gap: 7px; }
+    body.mobile-edition .summary-rate-chart :is(.summary-chart-row, .summary-chart-axis) { grid-template-columns: 59px minmax(0, 1fr) 53px; }
+    body.mobile-edition .summary-rate-chart .summary-chart-row { min-height: 30px; }
     body.mobile-edition :is(.field label, .card-result-field label, .keydata-box > small, .card-meta .meta-row small) { text-align: center; margin-inline: 0; }
-    @media (max-width: 350px) {
-      body.mobile-edition .summary-breakdown { column-gap: 8px; }
-      body.mobile-edition .summary-values > span { font-size: 10px; }
-    }
     .results-actions .small-button { min-height: 38px; padding: 0 12px; color: var(--pink-800); }
     .export-button {
       min-height: 36px !important;
@@ -1617,12 +1578,9 @@
     .keydata-box .copy-button { grid-column: 3; justify-self: center; }
     .card-meta {
       display: grid;
-      grid-template-columns: minmax(68px, .72fr) minmax(0, 1.14fr) minmax(0, 1.14fr);
-      gap: 5px;
-      padding: 7px;
-      border-radius: 13px;
-      background: linear-gradient(115deg, rgba(255,255,255,.55), rgba(255,232,243,.48));
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.72);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      padding: 0;
     }
     .meta-row { min-width: 0; }
     .card-meta .meta-row {
@@ -1630,12 +1588,13 @@
       padding: 6px 7px;
       border-radius: 9px;
       background: rgba(255,255,255,.34);
+      text-align: center;
     }
     .card-meta .meta-row.full, .card-meta .meta-row:last-child { grid-column: auto; }
     .meta-row small { display: block; color: #9c7a89; font-size: 12px; font-weight: 800; }
     .meta-row span { display: block; min-width: 0; overflow: hidden; color: #4b3440; font-size: 14px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
     .card-meta .meta-row small { color: #9a627c; font-size: 11px; letter-spacing: -.01em; }
-    .card-meta .meta-row span { margin-top: 2px; color: #49313d; font-weight: 850; }
+    .card-meta .meta-row span { margin-top: 2px; color: #49313d; font-weight: 850; text-align: center; }
     .card-inline-results {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1974,12 +1933,10 @@
       body.mobile-edition.has-searched .primary-search { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       body.mobile-edition .detail-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       body.mobile-edition .card-primary { grid-template-columns: minmax(170px, .7fr) minmax(0, 1.3fr); }
-      body.mobile-edition .card-meta { grid-template-columns: minmax(80px, .72fr) minmax(0, 1.14fr) minmax(0, 1.14fr); }
     }
 
     @media (min-width: 900px) {
       body.mobile-edition .card-quick-meta { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      body.mobile-edition .card-meta { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       body.mobile-edition .card-inline-results { grid-template-columns: repeat(6, minmax(0, 1fr)); }
       body.mobile-edition .card-result-field,
       body.mobile-edition .card-result-field:nth-child(4),
@@ -2147,7 +2104,6 @@
       }
       body.mobile-edition .keydata-box small { font-size: 11.5px; }
       body.mobile-edition .keydata-box .copy-value { font-size: 13.5px; }
-      body.mobile-edition .card-meta { gap: 5px 9px; }
       body.mobile-edition .meta-row {
         display: grid;
         grid-template-columns: auto minmax(0, 1fr);
@@ -2156,11 +2112,11 @@
       }
       body.mobile-edition .meta-row small { font-size: 11.5px; line-height: 1.35; }
       body.mobile-edition .meta-row span { font-size: 13.5px; line-height: 1.35; }
-      body.mobile-edition .card-meta { gap: 4px; padding: 5px; }
+      body.mobile-edition .card-meta { gap: 6px; padding: 0; }
       body.mobile-edition .card-meta .meta-row {
         display: block;
         padding: 5px;
-        text-align: left;
+        text-align: center;
       }
       body.mobile-edition .card-meta .meta-row small { font-size: 10.5px; }
       body.mobile-edition .card-meta .meta-row span { margin-top: 1px; font-size: 12.5px; }
@@ -2310,11 +2266,13 @@
     body.mobile-edition select,
     body.mobile-edition textarea { font-size: 16px !important; }
     body.mobile-edition .card-quick-meta .meta-row {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
+      display: flex;
+      flex-wrap: wrap;
       align-items: baseline;
-      gap: 3px;
+      gap: 1px 6px;
     }
+    body.mobile-edition .card-quick-meta .meta-row :is(small, span) { font-size: 13.5px; line-height: 1.35; }
+    body.mobile-edition .card-quick-meta .meta-row small { flex-shrink: 0; }
     @media (max-width: 350px) {
       body.mobile-edition .card-quick-meta .meta-row { display: block; }
     }
@@ -2465,21 +2423,34 @@
         <details id="summaryDisclosure" class="results-summary">
           <summary class="summary-disclosure"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15v-4M12 15V5M17 15v-7"/></svg><span>합격률 통계</span><svg class="button-icon summary-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
         <div id="resultsCount" class="results-count" aria-live="polite" aria-label="검색 결과 집계">
-          <span class="summary-overview">
-            <span class="summary-basic"><span class="summary-name">지원</span><span class="summary-primary-value"><strong id="summaryApplications">0</strong>건</span></span>
-            <span class="summary-basic is-missing"><span class="summary-name">미입력</span><span class="summary-primary-value"><strong id="summaryUnentered">0</strong>건</span></span>
-            <span class="summary-total"><span class="summary-total-count"><span class="summary-name">총 합격</span><span class="summary-primary-value"><strong id="summaryTotalAccepted">0</strong>건</span></span><span class="summary-rates"><span><small>재학</small><strong id="summaryEnrolledAcceptanceRate">—</strong></span><span><small>졸업</small><strong id="summaryGraduateAcceptanceRate">—</strong></span></span></span>
-          </span>
-          <span class="summary-breakdown">
-            <span class="summary-group"><span class="summary-name">최초합격</span><span class="summary-values"><span><strong id="summaryInitialTotal">0</strong>건</span><span><small>재학</small><strong id="summaryInitialEnrolled">0</strong>건</span><span><small>졸업</small><strong id="summaryInitialGraduates">0</strong>건</span></span></span>
-            <span class="summary-group"><span class="summary-name">충원합격</span><span class="summary-values"><span><strong id="summaryWaitlistTotal">0</strong>건</span><span><small>재학</small><strong id="summaryWaitlistEnrolled">0</strong>건</span><span><small>졸업</small><strong id="summaryWaitlistGraduates">0</strong>건</span></span></span>
-          </span>
+          <div class="summary-heading">
+            <h2 class="summary-toolbar-title"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15v-4M12 15V5M17 15v-7"/></svg>통계</h2>
+            <span class="summary-basic">지원 <span><strong id="summaryApplications">0</strong>건</span></span>
+            <span class="summary-basic summary-header-total">총 합격 <span><strong id="summaryHeaderTotalAccepted">0</strong>건</span></span>
+            <span class="summary-basic is-missing">미입력 <span><strong id="summaryUnentered">0</strong>건</span></span>
+          </div>
+          <div class="summary-charts">
+            <div class="summary-chart" role="group" aria-label="합격 건수 막대그래프">
+              <h3 class="summary-chart-title">합격 건수</h3>
+              <div class="summary-chart-row"><span class="summary-chart-label">총 합격</span><div class="summary-chart-track" aria-hidden="true"><span id="summaryTotalEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="summaryTotalGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="summaryTotalOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="summaryTotalAccepted">0</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="summaryTotalEnrolled">0</strong></span><span>졸업 <strong id="summaryTotalGraduates">0</strong></span><span class="summary-other-count" id="summaryTotalOtherDetail" hidden>기타 <strong id="summaryTotalOther">0</strong></span></span></div>
+              <div class="summary-chart-row"><span class="summary-chart-label">최초합격</span><div class="summary-chart-track" aria-hidden="true"><span id="summaryInitialEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="summaryInitialGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="summaryInitialOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="summaryInitialTotal">0</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="summaryInitialEnrolled">0</strong></span><span>졸업 <strong id="summaryInitialGraduates">0</strong></span><span class="summary-other-count" id="summaryInitialOtherDetail" hidden>기타 <strong id="summaryInitialOther">0</strong></span></span></div>
+              <div class="summary-chart-row"><span class="summary-chart-label">충원합격</span><div class="summary-chart-track" aria-hidden="true"><span id="summaryWaitlistEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="summaryWaitlistGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="summaryWaitlistOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="summaryWaitlistTotal">0</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="summaryWaitlistEnrolled">0</strong></span><span>졸업 <strong id="summaryWaitlistGraduates">0</strong></span><span class="summary-other-count" id="summaryWaitlistOtherDetail" hidden>기타 <strong id="summaryWaitlistOther">0</strong></span></span></div>
+              <div class="summary-chart-axis" aria-label="건수 눈금"><span class="summary-chart-ticks"><span>0</span><span id="summaryCountMidpoint">1</span><span id="summaryCountMaximum">2건</span></span></div>
+              <div class="summary-legend" aria-label="범례"><span><i class="summary-swatch summary-enrolled" aria-hidden="true"></i>재학</span><span><i class="summary-swatch summary-graduates" aria-hidden="true"></i>졸업</span><span id="summaryOtherLegend" hidden><i class="summary-swatch summary-other" aria-hidden="true"></i>기타</span></div>
+            </div>
+            <div class="summary-chart summary-rate-chart" role="group" aria-label="재학 및 졸업 합격률 막대그래프">
+              <h3 class="summary-chart-title">합격률</h3>
+              <div class="summary-chart-row"><span class="summary-chart-label">재학</span><div class="summary-chart-track" aria-hidden="true"><span id="summaryEnrolledRateBar" class="summary-chart-fill summary-enrolled"></span></div><span class="summary-chart-value"><strong id="summaryEnrolledAcceptanceRate">—</strong></span></div>
+              <div class="summary-chart-row"><span class="summary-chart-label">졸업</span><div class="summary-chart-track" aria-hidden="true"><span id="summaryGraduateRateBar" class="summary-chart-fill summary-graduates"></span></div><span class="summary-chart-value"><strong id="summaryGraduateAcceptanceRate">—</strong></span></div>
+              <div class="summary-chart-axis" aria-label="합격률 눈금"><span class="summary-chart-ticks"><span>0</span><span>50</span><span>100%</span></span></div>
+            </div>
+          </div>
         </div>
         </details>
         <div class="results-actions">
           <button id="exportButton" class="small-button export-button" type="button" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-            <span>엑셀 다운로드</span>
+            <span>지원 명단 다운로드</span>
           </button>
         </div>
       </div>
@@ -3096,10 +3067,22 @@
       summaryCounts: {
         applications: $('summaryApplications'), unentered: $('summaryUnentered'),
         totalAccepted: $('summaryTotalAccepted'),
+        headerTotalAccepted: $('summaryHeaderTotalAccepted'),
+        totalEnrolled: $('summaryTotalEnrolled'), totalGraduates: $('summaryTotalGraduates'), totalOther: $('summaryTotalOther'),
         enrolledAcceptanceRate: $('summaryEnrolledAcceptanceRate'), graduateAcceptanceRate: $('summaryGraduateAcceptanceRate'),
         initialTotal: $('summaryInitialTotal'), initialEnrolled: $('summaryInitialEnrolled'), initialGraduates: $('summaryInitialGraduates'),
         waitlistTotal: $('summaryWaitlistTotal'), waitlistEnrolled: $('summaryWaitlistEnrolled'), waitlistGraduates: $('summaryWaitlistGraduates'),
+        initialOther: $('summaryInitialOther'), waitlistOther: $('summaryWaitlistOther'),
+        countMidpoint: $('summaryCountMidpoint'), countMaximum: $('summaryCountMaximum'),
       },
+      summaryBars: {
+        totalEnrolled: $('summaryTotalEnrolledBar'), totalGraduates: $('summaryTotalGraduatesBar'), totalOther: $('summaryTotalOtherBar'),
+        initialEnrolled: $('summaryInitialEnrolledBar'), initialGraduates: $('summaryInitialGraduatesBar'), initialOther: $('summaryInitialOtherBar'),
+        waitlistEnrolled: $('summaryWaitlistEnrolledBar'), waitlistGraduates: $('summaryWaitlistGraduatesBar'), waitlistOther: $('summaryWaitlistOtherBar'),
+        enrolledRate: $('summaryEnrolledRateBar'), graduateRate: $('summaryGraduateRateBar'),
+      },
+      summaryOtherLegend: $('summaryOtherLegend'),
+      summaryOtherDetails: { total: $('summaryTotalOtherDetail'), initial: $('summaryInitialOtherDetail'), waitlist: $('summaryWaitlistOtherDetail') },
       resultsSection: $('resultsSection'),
       emptyState: $('emptyState'),
       tableWrap: $('tableWrap'),
@@ -4110,16 +4093,48 @@
 
     function formatAcceptanceRate(accepted, applications) {
       if (!applications) return '—';
-      return (Math.round(accepted * 1000 / applications) / 10).toLocaleString('ko-KR') + '%';
+      return (Math.round(accepted * 1000 / applications) / 10).toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+    }
+
+    function makeSummaryChartModel(summary) {
+      const initial = summary?.initial || { total: 0, enrolled: 0, graduates: 0 };
+      const waitlist = summary?.waitlist || { total: 0, enrolled: 0, graduates: 0 };
+      const total = { total: initial.total + waitlist.total, enrolled: initial.enrolled + waitlist.enrolled,
+        graduates: initial.graduates + waitlist.graduates };
+      // One shared zero-based count scale; rates always keep their own 0–100% scale.
+      const half = Math.max(1, total.total) / 2;
+      const magnitude = Math.pow(10, Math.floor(Math.log10(half)));
+      const step = [1, 2, 5, 10].find(value => value * magnitude >= half) * magnitude;
+      const maximum = Math.max(2, step * 2);
+      const bars = {};
+      const other = {};
+      for (const [key, group] of Object.entries({ total, initial, waitlist })) {
+        other[key] = Math.max(0, group.total - group.enrolled - group.graduates);
+        bars[key + 'Enrolled'] = group.enrolled / maximum * 100;
+        bars[key + 'Graduates'] = group.graduates / maximum * 100;
+        bars[key + 'Other'] = other[key] / maximum * 100;
+      }
+      bars.enrolledRate = summary?.enrollmentApplications.enrolled
+        ? total.enrolled / summary.enrollmentApplications.enrolled * 100 : 0;
+      bars.graduateRate = summary?.enrollmentApplications.graduates
+        ? total.graduates / summary.enrollmentApplications.graduates * 100 : 0;
+      return { total, other, bars, maximum };
     }
 
     function renderResultSummary() {
       const summary = state.resultSummary;
       const empty = !state.lastTotalMatches && !state.records.length;
+      const chart = makeSummaryChartModel(summary);
       const counts = {
         applications: summary?.applications ?? state.lastTotalMatches,
         unentered: summary?.unentered ?? (empty ? 0 : null),
         totalAccepted: summary ? summary.initial.total + summary.waitlist.total : (empty ? 0 : null),
+        headerTotalAccepted: summary ? chart.total.total : (empty ? 0 : null),
+        totalEnrolled: summary ? chart.total.enrolled : (empty ? 0 : null),
+        totalGraduates: summary ? chart.total.graduates : (empty ? 0 : null),
+        totalOther: chart.other.total, initialOther: chart.other.initial, waitlistOther: chart.other.waitlist,
+        countMidpoint: summary || empty ? chart.maximum / 2 : null,
+        countMaximum: summary || empty ? chart.maximum.toLocaleString('ko-KR') + '건' : '—',
         enrolledAcceptanceRate: summary
           ? formatAcceptanceRate(summary.initial.enrolled + summary.waitlist.enrolled, summary.enrollmentApplications.enrolled) : '—',
         graduateAcceptanceRate: summary
@@ -4131,13 +4146,21 @@
         waitlistEnrolled: summary?.waitlist.enrolled ?? (empty ? 0 : null),
         waitlistGraduates: summary?.waitlist.graduates ?? (empty ? 0 : null),
       };
-      const signature = JSON.stringify(counts);
+      const signature = JSON.stringify([counts, chart.bars]);
       if (state.resultSummarySignature === signature) return;
       state.resultSummarySignature = signature;
       Object.entries(counts).forEach(([key, value]) => {
         const node = elements.summaryCounts[key];
-        if (node) node.textContent = value === null ? '—' : typeof value === 'string' ? value : value.toLocaleString('ko-KR');
+        const text = value === null ? '—' : typeof value === 'string' ? value : value.toLocaleString('ko-KR');
+        if (node && node.textContent !== text) node.textContent = text;
       });
+      Object.entries(chart.bars).forEach(([key, value]) => {
+        const node = elements.summaryBars[key];
+        const width = (Math.round(Math.max(0, Math.min(100, value)) * 1e6) / 1e6) + '%';
+        if (node && node.style.width !== width) node.style.width = width;
+      });
+      elements.summaryOtherLegend.hidden = !chart.other.total;
+      Object.entries(elements.summaryOtherDetails).forEach(([key, node]) => { node.hidden = !chart.other[key]; });
     }
 
     function updateSummaryForRecord(previous, next) {
@@ -4664,7 +4687,7 @@
         toast('엑셀 파일을 다운로드했습니다.', 'success');
       } catch (error) {
         setSyncState('error', '다운로드 실패');
-        toast(error && error.message ? error.message : '엑셀 다운로드에 실패했습니다.', 'error');
+        toast(error && error.message ? error.message : '지원 명단 다운로드에 실패했습니다.', 'error');
       } finally {
         state.exporting = false;
         setExportBusy(false);
@@ -4675,7 +4698,7 @@
       if (!elements.exportButton) return;
       elements.exportButton.disabled = busy || state.exporting || hasActiveInlineWork() || !state.lastFilters || state.records.length === 0;
       const label = elements.exportButton.querySelector('span');
-      if (label) label.textContent = busy ? '다운로드 중' : '엑셀 다운로드';
+      if (label) label.textContent = busy ? '다운로드 중' : '지원 명단 다운로드';
     }
 
     function exportFilename() {

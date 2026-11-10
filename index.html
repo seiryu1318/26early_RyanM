@@ -845,6 +845,10 @@
     .summary-disclosure .summary-chevron { width: 13px; height: 13px; transition: transform .16s; }
     .results-summary[open] .summary-chevron { transform: rotate(180deg); }
     body.pc-edition .summary-disclosure { display: none; }
+    body.pc-edition .summary-disclosure { padding-inline: 10px; border-radius: 10px; transition: color .16s ease, background .16s ease, box-shadow .16s ease; }
+    body.pc-edition .summary-disclosure:hover,
+    body.pc-edition .summary-disclosure:focus-visible { color: var(--pink-900); background: rgba(255,255,255,.94); box-shadow: 0 3px 10px rgba(91,22,55,.08); }
+    body.pc-edition .summary-disclosure:focus-visible { outline: 2px solid rgba(187,27,102,.2); outline-offset: 2px; }
     body.pc-edition .summary-mobile-label, body.mobile-edition .summary-pc-label { display: none; }
     .summary-pc-close { display: none; }
     .results-summary[open] .summary-pc-open { display: none; }
@@ -897,6 +901,11 @@
       body.pc-edition .summary-toolbar-title { display: none; }
       body.pc-edition .summary-heading { padding-right: 0; }
       body.pc-edition .results-summary[open] .results-count { padding-top: 8px; }
+    }
+    @media (max-width: 480px) {
+      body.pc-edition .summary-disclosure { max-width: calc(100% - 48px); }
+      body.pc-edition .export-button { width: 36px; padding: 0 !important; }
+      body.pc-edition .export-button span { display: none; }
     }
     body.mobile-edition .results-summary[open] .results-count { padding: 8px 0 5px; }
     body.mobile-edition .summary-heading { justify-content: center; gap: 8px 18px; }
@@ -2481,7 +2490,7 @@
         </div>
         </details>
         <div class="results-actions">
-          <button id="exportButton" class="small-button export-button" type="button" hidden>
+          <button id="exportButton" class="small-button export-button" type="button" aria-label="지원 명단 다운로드" title="지원 명단 다운로드" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
             <span>지원 명단 다운로드</span>
           </button>

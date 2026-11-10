@@ -855,6 +855,8 @@
     .results-summary[open] .summary-pc-close { display: inline; }
     .summary-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 20px; margin-bottom: 10px; }
     .summary-basic { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-weight: 750; }
+    .summary-cohorts { display: inline-flex; align-items: center; gap: 10px; color: #795866; font-size: 11px; font-weight: 700; }
+    .summary-cohorts span { white-space: nowrap; }
     .results-count strong { color: #a21858; font-size: inherit; font-weight: 850; font-variant-numeric: tabular-nums; }
     .summary-basic strong { font-size: 15px; }
     .summary-basic.is-missing strong { color: #8b6071; }
@@ -1076,6 +1078,7 @@
       background-position: right 6px center;
       background-size: 14px;
     }
+    body.pc-edition select.inline-result-control { padding-left: 24px; text-align-last: center; }
     select.inline-result-control option {
       color: #3f1a2c;
       background: #fff8fb;
@@ -2468,6 +2471,7 @@
           <div class="summary-heading">
             <h2 class="summary-toolbar-title"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15v-4M12 15V5M17 15v-7"/></svg>통계</h2>
             <span class="summary-basic">지원 <span><strong id="summaryApplications">0</strong>건</span></span>
+            <span class="summary-cohorts"><span>재학생 지원 <strong id="summaryEnrolledApplications">0</strong>건</span><span>졸업생 지원 <strong id="summaryGraduateApplications">0</strong>건</span></span>
             <span class="summary-basic summary-header-total">총 합격 <span><strong id="summaryHeaderTotalAccepted">0</strong>건</span></span>
             <span class="summary-basic is-missing">미입력 <span><strong id="summaryUnentered">0</strong>건</span></span>
           </div>
@@ -3108,6 +3112,7 @@
       resultsBar: document.querySelector('.results-bar'),
       summaryCounts: {
         applications: $('summaryApplications'), unentered: $('summaryUnentered'),
+        enrolledApplications: $('summaryEnrolledApplications'), graduateApplications: $('summaryGraduateApplications'),
         totalAccepted: $('summaryTotalAccepted'),
         headerTotalAccepted: $('summaryHeaderTotalAccepted'),
         totalEnrolled: $('summaryTotalEnrolled'), totalGraduates: $('summaryTotalGraduates'), totalOther: $('summaryTotalOther'),
@@ -4169,6 +4174,8 @@
       const chart = makeSummaryChartModel(summary);
       const counts = {
         applications: summary?.applications ?? state.lastTotalMatches,
+        enrolledApplications: summary?.enrollmentApplications.enrolled ?? (empty ? 0 : null),
+        graduateApplications: summary?.enrollmentApplications.graduates ?? (empty ? 0 : null),
         unentered: summary?.unentered ?? (empty ? 0 : null),
         totalAccepted: summary ? summary.initial.total + summary.waitlist.total : (empty ? 0 : null),
         headerTotalAccepted: summary ? chart.total.total : (empty ? 0 : null),

@@ -845,6 +845,10 @@
     .summary-disclosure .summary-chevron { width: 13px; height: 13px; transition: transform .16s; }
     .results-summary[open] .summary-chevron { transform: rotate(180deg); }
     body.pc-edition .summary-disclosure { display: none; }
+    body.pc-edition .summary-mobile-label, body.mobile-edition .summary-pc-label { display: none; }
+    .summary-pc-close { display: none; }
+    .results-summary[open] .summary-pc-open { display: none; }
+    .results-summary[open] .summary-pc-close { display: inline; }
     .summary-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 20px; margin-bottom: 10px; }
     .summary-basic { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-weight: 750; }
     .results-count strong { color: #a21858; font-size: inherit; font-weight: 850; font-variant-numeric: tabular-nums; }
@@ -882,7 +886,17 @@
     body.pc-edition .summary-heading { padding-right: 172px; }
     @media (max-width: 1180px) {
       .summary-charts { grid-template-columns: 1fr; gap: 12px; }
-      .summary-rate-chart { max-width: 420px; }
+      .summary-chart-row, .summary-chart-axis,
+      .summary-rate-chart :is(.summary-chart-row, .summary-chart-axis) { grid-template-columns: 62px minmax(0, 1fr) 58px; }
+      .summary-chart-row { min-height: 43px; }
+      .summary-chart-detail { grid-column: 2 / -1; width: min(160px, 100%); padding-bottom: 4px; }
+      .summary-rate-chart { max-width: none; }
+    }
+    @media (max-width: 760px), (max-height: 620px) {
+      body.pc-edition .summary-disclosure { display: flex; justify-content: flex-start; max-width: calc(100% - 172px); }
+      body.pc-edition .summary-toolbar-title { display: none; }
+      body.pc-edition .summary-heading { padding-right: 0; }
+      body.pc-edition .results-summary[open] .results-count { padding-top: 8px; }
     }
     body.mobile-edition .results-summary[open] .results-count { padding: 8px 0 5px; }
     body.mobile-edition .summary-heading { justify-content: center; gap: 8px 18px; }
@@ -2440,7 +2454,7 @@
     <section id="resultsSection" class="results-section glass-panel" aria-label="검색 결과" hidden>
       <div class="results-bar">
         <details id="summaryDisclosure" class="results-summary">
-          <summary class="summary-disclosure"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15v-4M12 15V5M17 15v-7"/></svg><span>합격률 통계</span><svg class="button-icon summary-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
+          <summary class="summary-disclosure"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15v-4M12 15V5M17 15v-7"/></svg><span class="summary-mobile-label">합격률 통계</span><span class="summary-pc-label summary-pc-open">통계 펼치기</span><span class="summary-pc-label summary-pc-close">통계 접기</span><svg class="button-icon summary-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
         <div id="resultsCount" class="results-count" aria-live="polite" aria-label="검색 결과 집계">
           <div class="summary-heading">
             <h2 class="summary-toolbar-title"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15v-4M12 15V5M17 15v-7"/></svg>통계</h2>
@@ -6771,12 +6785,12 @@
             options: {
               universityTypes: ['일반대학'], enrollments: ['재학생', '졸업생'], classes: ['1', '2', '3'],
               tracks: ['인문', '자연'], admissionTypes: ['교과(학생부)', '교과(면접)', '종합', '논술'],
-              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '성균관대학교', '홍익대학교(서)', '홍익대학교(세)', '국립경국대학교', '울산과학기술원'],
+              universities: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교', '동국대학교(W)', '한양대학교(E)', '성균관대학교', '홍익대학교(서)', '홍익대학교(세)', '국립경국대학교', '울산과학기술원'],
               names: ['강승민', '김민준', '이서연', '박도윤'],
               admissionNames: ['활동우수형', '미래인재', '학교추천', '세종추천', 'KU자기추천', 'KU글로컬추천', '논술우수', '학교생활우수자', '교과우수자'],
               recruitmentUnits: ['경영학과', '의공학부', '정치외교학과', '약학과', '컴퓨터공학부', '글로컬공학부', '전자전기공학부', '건설환경공학과', '게임소프트웨어전공'],
-              admissionNameIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8], [], []],
-              recruitmentUnitIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [6], [7], [8], [], []],
+              admissionNameIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [], [6], [7], [8], [], []],
+              recruitmentUnitIndexesByUniversity: [[0], [1], [2], [3], [4], [5], [], [], [], [6], [7], [8], [], []],
             },
             revision: window.__demoRevision,
             sourceRevision: window.__demoSourceRevision,
@@ -6787,7 +6801,7 @@
             const query = normalizeUniversityTerm(payload.query);
             resolve({
               ok: true,
-              suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교(W)', '한양대학교(E)', '홍익대학교(서)', '홍익대학교(세)', '국립경국대학교', '울산과학기술원']
+              suggestions: ['연세대학교', '연세대학교(미래)', '고려대학교', '고려대학교(세종)', '건국대학교', '건국대학교(글로컬)', '동국대학교', '동국대학교(W)', '한양대학교(E)', '홍익대학교(서)', '홍익대학교(세)', '국립경국대학교', '울산과학기술원']
                 .filter(value => normalizeUniversityTerm(value).includes(query)),
               serverTime: new Date().toISOString(),
             });
@@ -6860,9 +6874,17 @@
       ];
     }
 
+    function setupSummaryDisclosure() {
+      if (EDITION !== 'pc') { elements.summaryDisclosure.open = false; return; }
+      const compact = window.matchMedia('(max-width: 760px), (max-height: 620px)');
+      elements.summaryDisclosure.open = !compact.matches;
+      // React only when a breakpoint is crossed, not on every resize pixel.
+      compact.addEventListener('change', event => { elements.summaryDisclosure.open = !event.matches; });
+    }
+
     function init() {
       restorePendingDrafts();
-      elements.summaryDisclosure.open = EDITION === 'pc';
+      setupSummaryDisclosure();
       configureSortControls();
       renderTodaySchedule();
       wireEvents();

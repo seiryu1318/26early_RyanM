@@ -5573,7 +5573,9 @@
     }
 
     function syncDraftControls(recordId, values, record, { preserveActive = false } = {}) {
-      document.querySelectorAll('.inline-result-control').forEach(control => {
+      const selector = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? `.inline-result-control[data-record-id="${CSS.escape(String(recordId))}"]` : '.inline-result-control';
+      document.querySelectorAll(selector).forEach(control => {
         if (control.dataset.recordId !== recordId) return;
         syncInlineResultControl(control, values, record, { preserveActive });
       });
@@ -5594,7 +5596,9 @@
     }
 
     function setRecordControlsBusy(recordId, busy) {
-      document.querySelectorAll('.inline-result-control').forEach(control => {
+      const selector = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? `.inline-result-control[data-record-id="${CSS.escape(String(recordId))}"]` : '.inline-result-control';
+      document.querySelectorAll(selector).forEach(control => {
         if (control.dataset.recordId === recordId) control.setAttribute('aria-busy', String(busy));
       });
     }

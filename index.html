@@ -888,6 +888,10 @@
     .summary-chart-ticks { grid-column: 2; display: flex; justify-content: space-between; color: #8e7682; font-size: 10px; font-variant-numeric: tabular-nums; }
     .summary-rate-chart :is(.summary-chart-row, .summary-chart-axis) { grid-template-columns: 34px minmax(0, 1fr) 48px; }
     .summary-rate-chart .summary-chart-row { min-height: 34px; }
+    @media (min-width: 1181px) {
+      body.pc-edition .summary-rate-chart { display: flex; flex-direction: column; }
+      body.pc-edition .summary-rate-chart .summary-chart-row { flex: 1; }
+    }
     .results-actions { display: flex; flex-shrink: 0; align-items: center; gap: 8px; }
     body.pc-edition .results-bar { position: relative; }
     body.pc-edition .results-actions { position: absolute; top: 11px; right: 18px; }
@@ -2485,11 +2489,11 @@
             <div class="summary-chart" role="group" aria-label="합격 건수 막대그래프">
               <h3 class="summary-chart-title">합격 건수</h3>
               <div class="summary-chart-row"><span class="summary-chart-label">총 합격</span><div class="summary-chart-track" aria-hidden="true"><span id="summaryTotalEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="summaryTotalGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="summaryTotalOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="summaryTotalAccepted">0</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="summaryTotalEnrolled">0</strong></span><span>졸업 <strong id="summaryTotalGraduates">0</strong></span><span class="summary-other-count" id="summaryTotalOtherDetail" hidden>기타 <strong id="summaryTotalOther">0</strong></span></span></div>
-              <div class="summary-chart-row"><span class="summary-chart-label">1단계 합격</span><div class="summary-chart-track" aria-hidden="true"><span id="summaryStage1Bar" class="summary-chart-fill summary-stage1-fill"></span></div><span class="summary-chart-value"><strong id="summaryStage1Passed">—</strong>건</span><span class="summary-chart-detail">전체</span></div>
+              <div class="summary-chart-row"><span class="summary-chart-label">1단계 합격</span><div class="summary-chart-track" aria-hidden="true"><span id="summaryStage1EnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="summaryStage1GraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="summaryStage1OtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="summaryStage1Passed">—</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="summaryStage1Enrolled">—</strong></span><span>졸업 <strong id="summaryStage1Graduates">—</strong></span><span class="summary-other-count" id="summaryStage1OtherDetail" hidden>기타 <strong id="summaryStage1Other">0</strong></span></span></div>
               <div class="summary-chart-row"><span class="summary-chart-label">최초합격</span><div class="summary-chart-track" aria-hidden="true"><span id="summaryInitialEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="summaryInitialGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="summaryInitialOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="summaryInitialTotal">0</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="summaryInitialEnrolled">0</strong></span><span>졸업 <strong id="summaryInitialGraduates">0</strong></span><span class="summary-other-count" id="summaryInitialOtherDetail" hidden>기타 <strong id="summaryInitialOther">0</strong></span></span></div>
               <div class="summary-chart-row"><span class="summary-chart-label">충원합격</span><div class="summary-chart-track" aria-hidden="true"><span id="summaryWaitlistEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="summaryWaitlistGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="summaryWaitlistOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="summaryWaitlistTotal">0</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="summaryWaitlistEnrolled">0</strong></span><span>졸업 <strong id="summaryWaitlistGraduates">0</strong></span><span class="summary-other-count" id="summaryWaitlistOtherDetail" hidden>기타 <strong id="summaryWaitlistOther">0</strong></span></span></div>
               <div class="summary-chart-axis" aria-label="건수 눈금"><span class="summary-chart-ticks"><span>0</span><span id="summaryCountMidpoint">1</span><span id="summaryCountMaximum">2건</span></span></div>
-              <div class="summary-legend" aria-label="범례"><span><i class="summary-swatch summary-enrolled" aria-hidden="true"></i>재학</span><span><i class="summary-swatch summary-graduates" aria-hidden="true"></i>졸업</span><span><i class="summary-swatch summary-stage1-fill" aria-hidden="true"></i>1단계 전체</span><span id="summaryOtherLegend" hidden><i class="summary-swatch summary-other" aria-hidden="true"></i>기타</span></div>
+              <div class="summary-legend" aria-label="범례"><span><i class="summary-swatch summary-enrolled" aria-hidden="true"></i>재학</span><span><i class="summary-swatch summary-graduates" aria-hidden="true"></i>졸업</span><span id="summaryOtherLegend" hidden><i class="summary-swatch summary-other" aria-hidden="true"></i>기타</span></div>
             </div>
             <div class="summary-chart summary-rate-chart" role="group" aria-label="재학 및 졸업 합격률 막대그래프">
               <h3 class="summary-chart-title">합격률</h3>
@@ -3121,6 +3125,7 @@
         enrolledApplications: $('summaryEnrolledApplications'), graduateApplications: $('summaryGraduateApplications'),
         totalAccepted: $('summaryTotalAccepted'),
         stage1Passed: $('summaryStage1Passed'),
+        stage1Enrolled: $('summaryStage1Enrolled'), stage1Graduates: $('summaryStage1Graduates'), stage1Other: $('summaryStage1Other'),
         headerTotalAccepted: $('summaryHeaderTotalAccepted'),
         totalEnrolled: $('summaryTotalEnrolled'), totalGraduates: $('summaryTotalGraduates'), totalOther: $('summaryTotalOther'),
         enrolledAcceptanceRate: $('summaryEnrolledAcceptanceRate'), graduateAcceptanceRate: $('summaryGraduateAcceptanceRate'),
@@ -3130,14 +3135,14 @@
         countMidpoint: $('summaryCountMidpoint'), countMaximum: $('summaryCountMaximum'),
       },
       summaryBars: {
-        stage1: $('summaryStage1Bar'),
+        stage1Enrolled: $('summaryStage1EnrolledBar'), stage1Graduates: $('summaryStage1GraduatesBar'), stage1Other: $('summaryStage1OtherBar'),
         totalEnrolled: $('summaryTotalEnrolledBar'), totalGraduates: $('summaryTotalGraduatesBar'), totalOther: $('summaryTotalOtherBar'),
         initialEnrolled: $('summaryInitialEnrolledBar'), initialGraduates: $('summaryInitialGraduatesBar'), initialOther: $('summaryInitialOtherBar'),
         waitlistEnrolled: $('summaryWaitlistEnrolledBar'), waitlistGraduates: $('summaryWaitlistGraduatesBar'), waitlistOther: $('summaryWaitlistOtherBar'),
         enrolledRate: $('summaryEnrolledRateBar'), graduateRate: $('summaryGraduateRateBar'),
       },
       summaryOtherLegend: $('summaryOtherLegend'),
-      summaryOtherDetails: { total: $('summaryTotalOtherDetail'), initial: $('summaryInitialOtherDetail'), waitlist: $('summaryWaitlistOtherDetail') },
+      summaryOtherDetails: { total: $('summaryTotalOtherDetail'), stage1: $('summaryStage1OtherDetail'), initial: $('summaryInitialOtherDetail'), waitlist: $('summaryWaitlistOtherDetail') },
       resultsSection: $('resultsSection'),
       emptyState: $('emptyState'),
       tableWrap: $('tableWrap'),
@@ -4107,18 +4112,22 @@
       const validCount = value => Number.isSafeInteger(value) && value >= 0;
       if (!validCount(raw.applications) || !validCount(raw.unentered)
         || (raw.stage1Passed != null && (!validCount(raw.stage1Passed) || raw.stage1Passed > raw.applications))
+        || (raw.stage1Enrollment != null && (!validCount(raw.stage1Enrollment.enrolled) || !validCount(raw.stage1Enrollment.graduates)
+          || raw.stage1Passed == null || raw.stage1Enrollment.enrolled + raw.stage1Enrollment.graduates > raw.stage1Passed))
         || !raw.enrollmentApplications
         || !validCount(raw.enrollmentApplications.enrolled) || !validCount(raw.enrollmentApplications.graduates)
         || !raw.initial || !raw.waitlist
         || !keys.every(key => validCount(raw.initial[key]) && validCount(raw.waitlist[key]))) return null;
       if (raw.unentered + raw.initial.total + raw.waitlist.total > raw.applications
         || raw.enrollmentApplications.enrolled + raw.enrollmentApplications.graduates > raw.applications
+        || (raw.stage1Enrollment && (raw.stage1Enrollment.enrolled > raw.enrollmentApplications.enrolled || raw.stage1Enrollment.graduates > raw.enrollmentApplications.graduates))
         || raw.initial.enrolled + raw.waitlist.enrolled > raw.enrollmentApplications.enrolled
         || raw.initial.graduates + raw.waitlist.graduates > raw.enrollmentApplications.graduates
         || raw.initial.enrolled + raw.initial.graduates > raw.initial.total
         || raw.waitlist.enrolled + raw.waitlist.graduates > raw.waitlist.total) return null;
       return {
         applications: raw.applications, unentered: raw.unentered, stage1Passed: raw.stage1Passed ?? null,
+        stage1Enrollment: raw.stage1Enrollment ? { enrolled: raw.stage1Enrollment.enrolled, graduates: raw.stage1Enrollment.graduates } : null,
         enrollmentApplications: { enrolled: raw.enrollmentApplications.enrolled, graduates: raw.enrollmentApplications.graduates },
         initial: { total: raw.initial.total, enrolled: raw.initial.enrolled, graduates: raw.initial.graduates },
         waitlist: { total: raw.waitlist.total, enrolled: raw.waitlist.enrolled, graduates: raw.waitlist.graduates },
@@ -4128,7 +4137,11 @@
     function adjustResultSummary(summary, record, direction) {
       const result = String(record.finalResult || '').trim();
       const enrollment = String(record.enrollment || '').trim();
-      if (summary.stage1Passed != null && String(record.stage1 || '').trim() === '합격') summary.stage1Passed += direction;
+      if (summary.stage1Passed != null && String(record.stage1 || '').trim() === '합격') {
+        summary.stage1Passed += direction;
+        if (summary.stage1Enrollment && enrollment === '재학생') summary.stage1Enrollment.enrolled += direction;
+        else if (summary.stage1Enrollment && enrollment === '졸업생') summary.stage1Enrollment.graduates += direction;
+      }
       if (enrollment === '재학생') summary.enrollmentApplications.enrolled += direction;
       else if (enrollment === '졸업생') summary.enrollmentApplications.graduates += direction;
       if (!result || result === '미입력') summary.unentered += direction;
@@ -4140,7 +4153,7 @@
     }
 
     function summarizeRecords(records, applications = records.length) {
-      const summary = { applications, unentered: 0, stage1Passed: 0,
+      const summary = { applications, unentered: 0, stage1Passed: 0, stage1Enrollment: { enrolled: 0, graduates: 0 },
         enrollmentApplications: { enrolled: 0, graduates: 0 },
         initial: { total: 0, enrolled: 0, graduates: 0 },
         waitlist: { total: 0, enrolled: 0, graduates: 0 } };
@@ -4164,9 +4177,10 @@
       const step = [1, 2, 5, 10].find(value => value * magnitude >= half) * magnitude;
       const maximum = Math.max(2, step * 2);
       const bars = {};
-      bars.stage1 = (summary?.stage1Passed || 0) / maximum * 100;
+      const stage1 = summary?.stage1Enrollment && summary.stage1Passed != null
+        ? { total: summary.stage1Passed, ...summary.stage1Enrollment } : { total: 0, enrolled: 0, graduates: 0 };
       const other = {};
-      for (const [key, group] of Object.entries({ total, initial, waitlist })) {
+      for (const [key, group] of Object.entries({ total, stage1, initial, waitlist })) {
         other[key] = Math.max(0, group.total - group.enrolled - group.graduates);
         bars[key + 'Enrolled'] = group.enrolled / maximum * 100;
         bars[key + 'Graduates'] = group.graduates / maximum * 100;
@@ -4190,6 +4204,9 @@
         unentered: summary?.unentered ?? (empty ? 0 : null),
         totalAccepted: summary ? summary.initial.total + summary.waitlist.total : (empty ? 0 : null),
         stage1Passed: summary?.stage1Passed ?? (empty ? 0 : null),
+        stage1Enrolled: summary?.stage1Enrollment?.enrolled ?? (empty ? 0 : null),
+        stage1Graduates: summary?.stage1Enrollment?.graduates ?? (empty ? 0 : null),
+        stage1Other: chart.other.stage1,
         headerTotalAccepted: summary ? chart.total.total : (empty ? 0 : null),
         totalEnrolled: summary ? chart.total.enrolled : (empty ? 0 : null),
         totalGraduates: summary ? chart.total.graduates : (empty ? 0 : null),
@@ -4220,7 +4237,7 @@
         const width = (Math.round(Math.max(0, Math.min(100, value)) * 1e6) / 1e6) + '%';
         if (node && node.style.width !== width) node.style.width = width;
       });
-      elements.summaryOtherLegend.hidden = !chart.other.total;
+      elements.summaryOtherLegend.hidden = !chart.other.total && !chart.other.stage1;
       Object.entries(elements.summaryOtherDetails).forEach(([key, node]) => { node.hidden = !chart.other[key]; });
     }
 

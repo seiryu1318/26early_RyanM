@@ -24,7 +24,7 @@ const CONFIG = Object.freeze({
   searchMatchCachePrefix: 'admissions-search-match-v10',
   metaCachePrefix: 'admissions-meta-v9',
   searchMatchCacheTtlSeconds: 600,
-  searchResponseCachePrefix: 'admissions-search-response-v6',
+  searchResponseCachePrefix: 'admissions-search-response-v7',
   searchResponseCacheTtlSeconds: 600,
   searchResponseCacheSlots: 64,
   searchCacheMaxValueBytes: 90000,
@@ -529,6 +529,7 @@ function summarizeResultRows_(rows, rowIndexes) {
     enrollmentApplications: { enrolled: 0, graduates: 0 },
     unentered: 0,
     stage1Passed: 0,
+    stage1Enrollment: { enrolled: 0, graduates: 0 },
     initial: { total: 0, enrolled: 0, graduates: 0 },
     waitlist: { total: 0, enrolled: 0, graduates: 0 },
   };
@@ -538,7 +539,11 @@ function summarizeResultRows_(rows, rowIndexes) {
     const row = rows[rowIndexes[index]];
     const enrollment = text_(row[COL.enrollment]).trim();
     const finalResult = text_(row[COL.finalResult]).trim();
-    if (text_(row[COL.stage1]).trim() === '합격') summary.stage1Passed += 1;
+    if (text_(row[COL.stage1]).trim() === '합격') {
+      summary.stage1Passed += 1;
+      if (enrollment === '재학생') summary.stage1Enrollment.enrolled += 1;
+      else if (enrollment === '졸업생') summary.stage1Enrollment.graduates += 1;
+    }
     if (enrollment === '재학생') summary.enrollmentApplications.enrolled += 1;
     else if (enrollment === '졸업생') summary.enrollmentApplications.graduates += 1;
     if (!finalResult || finalResult === '미입력') summary.unentered += 1;
@@ -559,6 +564,10 @@ function validSearchSummary_(summary, totalMatches) {
   const applications = summary.enrollmentApplications;
   if (!applications || !validCount(applications.enrolled) || !validCount(applications.graduates)
     || applications.enrolled + applications.graduates > totalMatches) return false;
+  const stage1 = summary.stage1Enrollment;
+  if (!stage1 || !validCount(stage1.enrolled) || !validCount(stage1.graduates)
+    || stage1.enrolled + stage1.graduates > summary.stage1Passed
+    || stage1.enrolled > applications.enrolled || stage1.graduates > applications.graduates) return false;
   for (const key of ['initial', 'waitlist']) {
     const group = summary[key];
     if (!group || !validCount(group.total) || !validCount(group.enrolled)

@@ -24,7 +24,7 @@ const CONFIG = Object.freeze({
   searchMatchCachePrefix: 'admissions-search-match-v10',
   metaCachePrefix: 'admissions-meta-v9',
   searchMatchCacheTtlSeconds: 600,
-  searchResponseCachePrefix: 'admissions-search-response-v5',
+  searchResponseCachePrefix: 'admissions-search-response-v6',
   searchResponseCacheTtlSeconds: 600,
   searchResponseCacheSlots: 64,
   searchCacheMaxValueBytes: 90000,
@@ -528,6 +528,7 @@ function summarizeResultRows_(rows, rowIndexes) {
     applications: rowIndexes.length,
     enrollmentApplications: { enrolled: 0, graduates: 0 },
     unentered: 0,
+    stage1Passed: 0,
     initial: { total: 0, enrolled: 0, graduates: 0 },
     waitlist: { total: 0, enrolled: 0, graduates: 0 },
   };
@@ -537,6 +538,7 @@ function summarizeResultRows_(rows, rowIndexes) {
     const row = rows[rowIndexes[index]];
     const enrollment = text_(row[COL.enrollment]).trim();
     const finalResult = text_(row[COL.finalResult]).trim();
+    if (text_(row[COL.stage1]).trim() === '합격') summary.stage1Passed += 1;
     if (enrollment === '재학생') summary.enrollmentApplications.enrolled += 1;
     else if (enrollment === '졸업생') summary.enrollmentApplications.graduates += 1;
     if (!finalResult || finalResult === '미입력') summary.unentered += 1;
@@ -553,7 +555,7 @@ function summarizeResultRows_(rows, rowIndexes) {
 function validSearchSummary_(summary, totalMatches) {
   if (!summary || typeof summary !== 'object' || summary.applications !== totalMatches) return false;
   const validCount = count => Number.isInteger(count) && count >= 0 && count <= totalMatches;
-  if (!validCount(summary.unentered)) return false;
+  if (!validCount(summary.unentered) || !validCount(summary.stage1Passed)) return false;
   const applications = summary.enrollmentApplications;
   if (!applications || !validCount(applications.enrolled) || !validCount(applications.graduates)
     || applications.enrolled + applications.graduates > totalMatches) return false;

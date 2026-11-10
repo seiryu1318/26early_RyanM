@@ -853,6 +853,7 @@
     .summary-pc-close { display: none; }
     .results-summary[open] .summary-pc-open { display: none; }
     .results-summary[open] .summary-pc-close { display: inline; }
+    body.mobile-edition .results-summary[open] .summary-pc-close { display: none; }
     .summary-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 20px; margin-bottom: 10px; }
     .summary-basic { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; font-weight: 750; }
     .summary-cohorts { display: inline-flex; align-items: center; gap: 10px; color: #795866; font-size: 11px; font-weight: 700; }
@@ -1964,7 +1965,6 @@
     }
 
     @media (min-width: 900px) {
-      body.mobile-edition .card-quick-meta { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       body.mobile-edition .card-inline-results { grid-template-columns: repeat(6, minmax(0, 1fr)); }
       body.mobile-edition .card-result-field,
       body.mobile-edition .card-result-field:nth-child(4),
@@ -2299,6 +2299,11 @@
       align-items: baseline;
       gap: 1px 6px;
     }
+    body.mobile-edition .card-identity, body.mobile-edition .card-quick-meta {
+      display: grid; grid-template-rows: repeat(2, minmax(32px, auto)); align-items: center; gap: 0 9px; padding-top: 0;
+    }
+    body.mobile-edition .card-university { margin-top: 0; }
+    body.mobile-edition .card-quick-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     body.mobile-edition .card-quick-meta .meta-row :is(small, span) { font-size: 13.5px; line-height: 1.35; }
     body.mobile-edition .card-quick-meta .meta-row small { flex-shrink: 0; }
     /* Use the same header/value rows for every result field. Symmetric select
@@ -4630,9 +4635,9 @@
         const quickMeta = makeElement('div', '', 'card-quick-meta');
         quickMeta.setAttribute('aria-label', '학생 정보');
         quickMeta.append(
-          metaRow('재학여부', record.enrollment, false, enrollmentStatusClass(record.enrollment)),
           metaRow('반', record.classNo),
           metaRow('번호', record.studentNo),
+          metaRow('재학여부', record.enrollment, false, enrollmentStatusClass(record.enrollment)),
           metaRow('계열', record.track)
         );
         primary.append(identity, quickMeta);

@@ -4415,7 +4415,7 @@
     }
 
     async function pollForChanges() {
-      if (state.pollingBusy || state.searching || !state.lastFilters || hasActiveUserInput()) return;
+      if (state.pollingBusy || state.searching || state.reconcileTimer || !state.lastFilters || hasActiveUserInput()) return;
       const controller = new AbortController();
       state.pollingBusy = true;
       state.pollController = controller;
@@ -5352,7 +5352,9 @@
       state.retryTimers.set(recordId, timer);
     }
 
-    function scheduleResultReconciliation(delay = 250) {
+    // Saved rows and their counts are already updated immediately. Coalesce
+    // subsequent full searches when several saves finish close together.
+    function scheduleResultReconciliation(delay = 750) {
       clearTimeout(state.reconcileTimer);
       state.reconcileTimer = setTimeout(() => {
         state.reconcileTimer = null;

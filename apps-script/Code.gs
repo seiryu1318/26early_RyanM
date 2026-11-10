@@ -24,7 +24,7 @@ const CONFIG = Object.freeze({
   searchMatchCachePrefix: 'admissions-search-match-v10',
   metaCachePrefix: 'admissions-meta-v9',
   searchMatchCacheTtlSeconds: 600,
-  searchResponseCachePrefix: 'admissions-search-response-v4',
+  searchResponseCachePrefix: 'admissions-search-response-v5',
   searchResponseCacheTtlSeconds: 600,
   searchResponseCacheSlots: 64,
   searchCacheMaxValueBytes: 90000,
@@ -526,6 +526,7 @@ function search_(rawFilters) {
 function summarizeResultRows_(rows, rowIndexes) {
   const summary = {
     applications: rowIndexes.length,
+    enrollmentApplications: { enrolled: 0, graduates: 0 },
     unentered: 0,
     initial: { total: 0, enrolled: 0, graduates: 0 },
     waitlist: { total: 0, enrolled: 0, graduates: 0 },
@@ -536,6 +537,8 @@ function summarizeResultRows_(rows, rowIndexes) {
     const row = rows[rowIndexes[index]];
     const enrollment = text_(row[COL.enrollment]).trim();
     const finalResult = text_(row[COL.finalResult]).trim();
+    if (enrollment === '재학생') summary.enrollmentApplications.enrolled += 1;
+    else if (enrollment === '졸업생') summary.enrollmentApplications.graduates += 1;
     if (!finalResult || finalResult === '미입력') summary.unentered += 1;
     const group = finalResult === '합격' ? summary.initial
       : (finalResult === '충원합격' ? summary.waitlist : null);
@@ -551,11 +554,16 @@ function validSearchSummary_(summary, totalMatches) {
   if (!summary || typeof summary !== 'object' || summary.applications !== totalMatches) return false;
   const validCount = count => Number.isInteger(count) && count >= 0 && count <= totalMatches;
   if (!validCount(summary.unentered)) return false;
+  const applications = summary.enrollmentApplications;
+  if (!applications || !validCount(applications.enrolled) || !validCount(applications.graduates)
+    || applications.enrolled + applications.graduates > totalMatches) return false;
   for (const key of ['initial', 'waitlist']) {
     const group = summary[key];
     if (!group || !validCount(group.total) || !validCount(group.enrolled)
       || !validCount(group.graduates) || group.enrolled + group.graduates > group.total) return false;
   }
+  if (summary.initial.enrolled + summary.waitlist.enrolled > applications.enrolled
+    || summary.initial.graduates + summary.waitlist.graduates > applications.graduates) return false;
   return summary.unentered + summary.initial.total + summary.waitlist.total <= totalMatches;
 }
 

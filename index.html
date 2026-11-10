@@ -824,59 +824,112 @@
       box-shadow: inset 0 1px 0 rgba(255,255,255,.94);
     }
     .results-count {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 7px 24px;
+      display: grid;
+      gap: 7px;
       min-width: 0;
       font-size: 13px;
       font-weight: 800;
       letter-spacing: -.02em;
     }
-    .summary-basic, .summary-group, .summary-values, .summary-values > span {
+    .results-summary { flex: 1; min-width: 0; }
+    .summary-disclosure {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 36px;
+      list-style: none;
+      cursor: pointer;
+      color: #951950;
+      font-size: 13px;
+      font-weight: 850;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .summary-disclosure::-webkit-details-marker { display: none; }
+    .summary-disclosure .button-icon { width: 16px; height: 16px; }
+    .summary-disclosure .summary-chevron { width: 13px; height: 13px; transition: transform .16s; }
+    .results-summary[open] .summary-chevron { transform: rotate(180deg); }
+    body.pc-edition .summary-disclosure { display: none; }
+    body.pc-edition .results-count { display: flex; flex-wrap: nowrap; gap: 16px; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #d8adbf transparent; }
+    body.pc-edition :is(.summary-overview, .summary-total, .summary-breakdown) { display: contents; }
+    body.pc-edition .summary-basic, body.pc-edition .summary-total-count { flex-shrink: 0; }
+    body.pc-edition .results-count strong { font-size: 15px; }
+    body.pc-edition .summary-rates { font-size: 11.5px; gap: 8px; }
+    body.pc-edition .summary-rates strong { font-size: 12px; }
+    body.pc-edition .summary-group { flex-shrink: 0; }
+    body.pc-edition .summary-values { gap: 6px; }
+    body.pc-edition .summary-values strong { font-size: 12px; }
+    .summary-overview, .summary-breakdown {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px 24px;
+    }
+    .summary-basic, .summary-primary-value, .summary-total, .summary-total-count,
+    .summary-rates, .summary-rates > span, .summary-group, .summary-values, .summary-values > span {
       display: inline-flex;
       align-items: baseline;
       white-space: nowrap;
     }
-    .summary-basic { gap: 4px; }
-    .summary-group { gap: 8px; }
+    .summary-basic, .summary-total-count { gap: 6px; }
+    .summary-primary-value { gap: 3px; }
+    .summary-total { gap: 14px; }
+    .summary-total-count .summary-name { color: #85134a; }
+    .summary-rates { gap: 12px; color: #86566d; font-size: 12px; font-weight: 650; }
+    .summary-rates > span { gap: 5px; }
+    .summary-rates small { font-size: inherit; }
+    .summary-breakdown { gap: 5px 22px; color: #795866; }
+    .summary-group { gap: 7px; }
     .summary-name { font-weight: 850; }
-    .summary-values { gap: 9px; }
-    .summary-values > span { gap: 3px; font-size: 12px; color: #70505f; }
+    .summary-breakdown .summary-name { font-size: 12px; font-weight: 750; }
+    .summary-values { gap: 8px; }
+    .summary-values > span { gap: 3px; font-size: 11.5px; color: #866c78; }
     .summary-values small { font-size: inherit; font-weight: 650; }
-    .results-count strong { color: var(--pink-700); font-size: 16px; font-weight: 900; font-variant-numeric: tabular-nums; }
-    .summary-values > span:not(:first-child) strong { color: #654150; font-size: 13px; }
+    .results-count strong { color: var(--pink-700); font-size: 17px; font-weight: 900; font-variant-numeric: tabular-nums; }
     .summary-basic.is-missing strong { color: #8b6071; }
+    .summary-total-count strong { color: #a20c55; font-size: 17px; }
+    .summary-rates strong { color: #8c315b; font-size: 13px; font-weight: 850; }
+    .summary-values strong { color: #77515f; font-size: 12px; font-weight: 800; }
+    .summary-values > span:first-child strong { color: #964268; font-size: 13px; }
     .results-actions { display: flex; flex-shrink: 0; align-items: center; gap: 8px; }
     @media (max-width: 1120px) {
-      .results-count { column-gap: 17px; }
-      .summary-group { align-items: flex-start; flex-direction: column; gap: 2px; }
-    }
-    @media (max-width: 760px) {
-      body.pc-edition .results-count { display: grid; grid-template-columns: auto auto; column-gap: 18px; }
+      .summary-overview { column-gap: 18px; }
+      .summary-total { gap: 10px; }
     }
     body.mobile-edition .results-count {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
       width: 100%;
-      gap: 8px 12px;
+      gap: 9px;
       font-size: 13px;
     }
+    body.mobile-edition .summary-overview { display: grid; grid-template-columns: 1fr 1fr 1.25fr; gap: 5px 10px; align-items: start; }
+    body.mobile-edition .summary-basic,
+    body.mobile-edition .summary-total-count { flex-direction: column; align-items: center; gap: 1px; }
+    body.mobile-edition .summary-basic .summary-name { color: #826270; font-size: 11px; font-weight: 750; }
+    body.mobile-edition .summary-total-count .summary-name { font-size: 11px; }
+    body.mobile-edition .summary-total { display: contents; }
+    body.mobile-edition .summary-rates { grid-column: 1 / -1; justify-content: center; gap: 15px; font-size: 11px; }
+    body.mobile-edition .summary-rates strong { font-size: 12px; }
+    body.mobile-edition .summary-primary-value strong { font-size: 18px; }
+    body.mobile-edition .summary-total-count strong { font-size: 18px; }
+    body.mobile-edition .summary-breakdown { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
     body.mobile-edition .summary-group {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       align-items: baseline;
-      gap: 3px 4px;
+      gap: 2px 4px;
     }
-    body.mobile-edition .summary-name { font-size: 13px; }
+    body.mobile-edition .summary-breakdown .summary-name { font-size: 11px; }
     body.mobile-edition .summary-values { display: contents; }
-    body.mobile-edition .summary-values > span { gap: 2px; font-size: 11px; }
+    body.mobile-edition .summary-values > span { gap: 2px; font-size: 10px; }
     body.mobile-edition .summary-values > span:first-child,
     body.mobile-edition .summary-values > span:last-child { justify-self: end; }
-    body.mobile-edition .summary-values strong { font-size: 14px; }
-    body.mobile-edition .summary-values > span:not(:first-child) strong { font-size: 12px; }
+    body.mobile-edition .summary-values strong { font-size: 11px; }
+    body.mobile-edition .summary-values > span:first-child strong { font-size: 13px; }
+    body.mobile-edition .results-summary[open] .results-count { padding: 8px 0 5px; }
+    body.mobile-edition :is(.field label, .card-result-field label, .keydata-box > small, .card-meta .meta-row small) { text-align: center; margin-inline: 0; }
     @media (max-width: 350px) {
-      body.mobile-edition .results-count { column-gap: 8px; }
+      body.mobile-edition .summary-breakdown { column-gap: 8px; }
       body.mobile-edition .summary-values > span { font-size: 10px; }
     }
     .results-actions .small-button { min-height: 38px; padding: 0 12px; color: var(--pink-800); }
@@ -2409,12 +2462,20 @@
 
     <section id="resultsSection" class="results-section glass-panel" aria-label="검색 결과" hidden>
       <div class="results-bar">
+        <details id="summaryDisclosure" class="results-summary">
+          <summary class="summary-disclosure"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15v-4M12 15V5M17 15v-7"/></svg><span>합격률 통계</span><svg class="button-icon summary-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary>
         <div id="resultsCount" class="results-count" aria-live="polite" aria-label="검색 결과 집계">
-          <span class="summary-basic">지원 <strong id="summaryApplications">0</strong>건</span>
-          <span class="summary-basic is-missing">미입력 <strong id="summaryUnentered">0</strong>건</span>
-          <span class="summary-group"><span class="summary-name">최초합격</span><span class="summary-values"><span><small>총합</small><strong id="summaryInitialTotal">0</strong>건</span><span><small>재학</small><strong id="summaryInitialEnrolled">0</strong>건</span><span><small>졸업</small><strong id="summaryInitialGraduates">0</strong>건</span></span></span>
-          <span class="summary-group"><span class="summary-name">충원합격</span><span class="summary-values"><span><small>총합</small><strong id="summaryWaitlistTotal">0</strong>건</span><span><small>재학</small><strong id="summaryWaitlistEnrolled">0</strong>건</span><span><small>졸업</small><strong id="summaryWaitlistGraduates">0</strong>건</span></span></span>
+          <span class="summary-overview">
+            <span class="summary-basic"><span class="summary-name">지원</span><span class="summary-primary-value"><strong id="summaryApplications">0</strong>건</span></span>
+            <span class="summary-basic is-missing"><span class="summary-name">미입력</span><span class="summary-primary-value"><strong id="summaryUnentered">0</strong>건</span></span>
+            <span class="summary-total"><span class="summary-total-count"><span class="summary-name">총 합격</span><span class="summary-primary-value"><strong id="summaryTotalAccepted">0</strong>건</span></span><span class="summary-rates"><span><small>재학</small><strong id="summaryEnrolledAcceptanceRate">—</strong></span><span><small>졸업</small><strong id="summaryGraduateAcceptanceRate">—</strong></span></span></span>
+          </span>
+          <span class="summary-breakdown">
+            <span class="summary-group"><span class="summary-name">최초합격</span><span class="summary-values"><span><strong id="summaryInitialTotal">0</strong>건</span><span><small>재학</small><strong id="summaryInitialEnrolled">0</strong>건</span><span><small>졸업</small><strong id="summaryInitialGraduates">0</strong>건</span></span></span>
+            <span class="summary-group"><span class="summary-name">충원합격</span><span class="summary-values"><span><strong id="summaryWaitlistTotal">0</strong>건</span><span><small>재학</small><strong id="summaryWaitlistEnrolled">0</strong>건</span><span><small>졸업</small><strong id="summaryWaitlistGraduates">0</strong>건</span></span></span>
+          </span>
         </div>
+        </details>
         <div class="results-actions">
           <button id="exportButton" class="small-button export-button" type="button" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
@@ -3030,9 +3091,12 @@
       scheduleDialogCloseButton: $('scheduleDialogCloseButton'),
       scheduleDialogDoneButton: $('scheduleDialogDoneButton'),
       resultsCount: $('resultsCount'),
+      summaryDisclosure: $('summaryDisclosure'),
       resultsBar: document.querySelector('.results-bar'),
       summaryCounts: {
         applications: $('summaryApplications'), unentered: $('summaryUnentered'),
+        totalAccepted: $('summaryTotalAccepted'),
+        enrolledAcceptanceRate: $('summaryEnrolledAcceptanceRate'), graduateAcceptanceRate: $('summaryGraduateAcceptanceRate'),
         initialTotal: $('summaryInitialTotal'), initialEnrolled: $('summaryInitialEnrolled'), initialGraduates: $('summaryInitialGraduates'),
         waitlistTotal: $('summaryWaitlistTotal'), waitlistEnrolled: $('summaryWaitlistEnrolled'), waitlistGraduates: $('summaryWaitlistGraduates'),
       },
@@ -4004,13 +4068,19 @@
       const keys = ['total', 'enrolled', 'graduates'];
       const validCount = value => Number.isSafeInteger(value) && value >= 0;
       if (!validCount(raw.applications) || !validCount(raw.unentered)
+        || !raw.enrollmentApplications
+        || !validCount(raw.enrollmentApplications.enrolled) || !validCount(raw.enrollmentApplications.graduates)
         || !raw.initial || !raw.waitlist
         || !keys.every(key => validCount(raw.initial[key]) && validCount(raw.waitlist[key]))) return null;
       if (raw.unentered + raw.initial.total + raw.waitlist.total > raw.applications
+        || raw.enrollmentApplications.enrolled + raw.enrollmentApplications.graduates > raw.applications
+        || raw.initial.enrolled + raw.waitlist.enrolled > raw.enrollmentApplications.enrolled
+        || raw.initial.graduates + raw.waitlist.graduates > raw.enrollmentApplications.graduates
         || raw.initial.enrolled + raw.initial.graduates > raw.initial.total
         || raw.waitlist.enrolled + raw.waitlist.graduates > raw.waitlist.total) return null;
       return {
         applications: raw.applications, unentered: raw.unentered,
+        enrollmentApplications: { enrolled: raw.enrollmentApplications.enrolled, graduates: raw.enrollmentApplications.graduates },
         initial: { total: raw.initial.total, enrolled: raw.initial.enrolled, graduates: raw.initial.graduates },
         waitlist: { total: raw.waitlist.total, enrolled: raw.waitlist.enrolled, graduates: raw.waitlist.graduates },
       };
@@ -4019,6 +4089,8 @@
     function adjustResultSummary(summary, record, direction) {
       const result = String(record.finalResult || '').trim();
       const enrollment = String(record.enrollment || '').trim();
+      if (enrollment === '재학생') summary.enrollmentApplications.enrolled += direction;
+      else if (enrollment === '졸업생') summary.enrollmentApplications.graduates += direction;
       if (!result || result === '미입력') summary.unentered += direction;
       const bucket = result === '합격' ? summary.initial : result === '충원합격' ? summary.waitlist : null;
       if (!bucket) return;
@@ -4029,10 +4101,16 @@
 
     function summarizeRecords(records, applications = records.length) {
       const summary = { applications, unentered: 0,
+        enrollmentApplications: { enrolled: 0, graduates: 0 },
         initial: { total: 0, enrolled: 0, graduates: 0 },
         waitlist: { total: 0, enrolled: 0, graduates: 0 } };
       records.forEach(record => adjustResultSummary(summary, record, 1));
       return summary;
+    }
+
+    function formatAcceptanceRate(accepted, applications) {
+      if (!applications) return '—';
+      return (Math.round(accepted * 1000 / applications) / 10).toLocaleString('ko-KR') + '%';
     }
 
     function renderResultSummary() {
@@ -4041,6 +4119,11 @@
       const counts = {
         applications: summary?.applications ?? state.lastTotalMatches,
         unentered: summary?.unentered ?? (empty ? 0 : null),
+        totalAccepted: summary ? summary.initial.total + summary.waitlist.total : (empty ? 0 : null),
+        enrolledAcceptanceRate: summary
+          ? formatAcceptanceRate(summary.initial.enrolled + summary.waitlist.enrolled, summary.enrollmentApplications.enrolled) : '—',
+        graduateAcceptanceRate: summary
+          ? formatAcceptanceRate(summary.initial.graduates + summary.waitlist.graduates, summary.enrollmentApplications.graduates) : '—',
         initialTotal: summary?.initial.total ?? (empty ? 0 : null),
         initialEnrolled: summary?.initial.enrolled ?? (empty ? 0 : null),
         initialGraduates: summary?.initial.graduates ?? (empty ? 0 : null),
@@ -4053,7 +4136,7 @@
       state.resultSummarySignature = signature;
       Object.entries(counts).forEach(([key, value]) => {
         const node = elements.summaryCounts[key];
-        if (node) node.textContent = value === null ? '—' : value.toLocaleString('ko-KR');
+        if (node) node.textContent = value === null ? '—' : typeof value === 'string' ? value : value.toLocaleString('ko-KR');
       });
     }
 
@@ -6737,6 +6820,7 @@
 
     function init() {
       restorePendingDrafts();
+      elements.summaryDisclosure.open = EDITION === 'pc';
       configureSortControls();
       renderTodaySchedule();
       wireEvents();

@@ -987,6 +987,18 @@
       align-items: baseline;
       gap: 4px;
     }
+    @media (min-width: 480px) {
+      body.mobile-edition .summary-chart-detail {
+        grid-template-columns: repeat(2, max-content);
+        justify-content: center;
+        column-gap: clamp(20px, 5vw, 42px);
+      }
+      body.mobile-edition .summary-chart-detail:has(.summary-other-count:not([hidden])) {
+        grid-column: 2;
+        grid-template-columns: repeat(3, max-content);
+      }
+      body.mobile-edition .summary-chart-detail > span { min-width: 55px; }
+    }
     body.mobile-edition .summary-rate-chart .summary-chart-row { min-height: 30px; }
     body.mobile-edition :is(.field label, .card-result-field label, .keydata-box > small, .card-meta .meta-row small) { text-align: center; margin-inline: 0; }
     .results-actions .small-button { min-height: 38px; padding: 0 12px; color: var(--pink-800); }
@@ -2425,8 +2437,27 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
-    body.mobile-edition .overall-stats { padding: 14px; }
-    body.mobile-edition .overall-stats .summary-toolbar-title { display: flex; grid-column: 1 / -1; }
+    .overall-stats-toggle { display: none; }
+    body.mobile-edition .overall-stats { padding: 8px 14px; }
+    body.mobile-edition .overall-stats-toggle {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      min-height: 36px;
+      gap: 8px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--pink-800);
+      font-size: 13px;
+      font-weight: 800;
+      text-align: left;
+    }
+    .overall-stats-toggle .button-icon { width: 16px; height: 16px; }
+    .overall-stats-toggle-action { margin-inline-start: auto; font-size: 12px; }
+    .overall-stats-toggle[aria-expanded="true"] .overall-stats-chevron { transform: rotate(180deg); }
+    body.mobile-edition .overall-stats:not(.is-expanded) :is(#overallResultsCount, #overallLoading) { display: none; }
+    body.mobile-edition .overall-stats.is-expanded #overallResultsCount { padding-block: 8px 5px; }
     body.mobile-edition .overall-stats .summary-heading strong { min-width: 0; }
     body.pc-edition .overall-stats .summary-heading { padding-right: 0; }
   </style>
@@ -2568,6 +2599,12 @@
     </section>
 
     <section id="overallStats" class="today-schedule overall-stats glass-panel" aria-label="전체 통계">
+      <button id="overallStatsToggle" class="overall-stats-toggle" type="button" aria-expanded="false" aria-controls="overallResultsCount">
+        <svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15v-4M12 15V5M17 15v-7"/></svg>
+        <span>전체 통계</span>
+        <span id="overallStatsToggleAction" class="overall-stats-toggle-action">펼침</span>
+        <svg class="button-icon overall-stats-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+      </button>
       <div id="overallLoading" class="overall-loading" role="status">전체 통계 불러오는 중</div>
         <div id="overallResultsCount" class="results-count" aria-label="전체 지원 및 합격 집계">
           <div class="summary-heading">
@@ -3072,6 +3109,11 @@
     const IS_IOS_WEBKIT = /iPad|iPhone|iPod/.test(navigator.userAgent)
       || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const API_BRIDGE_ENABLED = EDITION === 'pc' || !IS_IOS_WEBKIT;
+    const PREPARE_PC_LOGIN_BRIDGE = EDITION === 'pc' && !IS_IOS_WEBKIT && (
+      location.origin === 'https://seiryu1318.github.io' ||
+      location.origin === 'http://127.0.0.1:8765' || location.origin === 'http://localhost:8765'
+    );
+    const PREPARED_LOGIN_TIMEOUT_MS = 1100;
     const API_BRIDGE_COOLDOWN_MS = 60000;
     const READ_RETRY_BACKOFF_MS = 300;
     const READ_RETRY_ACTIONS = new Set([
@@ -3655,15 +3697,30 @@
       });
     }
 
-    async function apiRequestAttempt(action, payload, url, sessionToken, externalSignal, timeoutMs) {
-      // Authentication and mutating saves use direct POST. A bridge callback
-      // can be lost after a save has already committed, which otherwise leaves
-      // the UI waiting for the full save timeout with no safe fallback.
-      if (API_BRIDGE_ENABLED && action !== 'login' && action !== 'save' && state.apiBridgeReady
+    function isPreparedLoginBridge() {
+      if (!PREPARE_PC_LOGIN_BRIDGE || !isTrustedApiBridgeOrigin(state.apiBridgeOrigin)) return false;
+      const iframeWindow = state.apiBridgeFrame?.contentWindow;
+      let source = state.apiBridgeWindow;
+      try {
+        for (let depth = 0; iframeWindow && source && depth < 6; depth += 1) {
+          if (source === iframeWindow) return true;
+          if (source === window || source === source.parent) break;
+          source = source.parent;
+        }
+      } catch (_) { /* An unverified frame must not receive the password. */ }
+      return false;
+    }
+
+    async function apiRequestAttempt(action, payload, url, sessionToken, externalSignal, timeoutMs, preparedLogin = false) {
+      const startedAt = Date.now();
+      const useLoginBridge = action === 'login' && preparedLogin && isPreparedLoginBridge();
+      const useReadBridge = action !== 'login' && action !== 'save' && state.apiBridgeReady;
+      if (API_BRIDGE_ENABLED && (useReadBridge || useLoginBridge) && state.apiBridgeReady
           && Date.now() >= state.apiBridgeDisabledUntil) {
         try {
           const bridged = await apiBridgeRequest(
-            { action, sessionToken, ...payload }, externalSignal, timeoutMs
+            { action, sessionToken, ...payload }, externalSignal,
+            useLoginBridge ? Math.min(PREPARED_LOGIN_TIMEOUT_MS, timeoutMs) : timeoutMs
           );
           return validateApiResponseData(bridged);
         } catch (error) {
@@ -3681,7 +3738,7 @@
           state.apiBridgeOrigin = '';
           state.apiBridgeDisabledUntil = Date.now() + API_BRIDGE_COOLDOWN_MS;
           scheduleApiBridgeReload(API_BRIDGE_COOLDOWN_MS);
-          if (!READ_RETRY_ACTIONS.has(action)) throw error;
+          if (!useLoginBridge && !READ_RETRY_ACTIONS.has(action)) throw error;
         }
       }
       const requestController = new AbortController();
@@ -3702,7 +3759,7 @@
         timedOut = true;
         requestController.abort();
         rejectDeadline(new ApiError('REQUEST_TIMEOUT', '서버 응답이 지연되고 있습니다.'));
-      }, timeoutMs);
+      }, useLoginBridge ? Math.max(1, timeoutMs - (Date.now() - startedAt)) : timeoutMs);
       try {
         const requestPromise = (async () => {
           const response = await fetch(url, {
@@ -3810,7 +3867,8 @@
             url,
             sessionToken,
             externalSignal,
-            attempt === 0 ? initialAttemptTimeoutMs : retryAttemptTimeoutMs
+            attempt === 0 ? initialAttemptTimeoutMs : retryAttemptTimeoutMs,
+            options.preparedLogin === true
           );
         } catch (error) {
           if (externalSignal && externalSignal.aborted) throw abortError();
@@ -6692,6 +6750,7 @@
       resetPasswordInputFeedback();
       elements.passwordDialog.show();
       elements.passwordDialogShade.hidden = false;
+      if (PREPARE_PC_LOGIN_BRIDGE) setupApiBridge();
       setTimeout(() => elements.passwordInput.focus(), 30);
     }
 
@@ -6724,6 +6783,7 @@
         // Keep first-time sign-in fast: authenticate first, then refresh the
         // larger autocomplete index independently in the background.
         const data = await api('login', { password, includeMeta: false, includeOverallSummary: true }, {
+          preparedLogin: PREPARE_PC_LOGIN_BRIDGE,
           onRetry: () => {
             if (submitLabel) submitLabel.textContent = '다시 연결 중';
           },
@@ -6734,9 +6794,7 @@
         elements.passwordDialog.close();
         setSyncState('online', '연결됨');
         if (!renderedOverall) void refreshOverallStats();
-        // Start the read bridge only after authentication. Loading its iframe
-        // alongside the direct login POST created avoidable startup contention
-        // on mobile Apps Script/WebKit connections.
+        // Mobile starts its read bridge after authenticating.
         setupApiBridge();
         scheduleAuthenticatedMetaInitialization({
           knownRevision: data.sourceRevision || data.revision,
@@ -6970,6 +7028,14 @@
       elements.settingsForm.addEventListener('submit', event => { event.preventDefault(); saveSettings(); });
       elements.passwordForm.addEventListener('submit', event => { event.preventDefault(); loginWithPassword(); });
       elements.passwordInput.addEventListener('input', resetPasswordInputFeedback);
+      $('overallStatsToggle').addEventListener('click', event => {
+        const button = event.currentTarget;
+        const expanded = button.getAttribute('aria-expanded') === 'false';
+        button.setAttribute('aria-expanded', String(expanded));
+        $('overallStats').classList.toggle('is-expanded', expanded);
+        $('overallStatsToggleAction').textContent = expanded ? '접기' : '펼침';
+        if (expanded && !overallRevision) void refreshOverallStats();
+      });
       elements.passwordDialog.addEventListener('cancel', event => event.preventDefault());
       elements.passwordDialog.addEventListener('close', () => {
         elements.passwordDialogShade.hidden = true;

@@ -986,6 +986,8 @@
       cursor: pointer;
     }
     .sort-button:hover { color: var(--pink-800); background: rgba(255,255,255,.58); }
+    body.pc-edition .result-table th:nth-child(n+12) .sort-button { position: relative; padding-inline: 16px; }
+    body.pc-edition .result-table th:nth-child(n+12) .sort-mark-icon { position: absolute; right: 2px; }
     .sort-mark-icon { width: 13px; height: 13px; color: #b98da1; }
     th[aria-sort="ascending"] .sort-mark-icon, th[aria-sort="descending"] .sort-mark-icon { color: var(--pink-700); }
     th[aria-sort="descending"] .sort-mark-icon { transform: rotate(180deg); }
@@ -1084,7 +1086,7 @@
       background-position: right 6px center;
       background-size: 14px;
     }
-    body.pc-edition select.inline-result-control { padding-left: 24px; text-align-last: center; }
+    body.pc-edition select.inline-result-control { padding-inline: 18px; text-align-last: center; background-position: right 3px center; background-size: 12px; }
     select.inline-result-control option {
       color: #3f1a2c;
       background: #fff8fb;
@@ -1211,7 +1213,7 @@
     .result-table :is(th, td):nth-child(11) { width: 116px; }
     .result-table :is(th, td):nth-child(12),
     .result-table :is(th, td):nth-child(13) { width: 90px; }
-    .result-table :is(th, td):nth-child(14) { width: 103px; }
+    .result-table :is(th, td):nth-child(14) { width: 150px; }
     .result-table :is(th, td):nth-child(15) { width: 96px; }
     .sort-button[data-sort-key="waitPrediction"] { gap: 3px; padding-inline: 3px; font-size: 12px; }
     .result-table :is(th, td):nth-child(16),

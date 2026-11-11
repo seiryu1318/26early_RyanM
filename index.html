@@ -869,41 +869,75 @@
     .summary-graduates { background: #9b7a91; }
     .summary-other { background: #a5a0a8; }
     .summary-stage1-fill { background: #725066; }
-    .summary-charts { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 26px; }
-    .summary-chart { min-width: 0; }
+    .summary-charts {
+      --summary-label-width: 62px;
+      --summary-value-width: 58px;
+      --summary-column-gap: 9px;
+      --summary-panel-gap: 26px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 12px var(--summary-panel-gap);
+    }
+    .summary-chart {
+      --summary-columns: var(--summary-label-width) minmax(0, 1fr) var(--summary-value-width);
+      min-width: 0;
+    }
     .summary-chart-title { margin: 0 0 5px; color: #765363; font-size: 11px; font-weight: 750; }
-    .summary-chart-row { display: grid; grid-template-columns: 62px minmax(0, 1fr) 58px 112px; align-items: center; column-gap: 9px; min-height: 27px; }
+    .summary-chart-row, .summary-chart-axis {
+      display: grid;
+      grid-template-columns: var(--summary-columns);
+      column-gap: var(--summary-column-gap);
+    }
+    .summary-chart-row { align-items: center; min-height: 43px; }
     .summary-chart-label { color: #4f303e; font-size: 12px; font-weight: 800; white-space: nowrap; }
     .summary-chart-track { display: flex; height: 9px; overflow: hidden; background: rgba(120,61,91,.075); border-radius: 3px; }
     .summary-chart-fill { height: 100%; flex-shrink: 0; }
     .summary-chart-value { text-align: right; white-space: nowrap; }
     .summary-chart-value strong { font-size: 13px; }
-    .summary-chart-detail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; color: #795d6a; font-size: 10.5px; white-space: nowrap; }
+    .summary-chart-detail {
+      display: grid;
+      grid-column: 2 / -1;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      width: min(160px, 100%);
+      gap: 8px;
+      padding-bottom: 4px;
+      color: #795d6a;
+      font-size: 10.5px;
+      white-space: nowrap;
+    }
     .summary-chart-detail > span { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 3px; align-items: baseline; }
     .summary-chart-detail strong { color: #684250; text-align: right; }
     .summary-chart-detail .summary-other-count { color: #776f7a; }
     .summary-chart-detail:has(.summary-other-count:not([hidden])) { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; font-size: 9.5px; }
     .summary-chart-detail:has(.summary-other-count:not([hidden])) > span { grid-template-columns: auto minmax(0, 1fr); gap: 2px; }
-    .summary-chart-axis { display: grid; grid-template-columns: 62px minmax(0, 1fr) 58px 112px; column-gap: 9px; margin-top: 1px; }
+    .summary-chart-axis { margin-top: 1px; }
     .summary-chart-ticks { grid-column: 2; display: flex; justify-content: space-between; color: #8e7682; font-size: 10px; font-variant-numeric: tabular-nums; }
-    .summary-rate-chart :is(.summary-chart-row, .summary-chart-axis) { grid-template-columns: 34px minmax(0, 1fr) 48px; }
     .summary-rate-chart .summary-chart-row { min-height: 34px; }
     @media (min-width: 1181px) {
-      body.pc-edition .summary-rate-chart { display: flex; flex-direction: column; }
-      body.pc-edition .summary-rate-chart .summary-chart-row { flex: 1; }
+      body.pc-edition .summary-charts {
+        --summary-cohort-width: 112px;
+        --summary-row-height: 27px;
+        --summary-cohort-column: calc(var(--summary-cohort-width) + var(--summary-column-gap));
+        /* Allocate the extra cohort column to the count chart so both tracks have equal widths. */
+        grid-template-columns: minmax(0, calc((100% - var(--summary-panel-gap) + var(--summary-cohort-column)) / 2)) minmax(0, 1fr);
+        align-items: start;
+      }
+      body.pc-edition .summary-chart {
+        display: grid;
+        grid-template-rows: max-content repeat(4, var(--summary-row-height)) max-content;
+      }
+      body.pc-edition .summary-chart:not(.summary-rate-chart) {
+        --summary-columns: var(--summary-label-width) minmax(0, 1fr) var(--summary-value-width) var(--summary-cohort-width);
+      }
+      body.pc-edition .summary-chart .summary-chart-row { min-height: 0; }
+      body.pc-edition .summary-chart-detail { grid-column: 4; width: auto; padding-bottom: 0; }
+      body.pc-edition .summary-rate-chart .summary-chart-row + .summary-chart-row { grid-row: 5; }
+      body.pc-edition .summary-rate-chart .summary-chart-axis { grid-row: 6; }
     }
     .results-actions { display: flex; flex-shrink: 0; align-items: center; gap: 8px; }
     body.pc-edition .results-bar { position: relative; }
     body.pc-edition .results-actions { position: absolute; top: 11px; right: 18px; }
     body.pc-edition .summary-heading { padding-right: 172px; }
-    @media (max-width: 1180px) {
-      .summary-charts { grid-template-columns: 1fr; gap: 12px; }
-      .summary-chart-row, .summary-chart-axis,
-      .summary-rate-chart :is(.summary-chart-row, .summary-chart-axis) { grid-template-columns: 62px minmax(0, 1fr) 58px; }
-      .summary-chart-row { min-height: 43px; }
-      .summary-chart-detail { grid-column: 2 / -1; width: min(160px, 100%); padding-bottom: 4px; }
-      .summary-rate-chart { max-width: none; }
-    }
     @media (max-width: 760px), (max-height: 620px) {
       body.pc-edition .summary-disclosure { display: flex; justify-content: flex-start; max-width: calc(100% - 172px); }
       body.pc-edition .summary-toolbar-title { display: none; }
@@ -919,11 +953,14 @@
     body.mobile-edition .summary-heading { justify-content: center; gap: 8px 18px; }
     body.mobile-edition .summary-toolbar-title { display: none; }
     body.mobile-edition .summary-legend { width: 100%; justify-content: center; margin-left: 0; }
-    body.mobile-edition .summary-charts { grid-template-columns: 1fr; gap: 14px; }
-    body.mobile-edition .summary-chart-row { grid-template-columns: 59px minmax(0, 1fr) 53px; column-gap: 7px; min-height: 44px; }
-    body.mobile-edition .summary-chart-detail { grid-column: 2 / -1; width: min(160px, 100%); gap: 14px; padding-bottom: 4px; font-size: 11px; }
-    body.mobile-edition .summary-chart-axis { grid-template-columns: 59px minmax(0, 1fr) 53px; column-gap: 7px; }
-    body.mobile-edition .summary-rate-chart :is(.summary-chart-row, .summary-chart-axis) { grid-template-columns: 59px minmax(0, 1fr) 53px; }
+    body.mobile-edition .summary-charts {
+      --summary-label-width: 59px;
+      --summary-value-width: 53px;
+      --summary-column-gap: 7px;
+      row-gap: 14px;
+    }
+    body.mobile-edition .summary-chart-row { min-height: 44px; }
+    body.mobile-edition .summary-chart-detail { gap: 14px; font-size: 11px; }
     body.mobile-edition .summary-rate-chart .summary-chart-row { min-height: 30px; }
     body.mobile-edition :is(.field label, .card-result-field label, .keydata-box > small, .card-meta .meta-row small) { text-align: center; margin-inline: 0; }
     .results-actions .small-button { min-height: 38px; padding: 0 12px; color: var(--pink-800); }
@@ -3028,6 +3065,7 @@
     const META_STORAGE_MAX_VALUE_LENGTH = 240;
     const SEARCH_CACHE_LIMIT = 24;
     const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
+    const RECORD_SORT_COLLATOR = new Intl.Collator('ko', { numeric: true, sensitivity: 'base' });
     const DEMO_HOST = location.protocol === 'file:' || ['localhost', '127.0.0.1'].includes(location.hostname);
     const DEMO_MODE = DEMO_HOST && new URLSearchParams(location.search).get('demo') === '1';
 
@@ -4196,6 +4234,7 @@
         if (!data.notModified && !applyOverallSummary(data.summary, data.revision)) {
           throw new Error('통계 데이터를 확인할 수 없습니다.');
         }
+        return data;
       } catch (_) {
         if (!overallRevision) {
           overallLoading.classList.add('is-error');
@@ -4378,7 +4417,9 @@
     function cachedSearchResponse(filters) {
       const key = searchCacheKey(filters);
       const cached = state.searchCache.get(key);
-      if (!cached || !cached.revision || cached.revision !== String(state.dataRevision || '')
+      // After returning home, the aggregate can confirm the revision of a previous search.
+      const knownRevision = state.dataRevision || overallRevision;
+      if (!cached || !cached.revision || cached.revision !== knownRevision
         || Date.now() - Number(cached.cachedAt || 0) > SEARCH_CACHE_TTL_MS) {
         state.searchCache.delete(key);
         return null;
@@ -4395,11 +4436,13 @@
       state.resultSummary = normalizeResultSummary(data.summary)
         || (!data.truncated ? summarizeRecords(nextRecords, Number(data.totalMatches) || 0) : null);
       state.lastTotalMatches = Number(data.totalMatches) || 0;
-      renderResultSummary();
       state.dataRevision = String(data.revision == null ? state.dataRevision : data.revision);
       scheduleMetaRefresh(data.sourceRevision || data.revision);
       if (verified) state.lastFullSyncAt = Date.now();
-      if (unchanged) return false;
+      if (unchanged) {
+        renderResultSummary();
+        return false;
+      }
 
       state.records = nextRecords;
       adoptRecoveredDrafts(nextRecords);
@@ -4662,10 +4705,7 @@
       return [...state.records].sort((a, b) => {
         const av = String(a[state.sortKey] || '');
         const bv = String(b[state.sortKey] || '');
-        const numeric = ['classNo', 'studentNo', 'birthdate'].includes(state.sortKey);
-        const result = numeric
-          ? av.localeCompare(bv, 'ko', { numeric: true, sensitivity: 'base' })
-          : av.localeCompare(bv, 'ko', { numeric: true, sensitivity: 'base' });
+        const result = RECORD_SORT_COLLATOR.compare(av, bv);
         return state.sortDirection === 'asc' ? result : -result;
       });
     }
@@ -6364,7 +6404,7 @@
       }
     }
 
-    async function initializeAuthenticatedMeta({ knownRevision = '', serverTime = '' } = {}) {
+    async function initializeAuthenticatedMeta({ knownRevision = '', serverTime = '', revisionRequest } = {}) {
       const cached = restoreStoredMeta();
       if (!cached) return loadMeta();
 
@@ -6380,7 +6420,8 @@
 
       setSyncState('busy', '연결 확인 중');
       try {
-        const validation = await api('revision');
+        // The home stats request already confirms the current source revision.
+        const validation = (await revisionRequest) || await api('revision');
         const nextRevision = metaResponseRevision(validation);
         if (nextRevision && nextRevision === cached.revision) {
           setSyncState('online', timeLabel(validation.serverTime));
@@ -6399,7 +6440,7 @@
     }
 
     function scheduleAuthenticatedMetaInitialization(
-      { knownRevision = '', serverTime = '' } = {},
+      options = {},
       delayMs = META_BOOTSTRAP_DELAY_MS
     ) {
       // Parsing and indexing the persisted metadata can be expensive on older
@@ -6409,10 +6450,10 @@
       state.metaBootstrapTimer = setTimeout(() => {
         state.metaBootstrapTimer = null;
         if (state.searching || state.pendingManualSearch) {
-          scheduleAuthenticatedMetaInitialization({ knownRevision, serverTime }, 120);
+          scheduleAuthenticatedMetaInitialization(options, 120);
           return;
         }
-        void initializeAuthenticatedMeta({ knownRevision, serverTime });
+        void initializeAuthenticatedMeta(options);
       }, Math.max(0, Number(delayMs) || 0));
     }
 
@@ -7064,15 +7105,14 @@
         debounceMs: 35,
         provideSuggestions: query => textSuggestions('recruitmentUnit', query),
       });
-      renderResults(0, false);
       if (DEMO_MODE) {
         void refreshOverallStats();
         setSyncState('online', '데모');
         loadMeta();
       } else if (currentApiUrl() && currentSessionToken()) {
-        void refreshOverallStats();
+        const revisionRequest = refreshOverallStats();
         setupApiBridge();
-        scheduleAuthenticatedMetaInitialization();
+        scheduleAuthenticatedMetaInitialization({ revisionRequest });
       } else if (currentApiUrl()) {
         setSyncState('idle', '로그인 필요');
         openPassword();

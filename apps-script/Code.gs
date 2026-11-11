@@ -24,7 +24,6 @@ const CONFIG = Object.freeze({
   searchMatchCachePrefix: 'admissions-search-match-v10',
   metaCachePrefix: 'admissions-meta-v9',
   overallSummaryCachePrefix: 'admissions-overall-summary-v1',
-  overallSummaryCacheTtlSeconds: 600,
   searchMatchCacheTtlSeconds: 600,
   searchResponseCachePrefix: 'admissions-search-response-v7',
   searchResponseCacheTtlSeconds: 600,
@@ -164,7 +163,7 @@ function dispatchApiPayload_(payload) {
     case 'universities':
       return getUniversitySuggestions_(payload.query);
     case 'search':
-      return search_(payload.filters || {});
+      return search_(payload.filters || {}, scriptProperties);
     case 'sync':
       return syncSearch_(
         payload.filters || {},
@@ -471,7 +470,7 @@ function getUniversitySuggestions_(query) {
   return { ok: true, suggestions, serverTime: new Date().toISOString() };
 }
 
-function search_(rawFilters) {
+function search_(rawFilters, properties) {
   const filters = sanitizeFilters_(rawFilters);
   if (!hasSearchCondition_(filters)) {
     throw apiError_('FILTER_REQUIRED', '검색 조건을 한 가지 이상 입력해 주세요.');
@@ -481,8 +480,9 @@ function search_(rawFilters) {
   // full rows snapshot. The cache identity includes both the data revision and
   // the concrete snapshot generation, so a refreshed sheet can never reuse an
   // older result even when filters are identical.
-  const initialRevisionPair = getRevisionPair_();
-  const initialRevision = initialRevisionPair.revision;
+  const initialRevision = properties
+    ? (properties[CONFIG.dataRevisionProperty] || '0')
+    : getRevisionPair_().revision;
   const descriptor = readRowsCacheDescriptor_(initialRevision);
   if (descriptor) {
     const cachedResponse = readSearchResponseCache_(
@@ -490,8 +490,8 @@ function search_(rawFilters) {
       descriptor.snapshotToken,
       filters
     );
-    const validatedRevisionPair = getRevisionPair_();
-    if (cachedResponse && validatedRevisionPair.revision === initialRevision) {
+    const validatedRevisionPair = cachedResponse && getRevisionPair_();
+    if (validatedRevisionPair && validatedRevisionPair.revision === initialRevision) {
       SEARCH_METRICS_.responseCacheHits += 1;
       return {
         ok: true,
@@ -508,8 +508,9 @@ function search_(rawFilters) {
   const rows = snapshot.rows;
   const match = findMatchingRowIndexes_(snapshot, filters);
   const visibleIndexes = match.rowIndexes.slice(0, CONFIG.maxSearchResults);
+  const versionsByResult = new Map();
   const matches = visibleIndexes.map(rowIndex => (
-    toRecord_(rows[rowIndex], CONFIG.firstDataRow + rowIndex)
+    toRecord_(rows[rowIndex], CONFIG.firstDataRow + rowIndex, versionsByResult)
   ));
   const totalMatches = match.rowIndexes.length;
 
@@ -552,7 +553,7 @@ function overallSummary_(knownRevision, properties) {
   const snapshot = getRowsSnapshot_();
   const indexes = Array.from({ length: snapshot.rows.length }, (_, index) => index);
   const summary = summarizeResultRows_(snapshot.rows, indexes);
-  putCacheSafely_(overallSummaryCacheKey_(snapshot.revision), JSON.stringify(summary), CONFIG.overallSummaryCacheTtlSeconds);
+  putCacheSafely_(overallSummaryCacheKey_(snapshot.revision), JSON.stringify(summary), CONFIG.rowsCacheTtlSeconds);
   return { ok: true, summary, revision: snapshot.revision,
     sourceRevision: sourceIdentityForSnapshot_(snapshot), serverTime: new Date().toISOString() };
 }
@@ -628,7 +629,7 @@ function syncSearch_(rawFilters, knownRevision, force, properties) {
       serverTime: new Date().toISOString(),
     };
   }
-  return { ...search_(filters), notModified: false };
+  return { ...search_(filters, source), notModified: false };
 }
 
 function getRevision_(properties) {
@@ -2124,12 +2125,12 @@ function cascadeStageResult_(selectionType, stage1, finalResult, failureReason) 
   return { finalResult: text_(finalResult), failureReason: text_(failureReason) };
 }
 
-function toRecord_(row, rowNumber) {
+function toRecord_(row, rowNumber, versionsByResult) {
   const stage1Locked = normalize_(row[COL.selectionType]) === '일괄합산' ||
     normalize_(row[COL.stage1]) === '일괄합산';
   return {
     id: makeRecordId_(row),
-    version: makeVersion_(row),
+    version: makeVersion_(row, versionsByResult),
     rowNumber: Number(rowNumber) || 0,
     universityType: text_(row[COL.universityType]),
     enrollment: text_(row[COL.enrollment]),
@@ -2164,12 +2165,18 @@ function makeRecordId_(row) {
   return digestHex_(stable);
 }
 
-function makeVersion_(row) {
+function makeVersion_(row, versionsByResult) {
   const values = [
     row[COL.stage1], row[COL.finalResult], row[COL.failureReason], row[COL.waitPrediction],
     row[COL.firstWait], row[COL.finalWait],
   ].map(text_).join('\u001f');
-  return digestHex_(values);
+  if (!versionsByResult) return digestHex_(values);
+  let version = versionsByResult.get(values);
+  if (!version) {
+    version = digestHex_(values);
+    versionsByResult.set(values, version);
+  }
+  return version;
 }
 
 function normalizeAdmissionType_(value) {

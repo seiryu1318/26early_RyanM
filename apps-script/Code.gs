@@ -23,6 +23,8 @@ const CONFIG = Object.freeze({
   searchIndexCachePrefix: 'admissions-search-index-v7',
   searchMatchCachePrefix: 'admissions-search-match-v10',
   metaCachePrefix: 'admissions-meta-v9',
+  overallSummaryCachePrefix: 'admissions-overall-summary-v1',
+  overallSummaryCacheTtlSeconds: 600,
   searchMatchCacheTtlSeconds: 600,
   searchResponseCachePrefix: 'admissions-search-response-v7',
   searchResponseCacheTtlSeconds: 600,
@@ -145,7 +147,7 @@ function bridgeApi(payloadJson) {
 
 function dispatchApiPayload_(payload) {
   if (String(payload.action || '') === 'login') {
-    return login_(payload.password, payload.includeMeta === true);
+    return login_(payload.password, payload.includeMeta === true, payload.includeOverallSummary === true);
   }
   const scriptProperties = PropertiesService.getScriptProperties().getProperties();
   requireSession_(payload.sessionToken, scriptProperties);
@@ -252,7 +254,7 @@ function parsePayload_(e) {
   }
 }
 
-function login_(providedPassword, includeMeta) {
+function login_(providedPassword, includeMeta, includeOverallSummary) {
   const properties = PropertiesService.getScriptProperties().getProperties();
   const savedPassword = properties[CONFIG.passwordProperty];
   const sessionSecret = properties[CONFIG.sessionSecretProperty];
@@ -272,14 +274,16 @@ function login_(providedPassword, includeMeta) {
     nonce: Utilities.getUuid(),
   }));
   const signature = sign_(payload, sessionSecret);
+  const revision = meta ? meta.revision : (properties[CONFIG.dataRevisionProperty] || '0');
   return {
     ok: true,
     sessionToken: payload + '.' + signature,
     expiresAt,
-    revision: meta ? meta.revision : (properties[CONFIG.dataRevisionProperty] || '0'),
+    revision,
     sourceRevision: meta ? meta.sourceRevision :
       (properties[CONFIG.sourceRevisionProperty] || properties[CONFIG.dataRevisionProperty] || '0'),
     meta: meta || undefined,
+    overallSummary: includeOverallSummary ? readOverallSummaryCache_(revision) || undefined : undefined,
     serverTime: new Date().toISOString(),
   };
 }
@@ -525,12 +529,31 @@ function search_(rawFilters) {
   };
 }
 
+function overallSummaryCacheKey_(revision) {
+  return CONFIG.overallSummaryCachePrefix + ':' + revision;
+}
+
+function readOverallSummaryCache_(revision) {
+  try {
+    const raw = CacheService.getScriptCache().get(overallSummaryCacheKey_(revision));
+    const summary = raw ? JSON.parse(raw) : null;
+    return summary && validSearchSummary_(summary, summary.applications) ? summary : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function overallSummary_(knownRevision, properties) {
-  const revision = properties[CONFIG.dataRevisionProperty] || '0';
-  if (cleanText_(knownRevision, 256) === revision) return { ...getRevision_(properties), notModified: true };
+  const current = getRevision_(properties);
+  if (cleanText_(knownRevision, 256) === current.revision) return { ...current, notModified: true };
+  const cached = readOverallSummaryCache_(current.revision);
+  if (cached) return { ...current, summary: cached };
+
   const snapshot = getRowsSnapshot_();
   const indexes = Array.from({ length: snapshot.rows.length }, (_, index) => index);
-  return { ok: true, summary: summarizeResultRows_(snapshot.rows, indexes), revision: snapshot.revision,
+  const summary = summarizeResultRows_(snapshot.rows, indexes);
+  putCacheSafely_(overallSummaryCacheKey_(snapshot.revision), JSON.stringify(summary), CONFIG.overallSummaryCacheTtlSeconds);
+  return { ok: true, summary, revision: snapshot.revision,
     sourceRevision: sourceIdentityForSnapshot_(snapshot), serverTime: new Date().toISOString() };
 }
 

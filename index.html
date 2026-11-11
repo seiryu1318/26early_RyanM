@@ -1850,10 +1850,31 @@
       margin: 0 auto;
     }
     body.has-searched .today-schedule { display: none; }
-    .overall-stats .summary-chart-row { background: transparent; }
+    .overall-stats {
+      background: linear-gradient(115deg, rgba(247,252,255,.91), rgba(233,243,252,.9) 55%, rgba(251,237,247,.91));
+      backdrop-filter: none;
+    }
+    .overall-stats::before { content: none; }
     .overall-stats .summary-heading { margin-bottom: 12px; }
-    .overall-loading { text-align: center; color: #82455f; font-weight: 700; padding: 12px; }
-    .overall-stats [hidden] { display: none !important; }
+    .overall-stats .summary-heading strong { display: inline-block; min-width: 5ch; text-align: right; }
+    .overall-loading {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+    .overall-loading.is-error {
+      inset: auto 14px 10px;
+      width: auto;
+      height: auto;
+      clip-path: none;
+      text-align: center;
+      color: #82455f;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .overall-stats:has(.overall-loading.is-error) .summary-charts { visibility: hidden; }
     body.has-searched main {
       padding: calc(var(--topbar-height) + var(--sticky-search-gap)) 0 70px;
     }
@@ -2484,22 +2505,22 @@
 
     <section id="overallStats" class="today-schedule overall-stats glass-panel" aria-label="전체 통계">
       <div id="overallLoading" class="overall-loading" role="status">전체 통계 불러오는 중</div>
-        <div id="overallResultsCount" class="results-count" hidden aria-live="polite" aria-label="검색 결과 집계">
+        <div id="overallResultsCount" class="results-count" aria-label="전체 지원 및 합격 집계">
           <div class="summary-heading">
             <h2 class="summary-toolbar-title"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15v-4M12 15V5M17 15v-7"/></svg>전체 통계</h2>
-            <span class="summary-basic">지원 <span><strong id="overallSummaryApplications">0</strong>건</span></span>
-            <span class="summary-cohorts"><span>재학생 지원 <strong id="overallSummaryEnrolledApplications">0</strong>건</span><span>졸업생 지원 <strong id="overallSummaryGraduateApplications">0</strong>건</span></span>
-            <span class="summary-basic summary-header-total">총 합격 <span><strong id="overallSummaryHeaderTotalAccepted">0</strong>건</span></span>
-            <span class="summary-basic is-missing">미입력 <span><strong id="overallSummaryUnentered">0</strong>건</span></span>
+            <span class="summary-basic">지원 <span><strong id="overallSummaryApplications">—</strong>건</span></span>
+            <span class="summary-cohorts"><span>재학생 지원 <strong id="overallSummaryEnrolledApplications">—</strong>건</span><span>졸업생 지원 <strong id="overallSummaryGraduateApplications">—</strong>건</span></span>
+            <span class="summary-basic summary-header-total">총 합격 <span><strong id="overallSummaryHeaderTotalAccepted">—</strong>건</span></span>
+            <span class="summary-basic is-missing">미입력 <span><strong id="overallSummaryUnentered">—</strong>건</span></span>
           </div>
           <div class="summary-charts">
             <div class="summary-chart" role="group" aria-label="합격 건수 막대그래프">
               <h3 class="summary-chart-title">합격 건수</h3>
-              <div class="summary-chart-row"><span class="summary-chart-label">총 합격</span><div class="summary-chart-track" aria-hidden="true"><span id="overallSummaryTotalEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="overallSummaryTotalGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="overallSummaryTotalOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="overallSummaryTotalAccepted">0</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="overallSummaryTotalEnrolled">0</strong></span><span>졸업 <strong id="overallSummaryTotalGraduates">0</strong></span><span class="summary-other-count" id="overallSummaryTotalOtherDetail" hidden>기타 <strong id="overallSummaryTotalOther">0</strong></span></span></div>
-              <div class="summary-chart-row"><span class="summary-chart-label">1단계 합격</span><div class="summary-chart-track" aria-hidden="true"><span id="overallSummaryStage1EnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="overallSummaryStage1GraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="overallSummaryStage1OtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="overallSummaryStage1Passed">—</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="overallSummaryStage1Enrolled">—</strong></span><span>졸업 <strong id="overallSummaryStage1Graduates">—</strong></span><span class="summary-other-count" id="overallSummaryStage1OtherDetail" hidden>기타 <strong id="overallSummaryStage1Other">0</strong></span></span></div>
-              <div class="summary-chart-row"><span class="summary-chart-label">최초합격</span><div class="summary-chart-track" aria-hidden="true"><span id="overallSummaryInitialEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="overallSummaryInitialGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="overallSummaryInitialOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="overallSummaryInitialTotal">0</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="overallSummaryInitialEnrolled">0</strong></span><span>졸업 <strong id="overallSummaryInitialGraduates">0</strong></span><span class="summary-other-count" id="overallSummaryInitialOtherDetail" hidden>기타 <strong id="overallSummaryInitialOther">0</strong></span></span></div>
-              <div class="summary-chart-row"><span class="summary-chart-label">충원합격</span><div class="summary-chart-track" aria-hidden="true"><span id="overallSummaryWaitlistEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="overallSummaryWaitlistGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="overallSummaryWaitlistOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="overallSummaryWaitlistTotal">0</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="overallSummaryWaitlistEnrolled">0</strong></span><span>졸업 <strong id="overallSummaryWaitlistGraduates">0</strong></span><span class="summary-other-count" id="overallSummaryWaitlistOtherDetail" hidden>기타 <strong id="overallSummaryWaitlistOther">0</strong></span></span></div>
-              <div class="summary-chart-axis" aria-label="건수 눈금"><span class="summary-chart-ticks"><span>0</span><span id="overallSummaryCountMidpoint">1</span><span id="overallSummaryCountMaximum">2건</span></span></div>
+              <div class="summary-chart-row"><span class="summary-chart-label">총 합격</span><div class="summary-chart-track" aria-hidden="true"><span id="overallSummaryTotalEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="overallSummaryTotalGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="overallSummaryTotalOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="overallSummaryTotalAccepted">—</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="overallSummaryTotalEnrolled">—</strong></span><span>졸업 <strong id="overallSummaryTotalGraduates">—</strong></span><span class="summary-other-count" id="overallSummaryTotalOtherDetail" hidden>기타 <strong id="overallSummaryTotalOther">—</strong></span></span></div>
+              <div class="summary-chart-row"><span class="summary-chart-label">1단계 합격</span><div class="summary-chart-track" aria-hidden="true"><span id="overallSummaryStage1EnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="overallSummaryStage1GraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="overallSummaryStage1OtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="overallSummaryStage1Passed">—</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="overallSummaryStage1Enrolled">—</strong></span><span>졸업 <strong id="overallSummaryStage1Graduates">—</strong></span><span class="summary-other-count" id="overallSummaryStage1OtherDetail" hidden>기타 <strong id="overallSummaryStage1Other">—</strong></span></span></div>
+              <div class="summary-chart-row"><span class="summary-chart-label">최초합격</span><div class="summary-chart-track" aria-hidden="true"><span id="overallSummaryInitialEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="overallSummaryInitialGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="overallSummaryInitialOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="overallSummaryInitialTotal">—</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="overallSummaryInitialEnrolled">—</strong></span><span>졸업 <strong id="overallSummaryInitialGraduates">—</strong></span><span class="summary-other-count" id="overallSummaryInitialOtherDetail" hidden>기타 <strong id="overallSummaryInitialOther">—</strong></span></span></div>
+              <div class="summary-chart-row"><span class="summary-chart-label">충원합격</span><div class="summary-chart-track" aria-hidden="true"><span id="overallSummaryWaitlistEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="overallSummaryWaitlistGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="overallSummaryWaitlistOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="overallSummaryWaitlistTotal">—</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="overallSummaryWaitlistEnrolled">—</strong></span><span>졸업 <strong id="overallSummaryWaitlistGraduates">—</strong></span><span class="summary-other-count" id="overallSummaryWaitlistOtherDetail" hidden>기타 <strong id="overallSummaryWaitlistOther">—</strong></span></span></div>
+              <div class="summary-chart-axis" aria-label="건수 눈금"><span class="summary-chart-ticks"><span>0</span><span id="overallSummaryCountMidpoint">—</span><span id="overallSummaryCountMaximum">—</span></span></div>
               <div class="summary-legend" aria-label="범례"><span><i class="summary-swatch summary-enrolled" aria-hidden="true"></i>재학</span><span><i class="summary-swatch summary-graduates" aria-hidden="true"></i>졸업</span><span id="overallSummaryOtherLegend" hidden><i class="summary-swatch summary-other" aria-hidden="true"></i>기타</span></div>
             </div>
             <div class="summary-chart summary-rate-chart" role="group" aria-label="재학 및 졸업 합격률 막대그래프">
@@ -2966,6 +2987,7 @@
     // Poll approximately every second, with a small jitter so many open
     // screens do not start Apps Script executions at the same instant.
     const REVISION_POLL_INTERVAL_MS = 1000 + Math.floor(Math.random() * 250);
+    const OVERALL_POLL_INTERVAL_MS = 5000 + Math.floor(Math.random() * 500);
     const FULL_SYNC_INTERVAL_MS = 45000;
     const INITIAL_PAGE_SIZE = 13;
     const MORE_PAGE_SIZE = 10;
@@ -4154,24 +4176,34 @@
     };
     let overallRevision = '';
     let overallBusy = false;
+    const overallLoading = $('overallLoading');
+
+    function applyOverallSummary(raw, revision) {
+      const summary = normalizeResultSummary(raw);
+      if (!summary) return false;
+      renderResultSummary(summary, overallTarget, true);
+      overallRevision = String(revision || '');
+      overallLoading.classList.remove('is-error');
+      overallLoading.textContent = '';
+      return true;
+    }
+
     async function refreshOverallStats() {
       if (overallBusy || document.hidden || document.body.classList.contains('has-searched') || state.searching || (!DEMO_MODE && !currentSessionToken())) return;
       overallBusy = true;
       try {
         const data = await api('overallSummary', { knownRevision: overallRevision });
-        if (!data.notModified) {
-          const summary = normalizeResultSummary(data.summary);
-          if (!summary) throw new Error('통계 데이터를 확인할 수 없습니다.');
-          renderResultSummary(summary, overallTarget, true);
-          $('overallResultsCount').hidden = false;
-          $('overallLoading').hidden = true;
+        if (!data.notModified && !applyOverallSummary(data.summary, data.revision)) {
+          throw new Error('통계 데이터를 확인할 수 없습니다.');
         }
-        overallRevision = String(data.revision || overallRevision);
       } catch (_) {
-        if ($('overallResultsCount').hidden) $('overallLoading').textContent = '전체 통계를 불러오지 못했습니다.';
+        if (!overallRevision) {
+          overallLoading.classList.add('is-error');
+          overallLoading.textContent = '전체 통계를 불러오지 못했습니다. 잠시 후 다시 확인합니다.';
+        }
       } finally { overallBusy = false; }
     }
-    setInterval(refreshOverallStats, REVISION_POLL_INTERVAL_MS);
+    setInterval(refreshOverallStats, OVERALL_POLL_INTERVAL_MS);
 
     function normalizeResultSummary(raw) {
       if (!raw || typeof raw !== 'object') return null;
@@ -6082,6 +6114,7 @@
       const wasActive = document.body.classList.contains('has-searched');
       document.body.classList.toggle('has-searched', active);
       if (!active) setMobileSearchExpanded(false);
+      if (!active && wasActive) void refreshOverallStats();
       if (active && EDITION === 'mobile' && collapseMobile) {
         setMobileSearchExpanded(false);
         toggleDetails(false);
@@ -6621,7 +6654,7 @@
       try {
         // Keep first-time sign-in fast: authenticate first, then refresh the
         // larger autocomplete index independently in the background.
-        const data = await api('login', { password, includeMeta: false }, {
+        const data = await api('login', { password, includeMeta: false, includeOverallSummary: true }, {
           onRetry: () => {
             if (submitLabel) submitLabel.textContent = '다시 연결 중';
           },
@@ -6630,7 +6663,7 @@
         elements.passwordInput.value = '';
         elements.passwordDialog.close();
         setSyncState('online', '연결됨');
-        void refreshOverallStats();
+        if (!applyOverallSummary(data.overallSummary, data.revision)) void refreshOverallStats();
         // Start the read bridge only after authentication. Loading its iframe
         // alongside the direct login POST created avoidable startup contention
         // on mobile Apps Script/WebKit connections.
@@ -6882,10 +6915,12 @@
         resumeRecoveredDrafts();
         retryAllDrafts({ immediate: true });
         if (state.lastFilters) pollForChanges();
+        else void refreshOverallStats();
       });
       window.addEventListener('online', () => {
         resumeRecoveredDrafts();
         retryAllDrafts({ immediate: true });
+        void refreshOverallStats();
       });
       window.addEventListener('pagehide', persistPendingDrafts);
       window.addEventListener('beforeunload', persistPendingDrafts);

@@ -911,7 +911,8 @@
     .summary-chart-detail:has(.summary-other-count:not([hidden])) { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; font-size: 9.5px; }
     .summary-chart-detail:has(.summary-other-count:not([hidden])) > span { grid-template-columns: auto minmax(0, 1fr); gap: 2px; }
     .summary-chart-axis { margin-top: 1px; }
-    .summary-chart-ticks { grid-column: 2; display: flex; justify-content: space-between; color: #8e7682; font-size: 10px; font-variant-numeric: tabular-nums; }
+    .summary-chart-ticks { position: relative; grid-column: 2; display: flex; justify-content: space-between; color: #8e7682; font-size: 10px; font-variant-numeric: tabular-nums; }
+    .summary-chart-ticks > :nth-child(2) { position: absolute; left: var(--summary-midpoint, 50%); transform: translateX(-50%); }
     .summary-rate-chart .summary-chart-row { min-height: 34px; }
     @media (min-width: 1181px) {
       body.pc-edition .summary-charts {
@@ -950,7 +951,17 @@
       body.pc-edition .export-button span { display: none; }
     }
     body.mobile-edition .results-summary[open] .results-count { padding: 8px 0 5px; }
-    body.mobile-edition .summary-heading { justify-content: center; gap: 8px 18px; }
+    body.mobile-edition .summary-heading {
+      display: grid;
+      grid-template-columns: repeat(4, max-content);
+      justify-content: space-between;
+      gap: 6px 4px;
+      font-size: clamp(10px, 2.9vw, 13px);
+    }
+    body.mobile-edition .summary-basic { gap: 3px; }
+    body.mobile-edition .summary-basic strong { font-size: inherit; }
+    body.mobile-edition .summary-cohorts { display: contents; font-size: inherit; }
+    body.mobile-edition .summary-cohort-suffix { display: none; }
     body.mobile-edition .summary-toolbar-title { display: none; }
     body.mobile-edition .summary-legend { width: 100%; justify-content: center; margin-left: 0; }
     body.mobile-edition .summary-charts {
@@ -960,7 +971,22 @@
       row-gap: 14px;
     }
     body.mobile-edition .summary-chart-row { min-height: 44px; }
-    body.mobile-edition .summary-chart-detail { gap: 14px; font-size: 11px; }
+    body.mobile-edition .summary-chart-detail {
+      grid-column: 2;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      width: 100%;
+      gap: clamp(4px, 1.5vw, 12px);
+      font-size: clamp(10px, 2.8vw, 12px);
+    }
+    body.mobile-edition .summary-chart-detail:has(.summary-other-count:not([hidden])) {
+      grid-column: 2 / -1;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    body.mobile-edition .summary-chart-detail > span {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+    }
     body.mobile-edition .summary-rate-chart .summary-chart-row { min-height: 30px; }
     body.mobile-edition :is(.field label, .card-result-field label, .keydata-box > small, .card-meta .meta-row small) { text-align: center; margin-inline: 0; }
     .results-actions .small-button { min-height: 38px; padding: 0 12px; color: var(--pink-800); }
@@ -2400,7 +2426,8 @@
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
     body.mobile-edition .overall-stats { padding: 14px; }
-    body.mobile-edition .overall-stats .summary-toolbar-title { display: flex; width: 100%; }
+    body.mobile-edition .overall-stats .summary-toolbar-title { display: flex; grid-column: 1 / -1; }
+    body.mobile-edition .overall-stats .summary-heading strong { min-width: 0; }
     body.pc-edition .overall-stats .summary-heading { padding-right: 0; }
   </style>
 </head>
@@ -2546,7 +2573,7 @@
           <div class="summary-heading">
             <h2 class="summary-toolbar-title"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15v-4M12 15V5M17 15v-7"/></svg>전체 통계</h2>
             <span class="summary-basic">지원 <span><strong id="overallSummaryApplications">—</strong>건</span></span>
-            <span class="summary-cohorts"><span>재학생 지원 <strong id="overallSummaryEnrolledApplications">—</strong>건</span><span>졸업생 지원 <strong id="overallSummaryGraduateApplications">—</strong>건</span></span>
+            <span class="summary-cohorts"><span>재학<span class="summary-cohort-suffix">생 지원</span> <strong id="overallSummaryEnrolledApplications">—</strong>건</span><span>졸업<span class="summary-cohort-suffix">생 지원</span> <strong id="overallSummaryGraduateApplications">—</strong>건</span></span>
             <span class="summary-basic summary-header-total">총 합격 <span><strong id="overallSummaryHeaderTotalAccepted">—</strong>건</span></span>
             <span class="summary-basic is-missing">미입력 <span><strong id="overallSummaryUnentered">—</strong>건</span></span>
           </div>
@@ -2578,7 +2605,7 @@
           <div class="summary-heading">
             <h2 class="summary-toolbar-title"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15v-4M12 15V5M17 15v-7"/></svg>통계</h2>
             <span class="summary-basic">지원 <span><strong id="summaryApplications">0</strong>건</span></span>
-            <span class="summary-cohorts"><span>재학생 지원 <strong id="summaryEnrolledApplications">0</strong>건</span><span>졸업생 지원 <strong id="summaryGraduateApplications">0</strong>건</span></span>
+            <span class="summary-cohorts"><span>재학<span class="summary-cohort-suffix">생 지원</span> <strong id="summaryEnrolledApplications">0</strong>건</span><span>졸업<span class="summary-cohort-suffix">생 지원</span> <strong id="summaryGraduateApplications">0</strong>건</span></span>
             <span class="summary-basic summary-header-total">총 합격 <span><strong id="summaryHeaderTotalAccepted">0</strong>건</span></span>
             <span class="summary-basic is-missing">미입력 <span><strong id="summaryUnentered">0</strong>건</span></span>
           </div>
@@ -4309,20 +4336,18 @@
       const waitlist = summary?.waitlist || { total: 0, enrolled: 0, graduates: 0 };
       const total = { total: initial.total + waitlist.total, enrolled: initial.enrolled + waitlist.enrolled,
         graduates: initial.graduates + waitlist.graduates };
-      // One shared zero-based count scale; rates always keep their own 0–100% scale.
-      const half = Math.max(1, total.total, summary?.stage1Passed || 0) / 2;
-      const magnitude = Math.pow(10, Math.floor(Math.log10(half)));
-      const step = [1, 2, 5, 10].find(value => value * magnitude >= half) * magnitude;
-      const maximum = Math.max(2, step * 2);
+      // Each count is shown against all applications in the current scope.
+      const maximum = summary?.applications || 0;
+      const scale = maximum || 1;
       const bars = {};
       const stage1 = summary?.stage1Enrollment && summary.stage1Passed != null
         ? { total: summary.stage1Passed, ...summary.stage1Enrollment } : { total: 0, enrolled: 0, graduates: 0 };
       const other = {};
       for (const [key, group] of Object.entries({ total, stage1, initial, waitlist })) {
         other[key] = Math.max(0, group.total - group.enrolled - group.graduates);
-        bars[key + 'Enrolled'] = group.enrolled / maximum * 100;
-        bars[key + 'Graduates'] = group.graduates / maximum * 100;
-        bars[key + 'Other'] = other[key] / maximum * 100;
+        bars[key + 'Enrolled'] = group.enrolled / scale * 100;
+        bars[key + 'Graduates'] = group.graduates / scale * 100;
+        bars[key + 'Other'] = other[key] / scale * 100;
       }
       bars.enrolledRate = summary?.enrollmentApplications.enrolled
         ? total.enrolled / summary.enrollmentApplications.enrolled * 100 : 0;
@@ -4334,6 +4359,7 @@
     function renderResultSummary(summary = state.resultSummary, target = elements, overall = false) {
       const empty = overall ? false : !state.lastTotalMatches && !state.records.length;
       const chart = makeSummaryChartModel(summary);
+      const midpoint = Math.floor(chart.maximum / 2);
       const counts = {
         applications: summary?.applications ?? state.lastTotalMatches,
         enrolledApplications: summary?.enrollmentApplications.enrolled ?? (empty ? 0 : null),
@@ -4348,8 +4374,8 @@
         totalEnrolled: summary ? chart.total.enrolled : (empty ? 0 : null),
         totalGraduates: summary ? chart.total.graduates : (empty ? 0 : null),
         totalOther: chart.other.total, initialOther: chart.other.initial, waitlistOther: chart.other.waitlist,
-        countMidpoint: summary || empty ? chart.maximum / 2 : null,
-        countMaximum: summary || empty ? chart.maximum.toLocaleString('ko-KR') + '건' : '—',
+        countMidpoint: summary || empty ? (midpoint || '') : null,
+        countMaximum: summary || empty ? (chart.maximum ? chart.maximum.toLocaleString('ko-KR') + '건' : '') : '—',
         enrolledAcceptanceRate: summary
           ? formatAcceptanceRate(summary.initial.enrolled + summary.waitlist.enrolled, summary.enrollmentApplications.enrolled) : '—',
         graduateAcceptanceRate: summary
@@ -4365,6 +4391,8 @@
       const signatureKey = overall ? 'overallSummarySignature' : 'resultSummarySignature';
       if (state[signatureKey] === signature) return;
       state[signatureKey] = signature;
+      target.summaryCounts.countMidpoint.style?.setProperty('--summary-midpoint',
+        (chart.maximum ? midpoint / chart.maximum * 100 : 50) + '%');
       Object.entries(counts).forEach(([key, value]) => {
         const node = target.summaryCounts[key];
         const text = value === null ? '—' : typeof value === 'string' ? value : value.toLocaleString('ko-KR');
@@ -6701,10 +6729,11 @@
           },
         });
         localStorage.setItem('admissionsSession', JSON.stringify({ token: data.sessionToken, expiresAt: data.expiresAt }));
+        const renderedOverall = applyOverallSummary(data.overallSummary, data.revision);
         elements.passwordInput.value = '';
         elements.passwordDialog.close();
         setSyncState('online', '연결됨');
-        if (!applyOverallSummary(data.overallSummary, data.revision)) void refreshOverallStats();
+        if (!renderedOverall) void refreshOverallStats();
         // Start the read bridge only after authentication. Loading its iframe
         // alongside the direct login POST created avoidable startup contention
         // on mobile Apps Script/WebKit connections.

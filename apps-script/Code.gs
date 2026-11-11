@@ -24,6 +24,7 @@ const CONFIG = Object.freeze({
   searchMatchCachePrefix: 'admissions-search-match-v10',
   metaCachePrefix: 'admissions-meta-v9',
   overallSummaryCachePrefix: 'admissions-overall-summary-v1',
+  overallSummaryProperty: 'ADMISSIONS_OVERALL_SUMMARY_V1',
   searchMatchCacheTtlSeconds: 600,
   searchResponseCachePrefix: 'admissions-search-response-v7',
   searchResponseCacheTtlSeconds: 600,
@@ -282,7 +283,9 @@ function login_(providedPassword, includeMeta, includeOverallSummary) {
     sourceRevision: meta ? meta.sourceRevision :
       (properties[CONFIG.sourceRevisionProperty] || properties[CONFIG.dataRevisionProperty] || '0'),
     meta: meta || undefined,
-    overallSummary: includeOverallSummary ? readOverallSummaryCache_(revision) || undefined : undefined,
+    overallSummary: includeOverallSummary
+      ? readPublishedOverallSummary_(revision, properties) || readOverallSummaryCache_(revision) || undefined
+      : undefined,
     serverTime: new Date().toISOString(),
   };
 }
@@ -544,23 +547,57 @@ function readOverallSummaryCache_(revision) {
   }
 }
 
+function readPublishedOverallSummary_(revision, properties) {
+  try {
+    const raw = properties[CONFIG.overallSummaryProperty];
+    const saved = raw ? JSON.parse(raw) : null;
+    const summary = saved && saved.revision === revision ? saved.summary : null;
+    return summary && validSearchSummary_(summary, summary.applications) ? summary : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function publishOverallSummaryIfCurrent_(revision, summary) {
+  try {
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(0)) return;
+    try {
+      if (getDataRevision_() === revision) {
+        PropertiesService.getScriptProperties().setProperty(
+          CONFIG.overallSummaryProperty, JSON.stringify({ revision, summary })
+        );
+      }
+    } finally {
+      lock.releaseLock();
+    }
+  } catch (_) {
+    // The authenticated response can still use the freshly computed summary.
+  }
+}
+
 function overallSummary_(knownRevision, properties) {
   const current = getRevision_(properties);
   if (cleanText_(knownRevision, 256) === current.revision) return { ...current, notModified: true };
+  const published = readPublishedOverallSummary_(current.revision, properties);
+  if (published) return { ...current, summary: published };
   const cached = readOverallSummaryCache_(current.revision);
-  if (cached) return { ...current, summary: cached };
+  if (cached) {
+    publishOverallSummaryIfCurrent_(current.revision, cached);
+    return { ...current, summary: cached };
+  }
 
   const snapshot = getRowsSnapshot_();
-  const indexes = Array.from({ length: snapshot.rows.length }, (_, index) => index);
-  const summary = summarizeResultRows_(snapshot.rows, indexes);
+  const summary = summarizeResultRows_(snapshot.rows);
   putCacheSafely_(overallSummaryCacheKey_(snapshot.revision), JSON.stringify(summary), CONFIG.rowsCacheTtlSeconds);
+  publishOverallSummaryIfCurrent_(snapshot.revision, summary);
   return { ok: true, summary, revision: snapshot.revision,
     sourceRevision: sourceIdentityForSnapshot_(snapshot), serverTime: new Date().toISOString() };
 }
 
 function summarizeResultRows_(rows, rowIndexes) {
   const summary = {
-    applications: rowIndexes.length,
+    applications: rowIndexes ? rowIndexes.length : rows.length,
     enrollmentApplications: { enrolled: 0, graduates: 0 },
     unentered: 0,
     stage1Passed: 0,
@@ -568,32 +605,30 @@ function summarizeResultRows_(rows, rowIndexes) {
     initial: { total: 0, enrolled: 0, graduates: 0 },
     waitlist: { total: 0, enrolled: 0, graduates: 0 },
   };
-  // Reuse the already-filtered row indexes. Read only B/R; no record
-  // normalization, source-index rebuild, or additional Sheets request.
-  for (let index = 0; index < rowIndexes.length; index += 1) {
-    const row = rows[rowIndexes[index]];
-    const enrollment = text_(row[COL.enrollment]).trim();
-    const finalResult = text_(row[COL.finalResult]).trim();
-    if (text_(row[COL.stage1]).trim() === '합격') {
-      summary.stage1Passed += 1;
-      if (enrollment === '재학생') summary.stage1Enrollment.enrolled += 1;
-      else if (enrollment === '졸업생') summary.stage1Enrollment.graduates += 1;
-    }
-    if (enrollment === '재학생') summary.enrollmentApplications.enrolled += 1;
-    else if (enrollment === '졸업생') summary.enrollmentApplications.graduates += 1;
-    if (!finalResult || finalResult === '미입력') summary.unentered += 1;
-    const group = finalResult === '합격' ? summary.initial
-      : (finalResult === '충원합격' ? summary.waitlist : null);
-    if (!group) continue;
-    group.total += 1;
-    if (enrollment === '재학생') group.enrolled += 1;
-    else if (enrollment === '졸업생') group.graduates += 1;
+  for (let index = 0; index < summary.applications; index += 1) {
+    adjustSummaryForRow_(summary, rows[rowIndexes ? rowIndexes[index] : index], 1);
   }
   return summary;
 }
 
+function adjustSummaryForRow_(summary, row, delta) {
+  const enrollment = text_(row[COL.enrollment]).trim();
+  const cohort = enrollment === '재학생' ? 'enrolled' : enrollment === '졸업생' ? 'graduates' : '';
+  const finalResult = text_(row[COL.finalResult]).trim();
+  if (text_(row[COL.stage1]).trim() === '합격') {
+    summary.stage1Passed += delta;
+    if (cohort) summary.stage1Enrollment[cohort] += delta;
+  }
+  if (cohort) summary.enrollmentApplications[cohort] += delta;
+  if (!finalResult || finalResult === '미입력') summary.unentered += delta;
+  const group = finalResult === '합격' ? summary.initial : finalResult === '충원합격' ? summary.waitlist : null;
+  if (!group) return;
+  group.total += delta;
+  if (cohort) group[cohort] += delta;
+}
 function validSearchSummary_(summary, totalMatches) {
-  if (!summary || typeof summary !== 'object' || summary.applications !== totalMatches) return false;
+  if (!Number.isSafeInteger(totalMatches) || totalMatches < 0
+      || !summary || typeof summary !== 'object' || summary.applications !== totalMatches) return false;
   const validCount = count => Number.isInteger(count) && count >= 0 && count <= totalMatches;
   if (!validCount(summary.unentered) || !validCount(summary.stage1Passed)) return false;
   const applications = summary.enrollmentApplications;
@@ -682,7 +717,6 @@ function save_(payload) {
     assertSchema_(sheet);
     const lastRow = sheet.getLastRow();
     if (lastRow < CONFIG.firstDataRow) throw apiError_('NOT_FOUND', '저장할 행을 찾지 못했습니다.');
-    const previousRevision = getDataRevision_();
 
     let rowIndex = -1;
     let current = null;
@@ -813,13 +847,24 @@ function save_(payload) {
     // 클라이언트가 일부 필드만 보낼 때에도, 무관한 셀의 데이터 확인 규칙을
     // 다시 통과시키지 않아 정상 입력까지 함께 거부되는 일을 막습니다.
     const resultKeysToWrite = RESULT_KEYS.filter(key => merged[key] !== currentValues[key]);
+    const properties = PropertiesService.getScriptProperties().getProperties();
+    const previousRevision = properties[CONFIG.dataRevisionProperty] || '0';
+    const summary = readPublishedOverallSummary_(previousRevision, properties);
+    if (summary && summary.applications === lastRow - CONFIG.headerRow) {
+      const nextSummaryRow = current.slice();
+      if (resultKeysToWrite.includes('stage1')) nextSummaryRow[COL.stage1] = merged.stage1;
+      if (resultKeysToWrite.includes('finalResult')) nextSummaryRow[COL.finalResult] = merged.finalResult;
+      adjustSummaryForRow_(summary, current, -1);
+      adjustSummaryForRow_(summary, nextSummaryRow, 1);
+    }
     writeChangedResultValues_(sheet, sheetRow, resultKeysToWrite, merged);
     SpreadsheetApp.flush();
     // 구 배포에서 source revision 속성이 아직 없을 수 있습니다. 공개 data
     // revision을 바꾸기 전에 현재 세대를 고정해야 결과 저장이 검색 인덱스
     // 세대까지 바꾸지 않습니다.
     ensureSourceRevision_();
-    const revision = bumpDataRevision_();
+    const currentSummary = summary && validSearchSummary_(summary, lastRow - CONFIG.headerRow) ? summary : null;
+    const revision = bumpDataRevision_(currentSummary);
     rememberMutationReceipt_(recordId, mutationId);
 
     current[COL.stage1] = merged.stage1;
@@ -1029,19 +1074,28 @@ function createRevision_() {
   return String(Date.now()) + '-' + Utilities.getUuid();
 }
 
-function bumpDataRevision_() {
+function bumpDataRevision_(summary) {
   const revision = createRevision_();
-  PropertiesService.getScriptProperties().setProperty(CONFIG.dataRevisionProperty, revision);
+  const properties = PropertiesService.getScriptProperties();
+  if (summary) {
+    properties.setProperties({
+      [CONFIG.dataRevisionProperty]: revision,
+      [CONFIG.overallSummaryProperty]: JSON.stringify({ revision, summary }),
+    }, false);
+  } else {
+    properties.setProperty(CONFIG.dataRevisionProperty, revision);
+  }
   return revision;
 }
 
-function bumpSourceAndDataRevision_() {
+function bumpSourceAndDataRevision_(summary) {
   const revision = createRevision_();
   const properties = PropertiesService.getScriptProperties();
   if (typeof properties.setProperties === 'function') {
     const updates = {};
     updates[CONFIG.dataRevisionProperty] = revision;
     updates[CONFIG.sourceRevisionProperty] = revision;
+    if (summary) updates[CONFIG.overallSummaryProperty] = JSON.stringify({ revision, summary });
     properties.setProperties(updates, false);
   } else {
     properties.setProperty(CONFIG.sourceRevisionProperty, revision);
@@ -1060,14 +1114,14 @@ function publishAdmissionsDataRevision() {
   lock.waitLock(CONFIG.lockWaitMs);
   try {
     const sheet = getSheet_();
-    assertSchema_(sheet);
     SpreadsheetApp.flush();
-    const revision = bumpSourceAndDataRevision_();
+    const summary = summarizeResultRows_(readValidatedRows_(sheet));
+    const revision = bumpSourceAndDataRevision_(summary);
     return {
       ok: true,
       revision,
       sourceRevision: revision,
-      rowCount: Math.max(0, sheet.getLastRow() - CONFIG.headerRow),
+      rowCount: summary.applications,
       serverTime: new Date().toISOString(),
     };
   } finally {
@@ -1081,6 +1135,7 @@ function publishAdmissionsDataRevision() {
  */
 function warmAdmissionsCaches() {
   const snapshot = getRowsSnapshot_();
+  publishOverallSummaryIfCurrent_(snapshot.revision, summarizeResultRows_(snapshot.rows));
   const meta = getMeta_();
   return {
     ok: true,

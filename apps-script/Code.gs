@@ -155,6 +155,8 @@ function dispatchApiPayload_(payload) {
       return { ok: true, serverTime: new Date().toISOString() };
     case 'revision':
       return getRevision_(scriptProperties);
+    case 'overallSummary':
+      return overallSummary_(payload.knownRevision, scriptProperties);
     case 'meta':
       return getMeta_();
     case 'universities':
@@ -521,6 +523,15 @@ function search_(rawFilters) {
     sourceRevision: sourceIdentityForSnapshot_(snapshot),
     serverTime: new Date().toISOString(),
   };
+}
+
+function overallSummary_(knownRevision, properties) {
+  const revision = properties[CONFIG.dataRevisionProperty] || '0';
+  if (cleanText_(knownRevision, 256) === revision) return { ...getRevision_(properties), notModified: true };
+  const snapshot = getRowsSnapshot_();
+  const indexes = Array.from({ length: snapshot.rows.length }, (_, index) => index);
+  return { ok: true, summary: summarizeResultRows_(snapshot.rows, indexes), revision: snapshot.revision,
+    sourceRevision: sourceIdentityForSnapshot_(snapshot), serverTime: new Date().toISOString() };
 }
 
 function summarizeResultRows_(rows, rowIndexes) {

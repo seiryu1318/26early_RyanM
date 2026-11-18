@@ -1916,7 +1916,9 @@
       body.pc-edition .sync-pill span:last-child { display: none; }
     }
 
-    @media (max-width: 1413px) {
+    /* The result table is 1,508px wide. Start its own scroll viewport before
+       the columns overflow the page, so zooming out is never required. */
+    @media (max-width: 1540px) {
       body.pc-edition .table-wrap {
         max-height: max(260px, calc(100dvh - var(--topbar-height) - var(--sticky-search-gap) - var(--sticky-search-height) - 10px - var(--sticky-results-bar-height) - 18px));
         overflow: auto;
@@ -1941,7 +1943,7 @@
     body.pc-edition.has-searched.pc-short-viewport .result-table th {
       top: calc(var(--topbar-height) + var(--sticky-search-gap) + var(--sticky-results-bar-height));
     }
-    @media (max-width: 1413px) {
+    @media (max-width: 1540px) {
       body.pc-edition.pc-short-viewport .table-wrap {
         max-height: max(180px, calc(100dvh - var(--topbar-height) - var(--sticky-search-gap) - var(--sticky-results-bar-height) - 18px));
         overscroll-behavior: auto;
@@ -5843,6 +5845,20 @@
       });
     }
 
+    function openFailureReasonPicker(recordId) {
+      const escapedId = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+        ? CSS.escape(String(recordId))
+        : String(recordId).replace(/["\\]/g, '\\$&');
+      const control = document.querySelector(
+        `select.inline-result-control[data-record-id="${escapedId}"][data-result-key="failureReason"]`
+      );
+      if (!control || control.disabled) return;
+      control.focus({ preventScroll: true });
+      if (typeof control.showPicker === 'function') {
+        try { control.showPicker(); } catch (_) { /* Focus remains as a safe fallback. */ }
+      }
+    }
+
     function makeInlineResultField(record, key, showLabel, showFeedback) {
       const definition = RESULT_DEFINITIONS[key];
       const field = makeElement('div', '', showLabel ? 'card-result-field' : 'result-input-wrap');
@@ -5876,6 +5892,9 @@
             event.stopPropagation();
             syncResultFieldFilledState(field, Boolean(control.value));
             setDraftValue(record.id, key, control.value);
+            if (key === 'finalResult' && control.value === '불합격') {
+              openFailureReasonPicker(record.id);
+            }
             saveInlineResult(record.id);
           });
         } else {

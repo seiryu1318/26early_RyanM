@@ -1740,11 +1740,11 @@
     .card-result-field.is-locked { background: #f2cf7a; }
     .result-table tbody tr td.cell-result.cell-result-finalResult.is-final-pass,
     .card-result-field[data-result-key="finalResult"].is-final-pass {
-      background: linear-gradient(180deg, rgba(222,247,234,.98), rgba(198,235,216,.94));
+      background: #d5eddf;
     }
     .result-table tbody tr td.cell-result.cell-result-finalResult.is-final-waitlist,
     .card-result-field[data-result-key="finalResult"].is-final-waitlist {
-      background: linear-gradient(180deg, rgba(239,229,250,.98), rgba(219,201,242,.94));
+      background: #e4d7f2;
     }
     .is-final-pass .inline-result-control,
     .is-final-pass .inline-result-control.is-filled { color: #145b3b; }
@@ -1759,7 +1759,7 @@
     .is-stage1-pass .inline-result-control.is-filled { color: #14556f; }
     .result-table tbody tr td.cell-result.cell-result-failureReason.is-not-applicable,
     .card-result-field[data-result-key="failureReason"].is-not-applicable {
-      background: linear-gradient(180deg, rgba(237,237,241,.96), rgba(224,224,230,.92));
+      background: #e7e5e9;
     }
     .is-not-applicable .inline-result-control,
     .is-not-applicable .inline-result-control.is-filled { color: #817983; }
@@ -5819,6 +5819,17 @@
       }
     }
 
+    function isAutomaticPredictionWindow(now = Date.now()) {
+      return Number(now) <= Date.parse('2026-12-18T23:59:59.999+09:00');
+    }
+
+    function applyWaitPredictionCascade(values, changedKey, now = Date.now()) {
+      if (changedKey !== 'firstWait' && changedKey !== 'waitPrediction') return;
+      if (isAutomaticPredictionWindow(now) && String(values.firstWait || '').trim()) {
+        values.waitPrediction = true;
+      }
+    }
+
     function syncFinalResultTone(field, value) {
       if (!field || field.dataset.resultKey !== 'finalResult') return;
       const targets = [field, field.closest('.cell-result')].filter(Boolean);
@@ -5975,9 +5986,11 @@
         const values = { ...conflict.values };
         const previousStage1 = values.stage1;
         const previousFailureReason = values.failureReason;
+        const previousWaitPrediction = values.waitPrediction;
         values[key] = value;
         applyStage1Cascade(record, values, key, previousStage1);
         applyFinalResultCascade(values, key);
+        applyWaitPredictionCascade(values, key);
         if (record.stage1Locked) values.stage1 = '일괄합산';
         if (key === 'stage1' && isStepwiseSelection(record)) {
           ['stage1', 'finalResult', 'failureReason'].forEach(conflictKey => {
@@ -5986,6 +5999,9 @@
         }
         if (values.failureReason !== previousFailureReason && !conflict.changedKeys.includes('failureReason')) {
           conflict.changedKeys.push('failureReason');
+        }
+        if (values.waitPrediction !== previousWaitPrediction && !conflict.changedKeys.includes('waitPrediction')) {
+          conflict.changedKeys.push('waitPrediction');
         }
         conflict.values = values;
         conflict.updatedAt = Date.now();
@@ -6001,9 +6017,11 @@
         : (inFlight ? { ...inFlight.values } : currentResultValues(record));
       const previousStage1 = values.stage1;
       const previousFailureReason = values.failureReason;
+      const previousWaitPrediction = values.waitPrediction;
       values[key] = value;
       applyStage1Cascade(record, values, key, previousStage1);
       applyFinalResultCascade(values, key);
+      applyWaitPredictionCascade(values, key);
       if (record.stage1Locked) values.stage1 = '일괄합산';
       const changedKeys = new Set(existing ? existing.changedKeys : []);
       changedKeys.add(key);
@@ -6012,6 +6030,7 @@
         changedKeys.add('failureReason');
       }
       if (values.failureReason !== previousFailureReason) changedKeys.add('failureReason');
+      if (values.waitPrediction !== previousWaitPrediction) changedKeys.add('waitPrediction');
       state.drafts.set(recordId, {
         values,
         baseValues: existing ? existing.baseValues : (inFlight ? inFlight.baseValues : resultValues(record)),

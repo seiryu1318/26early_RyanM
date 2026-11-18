@@ -1441,6 +1441,17 @@
       white-space: nowrap;
     }
     #conflictDialog .dialog-foot { justify-content: center; }
+    #fullSearchDialog { width: min(520px, calc(100% - 28px)); }
+    .full-search-note {
+      margin: 0;
+      color: #5f3b4c;
+      font-size: 15px;
+      font-weight: 750;
+      line-height: 1.65;
+      text-align: center;
+      word-break: keep-all;
+    }
+    #fullSearchDialog .dialog-foot { justify-content: center; }
     .save-button {
       display: inline-flex;
       align-items: center;
@@ -2829,6 +2840,19 @@
     </div>
   </dialog>
 
+  <dialog id="fullSearchDialog" aria-labelledby="fullSearchTitle" aria-modal="true">
+    <div class="dialog-head">
+      <h2 id="fullSearchTitle" class="dialog-title">전체 자료 검색</h2>
+    </div>
+    <div class="dialog-body">
+      <p class="full-search-note">전체 합불자료가 검색되므로 시간이 걸립니다.<br>진행하시겠습니까?</p>
+    </div>
+    <div class="dialog-foot">
+      <button id="fullSearchNoButton" class="ghost-button" type="button">아니오</button>
+      <button id="fullSearchYesButton" class="save-button" type="button">예</button>
+    </div>
+  </dialog>
+
   <div id="savingOverlay" class="saving-overlay" role="status" aria-live="polite" hidden>
     <span class="saving-spinner" aria-hidden="true"></span>
     <span>반영 중</span>
@@ -3309,6 +3333,9 @@
       clearButton: $('clearButton'),
       desktopSearchButton: $('desktopSearchButton'),
       mobileSearchButton: $('mobileSearchButton'),
+      fullSearchDialog: $('fullSearchDialog'),
+      fullSearchNoButton: $('fullSearchNoButton'),
+      fullSearchYesButton: $('fullSearchYesButton'),
       mobileDetailButton: $('mobileDetailButton'),
       installButton: $('installButton'),
       universityTypeSelect: $('universityTypeSelect'),
@@ -4629,7 +4656,7 @@
       return true;
     }
 
-    async function performSearch({ silent = false, manual = !silent } = {}) {
+    async function performSearch({ silent = false, manual = !silent, allowEmpty = false } = {}) {
       if (manual && state.pollController) state.pollController.abort();
       if (state.searching) {
         if (manual && state.searchController) {
@@ -4644,7 +4671,7 @@
         return;
       }
       const initialFilters = silent && state.lastFilters ? state.lastFilters : collectFilters();
-      if (!hasFilter(initialFilters)) {
+      if (!hasFilter(initialFilters) && !allowEmpty) {
         if (!silent) toast('검색 조건을 한 가지 이상 입력해 주세요.', 'error');
         return;
       }
@@ -4714,6 +4741,24 @@
           queueMicrotask(() => performSearch({ silent: false, manual: true }));
         }
       }
+    }
+
+    function requestManualSearch() {
+      if (hasFilter(collectFilters())) {
+        performSearch({ silent: false, manual: true });
+        return;
+      }
+      if (!elements.fullSearchDialog.open) elements.fullSearchDialog.showModal();
+    }
+
+    function cancelFullSearch() {
+      if (elements.fullSearchDialog.open) elements.fullSearchDialog.close();
+      resetSearch();
+    }
+
+    function confirmFullSearch() {
+      if (elements.fullSearchDialog.open) elements.fullSearchDialog.close();
+      performSearch({ silent: false, manual: true, allowEmpty: true });
     }
 
     function makeRecordsSignature(records, totalMatches, truncated) {
@@ -7100,9 +7145,15 @@
       });
       elements.searchForm.addEventListener('submit', event => {
         event.preventDefault();
-        performSearch({ silent: false, manual: true });
+        requestManualSearch();
       });
-      elements.mobileSearchButton.addEventListener('click', () => performSearch({ silent: false, manual: true }));
+      elements.mobileSearchButton.addEventListener('click', requestManualSearch);
+      elements.fullSearchNoButton.addEventListener('click', cancelFullSearch);
+      elements.fullSearchYesButton.addEventListener('click', confirmFullSearch);
+      elements.fullSearchDialog.addEventListener('cancel', event => {
+        event.preventDefault();
+        cancelFullSearch();
+      });
       elements.mobileSearchSummary.addEventListener('click', () => {
         setMobileSearchExpanded(!document.body.classList.contains('mobile-search-expanded'));
       });

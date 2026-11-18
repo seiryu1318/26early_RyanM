@@ -1727,6 +1727,31 @@
     }
     .card-result-field.is-filled { background: #f6c9dc; }
     .card-result-field.is-locked { background: #f2cf7a; }
+    .result-table tbody tr td.cell-result.cell-result-finalResult.is-final-pass,
+    .card-result-field[data-result-key="finalResult"].is-final-pass {
+      background: linear-gradient(180deg, rgba(222,247,234,.98), rgba(198,235,216,.94));
+    }
+    .result-table tbody tr td.cell-result.cell-result-finalResult.is-final-waitlist,
+    .card-result-field[data-result-key="finalResult"].is-final-waitlist {
+      background: linear-gradient(180deg, rgba(239,229,250,.98), rgba(219,201,242,.94));
+    }
+    .is-final-pass .inline-result-control,
+    .is-final-pass .inline-result-control.is-filled { color: #145b3b; }
+    .is-final-waitlist .inline-result-control,
+    .is-final-waitlist .inline-result-control.is-filled { color: #5d2f86; }
+    .result-table tbody tr td.cell-result.cell-result-stage1.is-stage1-pass,
+    .card-result-field[data-result-key="stage1"].is-stage1-pass {
+      background: linear-gradient(180deg, rgba(255,248,166,.99), rgba(255,220,76,.96));
+      box-shadow: inset 0 0 0 1px rgba(225,151,0,.26);
+    }
+    .is-stage1-pass .inline-result-control,
+    .is-stage1-pass .inline-result-control.is-filled { color: #8a4b00; }
+    .result-table tbody tr td.cell-result.cell-result-failureReason.is-not-applicable,
+    .card-result-field[data-result-key="failureReason"].is-not-applicable {
+      background: linear-gradient(180deg, rgba(237,237,241,.96), rgba(224,224,230,.92));
+    }
+    .is-not-applicable .inline-result-control,
+    .is-not-applicable .inline-result-control.is-filled { color: #817983; }
     .card-result-field label {
       display: block;
       margin: 0 0 4px 2px;
@@ -4887,6 +4912,9 @@
             const field = makeInlineResultField(record, column.key, false, false);
             if (field.classList.contains('is-filled')) td.classList.add('is-filled');
             if (field.classList.contains('is-locked')) td.classList.add('is-locked');
+            ['is-stage1-pass', 'is-final-pass', 'is-final-waitlist', 'is-not-applicable'].forEach(className => {
+              if (field.classList.contains(className)) td.classList.add(className);
+            });
             td.append(field);
             tr.append(td);
             return;
@@ -5729,6 +5757,43 @@
       }
     }
 
+    function applyFinalResultCascade(values, changedKey) {
+      if (changedKey !== 'finalResult') return;
+      if (values.finalResult === '불합격') {
+        if (!values.failureReason) values.failureReason = '불합격';
+        return;
+      }
+      if (values.finalResult === '합격' || values.finalResult === '충원합격') {
+        values.failureReason = '';
+      }
+    }
+
+    function syncFinalResultTone(field, value) {
+      if (!field || field.dataset.resultKey !== 'finalResult') return;
+      const targets = [field, field.closest('.cell-result')].filter(Boolean);
+      targets.forEach(target => {
+        target.classList.remove('is-final-pass', 'is-final-waitlist');
+        if (value === '합격') target.classList.add('is-final-pass');
+        if (value === '충원합격') target.classList.add('is-final-waitlist');
+      });
+    }
+
+    function syncStage1Tone(field, value) {
+      if (!field || field.dataset.resultKey !== 'stage1') return;
+      const highlighted = value === '합격' && !field.classList.contains('is-locked');
+      [field, field.closest('.cell-result')].filter(Boolean).forEach(target => {
+        target.classList.toggle('is-stage1-pass', highlighted);
+      });
+    }
+
+    function syncFailureReasonAvailability(field, finalResult) {
+      if (!field || field.dataset.resultKey !== 'failureReason') return;
+      const unavailable = finalResult === '합격' || finalResult === '충원합격';
+      [field, field.closest('.cell-result')].filter(Boolean).forEach(target => {
+        target.classList.toggle('is-not-applicable', unavailable);
+      });
+    }
+
     function makeInlineResultField(record, key, showLabel, showFeedback) {
       const definition = RESULT_DEFINITIONS[key];
       const field = makeElement('div', '', showLabel ? 'card-result-field' : 'result-input-wrap');
@@ -5793,9 +5858,13 @@
         control.dataset.recordId = record.id;
         control.dataset.resultKey = key;
         control.setAttribute('aria-label', `${record.name || ''} ${definition.label}`.trim());
-        control.disabled = isStepwiseSelection(record) && values.stage1 === '불합격' &&
+        const stage1LockedControl = isStepwiseSelection(record) && values.stage1 === '불합격' &&
           (key === 'finalResult' || key === 'failureReason');
-        if (control.disabled) control.title = '1단계 불합격으로 자동 입력됨';
+        const failureReasonUnavailable = key === 'failureReason' &&
+          (values.finalResult === '합격' || values.finalResult === '충원합격');
+        control.disabled = stage1LockedControl || failureReasonUnavailable;
+        if (stage1LockedControl) control.title = '1단계 불합격으로 자동 입력됨';
+        else if (failureReasonUnavailable) control.title = '합격자에게는 불합격 사유가 적용되지 않음';
         control.addEventListener('click', event => event.stopPropagation());
         if (definition.type === 'checkbox') {
           const toggle = makeElement('div', '', 'prediction-toggle');
@@ -5809,6 +5878,11 @@
           field.append(control);
         }
       }
+
+      const displayedValues = currentResultValues(record);
+      syncStage1Tone(field, displayedValues.stage1);
+      syncFinalResultTone(field, displayedValues.finalResult);
+      syncFailureReasonAvailability(field, displayedValues.finalResult);
 
       return field;
     }
@@ -5832,13 +5906,18 @@
       if (conflict && conflict.changedKeys.includes(key)) {
         const values = { ...conflict.values };
         const previousStage1 = values.stage1;
+        const previousFailureReason = values.failureReason;
         values[key] = value;
         applyStage1Cascade(record, values, key, previousStage1);
+        applyFinalResultCascade(values, key);
         if (record.stage1Locked) values.stage1 = '일괄합산';
         if (key === 'stage1' && isStepwiseSelection(record)) {
           ['stage1', 'finalResult', 'failureReason'].forEach(conflictKey => {
             if (!conflict.changedKeys.includes(conflictKey)) conflict.changedKeys.push(conflictKey);
           });
+        }
+        if (values.failureReason !== previousFailureReason && !conflict.changedKeys.includes('failureReason')) {
+          conflict.changedKeys.push('failureReason');
         }
         conflict.values = values;
         conflict.updatedAt = Date.now();
@@ -5853,8 +5932,10 @@
         ? { ...existing.values }
         : (inFlight ? { ...inFlight.values } : currentResultValues(record));
       const previousStage1 = values.stage1;
+      const previousFailureReason = values.failureReason;
       values[key] = value;
       applyStage1Cascade(record, values, key, previousStage1);
+      applyFinalResultCascade(values, key);
       if (record.stage1Locked) values.stage1 = '일괄합산';
       const changedKeys = new Set(existing ? existing.changedKeys : []);
       changedKeys.add(key);
@@ -5862,6 +5943,7 @@
         changedKeys.add('finalResult');
         changedKeys.add('failureReason');
       }
+      if (values.failureReason !== previousFailureReason) changedKeys.add('failureReason');
       state.drafts.set(recordId, {
         values,
         baseValues: existing ? existing.baseValues : (inFlight ? inFlight.baseValues : resultValues(record)),
@@ -5893,10 +5975,20 @@
       else if (control.value !== values[key]) control.value = values[key];
       control.classList.toggle('is-filled', Boolean(values[key]));
       const field = control.closest('.result-input-wrap, .card-result-field');
-      if (field) syncResultFieldFilledState(field, Boolean(values[key]));
-      control.disabled = isStepwiseSelection(record) && values.stage1 === '불합격' &&
+      if (field) {
+        syncResultFieldFilledState(field, Boolean(values[key]));
+        syncStage1Tone(field, values.stage1);
+        syncFinalResultTone(field, values.finalResult);
+        syncFailureReasonAvailability(field, values.finalResult);
+      }
+      const stage1LockedControl = isStepwiseSelection(record) && values.stage1 === '불합격' &&
         (key === 'finalResult' || key === 'failureReason');
-      control.title = control.disabled ? '1단계 불합격으로 자동 입력됨' : '';
+      const failureReasonUnavailable = key === 'failureReason' &&
+        (values.finalResult === '합격' || values.finalResult === '충원합격');
+      control.disabled = stage1LockedControl || failureReasonUnavailable;
+      if (stage1LockedControl) control.title = '1단계 불합격으로 자동 입력됨';
+      else if (failureReasonUnavailable) control.title = '합격자에게는 불합격 사유가 적용되지 않음';
+      else control.title = '';
     }
 
     function setRecordControlsBusy(recordId, busy) {

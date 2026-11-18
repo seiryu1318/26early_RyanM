@@ -4657,6 +4657,7 @@
     }
 
     async function performSearch({ silent = false, manual = !silent, allowEmpty = false } = {}) {
+      const fullSearchAllowed = allowEmpty || (silent && Boolean(state.lastFilters) && !hasFilter(state.lastFilters));
       if (manual && state.pollController) state.pollController.abort();
       if (state.searching) {
         if (manual && state.searchController) {
@@ -4671,7 +4672,7 @@
         return;
       }
       const initialFilters = silent && state.lastFilters ? state.lastFilters : collectFilters();
-      if (!hasFilter(initialFilters) && !allowEmpty) {
+      if (!hasFilter(initialFilters) && !fullSearchAllowed) {
         if (!silent) toast('검색 조건을 한 가지 이상 입력해 주세요.', 'error');
         return;
       }
@@ -4702,6 +4703,7 @@
             filters,
             knownRevision: cached.revision,
             force: false,
+            allowEmpty: fullSearchAllowed,
           }, { signal: controller.signal });
           if (controller.signal.aborted) return;
           if (validation.notModified) {
@@ -4715,7 +4717,7 @@
           data = validation;
         }
 
-        if (!data) data = await api('search', { filters }, { signal: controller.signal });
+        if (!data) data = await api('search', { filters, allowEmpty: fullSearchAllowed }, { signal: controller.signal });
         if (controller.signal.aborted) return;
         if (silent && hasActiveUserInput()) {
           setSyncState('online', timeLabel(data.serverTime));
@@ -4738,7 +4740,7 @@
         if (manual && !rerunManualSearch) setSearchBusy(false);
         if (rerunManualSearch) {
           state.pendingManualSearch = false;
-          queueMicrotask(() => performSearch({ silent: false, manual: true }));
+          queueMicrotask(() => performSearch({ silent: false, manual: true, allowEmpty: fullSearchAllowed }));
         }
       }
     }
@@ -4803,6 +4805,7 @@
           filters,
           knownRevision: state.dataRevision,
           force: fallbackDue || !state.dataRevision,
+          allowEmpty: !hasFilter(filters),
         }, { signal: controller.signal });
         if (controller.signal.aborted) return;
         if (data.notModified) {
@@ -5105,7 +5108,8 @@
       setExportBusy(true);
       setSyncState('busy', '다운로드 중');
       try {
-        const data = await api('export', { filters: { ...state.lastFilters } });
+        const filters = { ...state.lastFilters };
+        const data = await api('export', { filters, allowEmpty: !hasFilter(filters) });
         const headers = Array.isArray(data.headers) ? data.headers : [];
         const rows = Array.isArray(data.rows) ? data.rows : [];
         if (headers.length !== 22 || rows.some(row => !Array.isArray(row) || row.length !== 22)) {

@@ -3250,6 +3250,7 @@
       visibleCount: INITIAL_PAGE_SIZE,
       sortKey: DEFAULT_SORT_KEY,
       sortDirection: DEFAULT_SORT_DIRECTION,
+      displayRecordOrder: [],
       lastFilters: null,
       pollingTimer: null,
       pollingBusy: false,
@@ -4649,6 +4650,7 @@
         state.visibleCount = INITIAL_PAGE_SIZE;
         state.sortKey = DEFAULT_SORT_KEY;
         state.sortDirection = DEFAULT_SORT_DIRECTION;
+        state.displayRecordOrder = [];
         syncSortControls();
       } else {
         state.visibleCount = Math.max(INITIAL_PAGE_SIZE, state.visibleCount);
@@ -4917,13 +4919,32 @@
       elements.expandAllButton.setAttribute('aria-expanded', String(!canMore));
     }
 
+    function compareRecordsForCurrentSort(a, b) {
+      const av = String(a[state.sortKey] || '');
+      const bv = String(b[state.sortKey] || '');
+      const result = RECORD_SORT_COLLATOR.compare(av, bv);
+      return state.sortDirection === 'asc' ? result : -result;
+    }
+
     function sortedRecords() {
-      return [...state.records].sort((a, b) => {
-        const av = String(a[state.sortKey] || '');
-        const bv = String(b[state.sortKey] || '');
-        const result = RECORD_SORT_COLLATOR.compare(av, bv);
-        return state.sortDirection === 'asc' ? result : -result;
+      const recordsById = new Map(state.records.map(record => [record.id, record]));
+      const ordered = [];
+      const seen = new Set();
+      state.displayRecordOrder.forEach(recordId => {
+        const record = recordsById.get(recordId);
+        if (!record || seen.has(recordId)) return;
+        ordered.push(record);
+        seen.add(recordId);
       });
+      const additions = state.records
+        .filter(record => !seen.has(record.id))
+        .sort(compareRecordsForCurrentSort);
+      additions.forEach(record => {
+        ordered.push(record);
+        seen.add(record.id);
+      });
+      state.displayRecordOrder = ordered.map(record => record.id);
+      return ordered;
     }
 
     function renderTable(records) {
@@ -5395,6 +5416,7 @@
     function changeSort(key) {
       if (state.sortKey === key) state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
       else { state.sortKey = key; state.sortDirection = 'asc'; }
+      state.displayRecordOrder = [];
       syncSortControls();
       renderResults();
     }
@@ -6533,6 +6555,7 @@
       state.visibleCount = INITIAL_PAGE_SIZE;
       state.sortKey = DEFAULT_SORT_KEY;
       state.sortDirection = DEFAULT_SORT_DIRECTION;
+      state.displayRecordOrder = [];
       syncSortControls();
       clearInterval(state.pollingTimer);
       if (state.pollController) state.pollController.abort();
@@ -7256,9 +7279,14 @@
       updateMobileTopFab();
       if (EDITION === 'pc') elements.exportButton.addEventListener('click', exportCurrentResults);
       else elements.exportButton.hidden = true;
-      elements.mobileSortSelect.addEventListener('change', () => { state.sortKey = elements.mobileSortSelect.value; renderResults(); });
+      elements.mobileSortSelect.addEventListener('change', () => {
+        state.sortKey = elements.mobileSortSelect.value;
+        state.displayRecordOrder = [];
+        renderResults();
+      });
       elements.mobileSortDirection.addEventListener('click', () => {
         state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
+        state.displayRecordOrder = [];
         syncSortControls();
         renderResults();
       });

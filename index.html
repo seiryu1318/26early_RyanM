@@ -1952,11 +1952,12 @@
       body.pc-edition.has-searched.pc-short-viewport .result-table th { top: 0; }
     }
 
+    html:has(body.pc-edition:not(.has-searched)) { scrollbar-gutter: stable; }
     body:not(.has-searched) main {
       min-height: 100vh;
       min-height: 100dvh;
       display: grid;
-      align-content: center;
+      align-content: start;
       gap: 14px;
       padding: calc(var(--topbar-height) + 22px) 0 34px;
     }
@@ -1965,29 +1966,27 @@
       max-width: 1280px;
       margin: 0 auto;
     }
-    body.has-searched :is(.today-schedule, .home-overview-toggle) { display: none; }
+    body.has-searched .today-schedule { display: none; }
     .home-overview-toggle {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       justify-content: center;
-      justify-self: center;
-      min-inline-size: 108px;
+      min-inline-size: 100px;
       min-block-size: 44px;
+      margin: 10px auto 0;
       padding: 7px 20px;
-      border: 1px solid rgba(255,255,255,.76);
+      border: 1px solid rgba(162,24,88,.13);
       border-radius: 999px;
-      background: linear-gradient(120deg, rgba(247,252,255,.79), rgba(247,236,248,.65));
-      -webkit-backdrop-filter: blur(12px);
-      backdrop-filter: blur(12px);
-      box-shadow: 0 4px 14px rgba(58,32,63,.13), inset 0 1px 0 rgba(255,255,255,.55);
+      background: linear-gradient(120deg, #fff7fb, #fbeaf3);
+      box-shadow: 0 2px 6px rgba(100,25,62,.06), inset 0 1px 0 rgba(255,255,255,.82);
       color: var(--pink-900);
       font-size: 14px;
       font-weight: 800;
       cursor: pointer;
     }
     .home-overview-toggle:is(:hover, :focus-visible) {
-      background: linear-gradient(120deg, rgba(255,255,255,.93), rgba(251,237,247,.86));
-      border-color: rgba(255,255,255,.96);
+      background: linear-gradient(120deg, #fff2f8, #f8e1ed);
+      border-color: rgba(162,24,88,.23);
     }
     .overall-stats {
       background: linear-gradient(115deg, rgba(247,252,255,.91), rgba(233,243,252,.9) 55%, rgba(251,237,247,.91));
@@ -1996,6 +1995,14 @@
     .overall-stats::before { content: none; }
     .overall-stats .summary-heading { margin-bottom: 12px; }
     .overall-stats .summary-heading strong { display: inline-block; min-width: 5ch; text-align: right; }
+    .overall-stats-totals { display: contents; }
+    .overall-stats.is-collapsed {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .overall-stats.is-collapsed :is(.summary-heading, .home-overview-toggle) { margin: 0; }
     .overall-loading {
       position: absolute;
       width: 1px;
@@ -2004,7 +2011,7 @@
       clip-path: inset(50%);
     }
     .overall-loading.is-error {
-      inset: auto 14px 10px;
+      position: relative;
       width: auto;
       height: auto;
       clip-path: none;
@@ -2454,7 +2461,6 @@
 
     @media (max-height: 720px) {
       body.pc-edition:not(.has-searched) main {
-        align-content: start;
         padding-top: calc(var(--topbar-height) + 18px);
       }
     }
@@ -2645,16 +2651,17 @@
     </section>
 
     <section id="overallStats" class="today-schedule overall-stats glass-panel" aria-label="전체 통계">
-      <div id="overallLoading" class="overall-loading" role="status">전체 통계 불러오는 중</div>
         <div id="overallResultsCount" class="results-count" aria-label="전체 지원 및 합격 집계">
           <div class="summary-heading">
             <h2 class="summary-toolbar-title"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16M7 15v-4M12 15V5M17 15v-7"/></svg>전체 통계</h2>
-            <span class="summary-basic">지원 <span><strong id="overallSummaryApplications">—</strong>건</span></span>
-            <span class="summary-cohorts"><span>재학<span class="summary-cohort-suffix">생 지원</span> <strong id="overallSummaryEnrolledApplications">—</strong>건</span><span>졸업<span class="summary-cohort-suffix">생 지원</span> <strong id="overallSummaryGraduateApplications">—</strong>건</span></span>
-            <span class="summary-basic summary-header-total">총 합격 <span><strong id="overallSummaryHeaderTotalAccepted">—</strong>건</span></span>
-            <span class="summary-basic is-missing">미입력 <span><strong id="overallSummaryUnentered">—</strong>건</span></span>
+            <div id="overallStatsTotals" class="overall-stats-totals">
+              <span class="summary-basic">지원 <span><strong id="overallSummaryApplications">—</strong>건</span></span>
+              <span class="summary-cohorts"><span>재학<span class="summary-cohort-suffix">생 지원</span> <strong id="overallSummaryEnrolledApplications">—</strong>건</span><span>졸업<span class="summary-cohort-suffix">생 지원</span> <strong id="overallSummaryGraduateApplications">—</strong>건</span></span>
+              <span class="summary-basic summary-header-total">총 합격 <span><strong id="overallSummaryHeaderTotalAccepted">—</strong>건</span></span>
+              <span class="summary-basic is-missing">미입력 <span><strong id="overallSummaryUnentered">—</strong>건</span></span>
+            </div>
           </div>
-          <div class="summary-charts">
+          <div id="overallStatsCharts" class="summary-charts">
             <div class="summary-chart" role="group" aria-label="합격 건수 막대그래프">
               <h3 class="summary-chart-title">합격 건수</h3>
               <div class="summary-chart-row"><span class="summary-chart-label">총 합격</span><div class="summary-chart-track" aria-hidden="true"><span id="overallSummaryTotalEnrolledBar" class="summary-chart-fill summary-enrolled"></span><span id="overallSummaryTotalGraduatesBar" class="summary-chart-fill summary-graduates"></span><span id="overallSummaryTotalOtherBar" class="summary-chart-fill summary-other"></span></div><span class="summary-chart-value"><strong id="overallSummaryTotalAccepted">—</strong>건</span><span class="summary-chart-detail"><span>재학 <strong id="overallSummaryTotalEnrolled">—</strong></span><span>졸업 <strong id="overallSummaryTotalGraduates">—</strong></span><span class="summary-other-count" id="overallSummaryTotalOtherDetail" hidden>기타 <strong id="overallSummaryTotalOther">—</strong></span></span></div>
@@ -2672,9 +2679,9 @@
             </div>
           </div>
         </div>
+      <div id="overallLoading" class="overall-loading" role="status">전체 통계 불러오는 중</div>
+      <button id="homeOverviewToggle" class="home-overview-toggle" type="button" aria-expanded="true" aria-controls="todaySchedule overallStatsTotals overallStatsCharts">접기</button>
     </section>
-
-    <button id="homeOverviewToggle" class="home-overview-toggle" type="button" aria-expanded="true" aria-controls="todaySchedule overallStats">접기</button>
 
     <section id="resultsSection" class="results-section glass-panel" aria-label="검색 결과" hidden>
       <div class="results-bar">
@@ -7302,7 +7309,10 @@
         const expanded = button.getAttribute('aria-expanded') === 'false';
         button.setAttribute('aria-expanded', String(expanded));
         elements.todaySchedule.hidden = !expanded;
-        $('overallStats').hidden = !expanded;
+        $('overallStatsTotals').hidden = !expanded;
+        $('overallStatsCharts').hidden = !expanded;
+        overallLoading.hidden = !expanded;
+        $('overallStats').classList.toggle('is-collapsed', !expanded);
         button.textContent = expanded ? '접기' : '펼치기';
       });
       elements.passwordDialog.addEventListener('cancel', event => event.preventDefault());

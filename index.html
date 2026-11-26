@@ -1952,12 +1952,11 @@
       body.pc-edition.has-searched.pc-short-viewport .result-table th { top: 0; }
     }
 
-    html:has(body.pc-edition:not(.has-searched)) { scrollbar-gutter: stable; }
     body:not(.has-searched) main {
       min-height: 100vh;
       min-height: 100dvh;
       display: grid;
-      align-content: start;
+      align-content: center;
       gap: 14px;
       padding: calc(var(--topbar-height) + 22px) 0 34px;
     }
@@ -1971,22 +1970,19 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      min-inline-size: 100px;
       min-block-size: 44px;
-      margin: 10px auto 0;
-      padding: 7px 20px;
-      border: 1px solid rgba(162,24,88,.13);
-      border-radius: 999px;
-      background: linear-gradient(120deg, #fff7fb, #fbeaf3);
-      box-shadow: 0 2px 6px rgba(100,25,62,.06), inset 0 1px 0 rgba(255,255,255,.82);
-      color: var(--pink-900);
+      margin: 4px auto 0;
+      padding: 6px 10px;
+      border: 0;
+      background: transparent;
+      color: var(--pink-800);
       font-size: 14px;
       font-weight: 800;
       cursor: pointer;
     }
     .home-overview-toggle:is(:hover, :focus-visible) {
-      background: linear-gradient(120deg, #fff2f8, #f8e1ed);
-      border-color: rgba(162,24,88,.23);
+      text-decoration: underline;
+      text-underline-offset: 3px;
     }
     .overall-stats {
       background: linear-gradient(115deg, rgba(247,252,255,.91), rgba(233,243,252,.9) 55%, rgba(251,237,247,.91));
@@ -2461,6 +2457,7 @@
 
     @media (max-height: 720px) {
       body.pc-edition:not(.has-searched) main {
+        align-content: start;
         padding-top: calc(var(--topbar-height) + 18px);
       }
     }
@@ -2680,7 +2677,7 @@
           </div>
         </div>
       <div id="overallLoading" class="overall-loading" role="status">전체 통계 불러오는 중</div>
-      <button id="homeOverviewToggle" class="home-overview-toggle" type="button" aria-expanded="true" aria-controls="todaySchedule overallStatsTotals overallStatsCharts">접기</button>
+      <button id="homeOverviewToggle" class="home-overview-toggle" type="button" aria-expanded="true" aria-controls="todaySchedule overallStatsTotals overallStatsCharts">모두 접기</button>
     </section>
 
     <section id="resultsSection" class="results-section glass-panel" aria-label="검색 결과" hidden>
@@ -7313,7 +7310,7 @@
         $('overallStatsCharts').hidden = !expanded;
         overallLoading.hidden = !expanded;
         $('overallStats').classList.toggle('is-collapsed', !expanded);
-        button.textContent = expanded ? '접기' : '펼치기';
+        button.textContent = expanded ? '모두 접기' : '모두 펼치기';
       });
       elements.passwordDialog.addEventListener('cancel', event => event.preventDefault());
       elements.passwordDialog.addEventListener('close', () => {
